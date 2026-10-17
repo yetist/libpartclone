@@ -40,7 +40,6 @@ option('ncursesw',        type : 'feature', value : 'disabled', description : 'T
 option('nls',             type : 'boolean', value : true,  description : 'Native language support (gettext)')
 option('mtrace',          type : 'boolean', value : false, description : 'Enable memory tracing')
 option('bash-completion', type : 'boolean', value : true,  description : 'Install bash completion')
-option('static-linking',  type : 'boolean', value : false, description : 'Unsupported: loadable backend modules require dynamic linking')
 
 # ---------------------------------------------------------------------------
 # Tests

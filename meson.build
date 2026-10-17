@@ -27,10 +27,6 @@ top_inc = include_directories('.')
 # ---------------------------------------------------------------------------
 # Global build configuration
 # ---------------------------------------------------------------------------
-if get_option('static-linking')
-  error('static-linking is not supported: the filesystem backends are loadable modules and require dynamic linking')
-endif
-
 add_project_arguments(
   '-D_FILE_OFFSET_BITS=64',
   '-DHAVE_CONFIG_H',
