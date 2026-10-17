@@ -5,20 +5,15 @@ export DEBIAN_FRONTEND=noninteractive
 
 # 1. Install dependencies for minimal build
 apt-get update
-apt-get install -y build-essential autoconf automake libtool gettext pkg-config e2fslibs-dev uuid-dev libblkid-dev libxxhash-dev bc autopoint intltool libtool-bin libssl-dev zlib1g-dev libzstd-dev e2fsprogs xsltproc docbook-xsl
+apt-get install -y build-essential meson ninja-build gettext pkg-config e2fslibs-dev uuid-dev libblkid-dev libxxhash-dev bc libssl-dev zlib1g-dev libzstd-dev e2fsprogs xsltproc docbook-xsl
 
 # 2. Compile partclone
 cd /workspace
-# 確保上一次編譯架構遺留下來的 object files 被徹底清除乾淨
-find . -name "*.o" -delete
-find . -name "*.lo" -delete
-find . -name "*.la" -delete
-rm -rf .deps src/.deps lib/.deps
+# 確保上一次編譯架構遺留下來的 build 目錄被徹底清除乾淨
+rm -rf build
 
-./autogen
-./configure --enable-extfs --enable-xxhash --disable-ncursesw
-make clean || true
-make -j $(nproc)
+meson setup build -Dextfs=enabled -Dxxhash=true --prefix=/usr
+meson compile -C build
 
 # 3. Restore and verify EACH image
 cd /workspace
@@ -44,7 +39,7 @@ for img in /workspace/downloaded-images/test_img_*.img; do
     truncate -s 50M target.img
     
     # Restore
-    if ! src/partclone.extfs -r -s "$img" -O target.img -F -q; then
+    if ! build/src/partclone.extfs -r -s "$img" -O target.img -F -q; then
         echo "❌ FATAL: partclone restore failed for image from ${ARCH_OF_IMG}!"
         RESULTS+=("❌ FAIL (Restore): Image from ${ARCH_OF_IMG}")
         FAILED=1

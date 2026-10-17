@@ -15,58 +15,26 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: install packages
-      run: | 
+      run: |
           sudo sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
           sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
           sudo apt-get build-dep partclone
-          sudo apt-get install build-essential autoconf automake autotools-dev libtool libtool-bin gettext intltool pkg-config
+          sudo apt-get install build-essential meson ninja-build gettext pkg-config
           sudo apt-get install ntfs-3g f2fs-tools hfsprogs exfatprogs gddrescue reiser4progs libxxhash-dev libisal-dev liburcu-dev btrfs-progs
-    - name: automake
-      run: ./autogen
-    - name: configure
-      run: ./configure --enable-fs-test --enable-feature-test --enable-extfs --enable-ntfs --enable-fat --enable-exfat --enable-hfsp --enable-apfs --enable-btrfs --enable-minix --enable-f2fs --enable-reiser4 --enable-xfs --enable-xxhash --enable-isal
-    - name: make
-      run: make
-    - name: makeTest
-      run: make check
+    - name: meson setup
+      run: meson setup build -Dfs-test=true -Dfeature-test=true -Dextfs=enabled -Dntfs=enabled -Dfat=enabled -Dexfat=enabled -Dhfsp=enabled -Dapfs=enabled -Dbtrfs=enabled -Dminix=enabled -Df2fs=enabled -Dreiser4=enabled -Dxfs=enabled -Dxxhash=true -Disal=true
+    - name: meson compile
+      run: meson compile -C build
+    - name: meson test
+      run: meson test -C build --print-errorlogs
     - name: Verify build
       run: |
-        file src/partclone.extfs
-        ldd src/partclone.extfs
-        nm src/partclone.extfs | grep " T main"
-        if file src/partclone.extfs | grep -q "statically linked"; then
+        file build/src/partclone.extfs
+        ldd build/src/partclone.extfs
+        nm build/src/partclone.extfs | grep " T main"
+        if file build/src/partclone.extfs | grep -q "statically linked"; then
           echo "Error: Binary is statically linked but expected dynamic."
-          exit 1
-        fi
-
-  static_build:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-    - name: install packages
-      run: | 
-          sudo sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
-          sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
-          sudo apt-get update
-          sudo apt-get build-dep partclone
-          sudo apt-get install ntfs-3g f2fs-tools hfsprogs exfatprogs gddrescue reiser4progs libxxhash-dev libisal-dev liburcu-dev btrfs-progs
-    - name: automake
-      run: ./autogen
-    - name: configure
-      run: ./configure --enable-fs-test --enable-feature-test --enable-extfs --enable-ntfs --enable-fat --enable-exfat --enable-hfsp --enable-apfs --enable-btrfs --enable-minix --enable-f2fs --enable-reiser4 --enable-xfs --enable-xxhash --enable-isal --enable-static-linking
-    - name: make
-      run: make
-    - name: makeTest
-      run: make check
-    - name: Verify build
-      run: |
-        file src/partclone.extfs
-        ldd src/partclone.extfs || true
-        nm src/partclone.extfs | grep " T main"
-        if ! file src/partclone.extfs | grep -q "statically linked"; then
-          echo "Error: Binary is not statically linked but expected static."
           exit 1
         fi
 
@@ -77,57 +45,25 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: install packages
-      run: | 
+      run: |
           sudo sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
           sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
           sudo apt-get build-dep partclone
-          sudo apt-get install build-essential autoconf automake autotools-dev libtool libtool-bin gettext intltool pkg-config
+          sudo apt-get install build-essential meson ninja-build gettext pkg-config
           sudo apt-get install ntfs-3g f2fs-tools hfsprogs exfatprogs gddrescue reiser4progs libisal-dev liburcu-dev btrfs-progs
-    - name: automake
-      run: ./autogen
-    - name: configure
-      run: ./configure --disable-xxhash --enable-fs-test --enable-feature-test --enable-extfs --enable-ntfs --enable-fat --enable-exfat --enable-hfsp --enable-apfs --enable-btrfs --enable-minix --enable-f2fs --enable-reiser4 --enable-xfs --enable-isal
-    - name: make
-      run: make
-    - name: makeTest
-      run: make check
+    - name: meson setup
+      run: meson setup build -Dfs-test=true -Dfeature-test=true -Dextfs=enabled -Dntfs=enabled -Dfat=enabled -Dexfat=enabled -Dhfsp=enabled -Dapfs=enabled -Dbtrfs=enabled -Dminix=enabled -Df2fs=enabled -Dreiser4=enabled -Dxfs=enabled -Dxxhash=false -Disal=true
+    - name: meson compile
+      run: meson compile -C build
+    - name: meson test
+      run: meson test -C build --print-errorlogs
     - name: Verify build
       run: |
-        file src/partclone.extfs
-        ldd src/partclone.extfs
-        nm src/partclone.extfs | grep " T main"
-        if file src/partclone.extfs | grep -q "statically linked"; then
+        file build/src/partclone.extfs
+        ldd build/src/partclone.extfs
+        nm build/src/partclone.extfs | grep " T main"
+        if file build/src/partclone.extfs | grep -q "statically linked"; then
           echo "Error: Binary is statically linked but expected dynamic."
-          exit 1
-        fi
-
-  static_build_disable_xxhash:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-    - name: install packages
-      run: | 
-          sudo sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
-          sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
-          sudo apt-get update
-          sudo apt-get build-dep partclone
-          sudo apt-get install ntfs-3g f2fs-tools hfsprogs exfatprogs gddrescue reiser4progs libisal-dev liburcu-dev btrfs-progs
-    - name: automake
-      run: ./autogen
-    - name: configure
-      run: ./configure --disable-xxhash --enable-fs-test --enable-feature-test --enable-extfs --enable-ntfs --enable-fat --enable-exfat --enable-hfsp --enable-apfs --enable-btrfs --enable-minix --enable-f2fs --enable-reiser4 --enable-xfs --enable-isal --enable-static-linking
-    - name: make
-      run: make
-    - name: makeTest
-      run: make check
-    - name: Verify build
-      run: |
-        file src/partclone.extfs
-        ldd src/partclone.extfs || true
-        nm src/partclone.extfs | grep " T main"
-        if ! file src/partclone.extfs | grep -q "statically linked"; then
-          echo "Error: Binary is not statically linked but expected static."
           exit 1
         fi

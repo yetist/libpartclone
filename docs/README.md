@@ -49,7 +49,7 @@ Derive `.8` files.
 You may have to install `libxslt-tools`, `docbook` and `docbook-xsl-stylesheets`.
 (TODO: What minimum version is required?)
 (TODO: Is `xmltoman` or `doxygen2man` needed?)
-The file `Makefile.am` configures a specific stylesheet to be used in the conversion that
+The file `docs/meson.build` configures a specific stylesheet to be used in the conversion that
 may not be on your installation. Try a close match before manually installing the exact
 version of the `partclone` developers, e.g.:
 ```

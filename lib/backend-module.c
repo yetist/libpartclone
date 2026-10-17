@@ -17,7 +17,7 @@
  *   PTC_MODULE_POST_FIXUP   optional post_clone_fixup() implementation symbol
  *
  * The backend implementation itself is compiled with
- * -Dread_super_blocks=... -Dread_bitmap=... (see Makefile.am) so that the
+ * -Dread_super_blocks=... -Dread_bitmap=... (see lib/meson.build) so that the
  * historical, non-namespaced entry points become unique symbols and can be
  * referenced by name here.
  *

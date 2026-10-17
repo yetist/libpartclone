@@ -2,46 +2,22 @@
 *~
 *.swp
 
-# Autotools generated files
-/aclocal.m4
-/autom4te.cache/
-/compile
-/config.guess
-/config.h
-/config.h.in
-/config.log
-/config.rpath
-/config.status
-/config.sub
-/configure
-/depcomp
-/install-sh
-/ltmain.sh
-Makefile
-Makefile.in
-/missing
-/stamp-h1
-/test-driver
-/m4/
-/ar-lib
+# Meson build directories
+/build/
+/build-*/
+/_build/
+/_build*/
+.ninja_deps
+.ninja_log
+meson-logs/
+meson-private/
+meson-info/
+meson-dist/
 
-# Libtool and object files
+# Object files (out of tree builds place these in the build directory)
 *.o
 *.lo
 *.la
-.deps/
-.dirstamp
-src/.libs/
-lib/.libs/
-
-# Translation files
-po/*.gmo
-po/POTFILES
-po/Makefile
-po/Makefile.in
-po/Makefile.in.in
-po/stamp-po
-po/remove-potcdate.sed
 
 # Partclone specific generated files
 get_lib_version
@@ -53,34 +29,7 @@ clang_output_*
 *.nilfs2
 lib/partclone.pc
 
-# Executables in src/
-src/partclone.apfs
-src/partclone.btrfs
-src/partclone.chkimg
-src/partclone.dd
-src/partclone.exfat
-src/partclone.extfs
-src/partclone.f2fs
-src/partclone.fat
-src/partclone.fstype
-src/partclone.hfsp
-src/partclone.imager
-src/partclone.imgfuse
-src/partclone.info
-src/partclone.jfs
-src/partclone.minix
-src/partclone.nilfs2
-src/partclone.ntfs
-src/partclone.ntfsfixboot
-src/partclone.reiser4
-src/partclone.reiserfs
-src/partclone.restore
-src/partclone.ufs
-src/partclone.vmfs
-src/partclone.vmfs5
-src/partclone.xfs
-
-# Generated man pages
+# Generated man pages (built from the DocBook XML sources)
 docs/partclone.8
 docs/partclone.chkimg.8
 docs/partclone.dd.8
@@ -89,12 +38,6 @@ docs/partclone.info.8
 docs/partclone.ntfsfixboot.8
 docs/partclone.restore.8
 
-# Manually added generated files
-/libtool
-po/insert-header.sed
-
 # Example build output
 examples/ptc-demo
 examples/ptc-gtk4
-examples/.libs/
-

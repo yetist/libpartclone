@@ -14,23 +14,13 @@ include /usr/share/dpkg/buildflags.mk
 
 override_dh_auto_configure:
 	# Add here commands to configure the package.
-	#cp /usr/share/misc/config.sub .
-	#cp /usr/share/misc/config.guess .
-	#autoreconf
-	#./configure --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info LDFLAGS="-Wl,-z,defs" --enable-ncursesw --enable-extfs --enable-static
-	dh_auto_configure -- --enable-ncursesw --enable-all
-
-override_dh_auto_install:
-	$(MAKE) DESTDIR=$$(pwd)/debian/partclone prefix=/usr install
+	dh_auto_configure -- -Dncursesw=enabled -Dall=true
 
 override_dh_auto_clean:
 	dh_auto_clean
-	rm -f get_lib_version
-	rm -f config.sub configure Makefile.in aclocal.m4 config.guess
-	rm -f lib/Makefile.in src/Makefile.in docs/Makefile.in
 
 override_dh_strip:
 	dh_strip --dbg-package=partclone-dbg
 
 %:
-	dh $@ --with autoreconf --with autotools-dev
+	dh $@ --buildsystem=meson

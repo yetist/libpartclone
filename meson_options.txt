@@ -1,0 +1,57 @@
+## Meson options for partclone.
+##
+## The filesystem backend options mirror the historical --enable-<fs>
+## configure switches.  A feature option set to 'auto' enables the backend
+## when its required libraries and headers are available.
+
+option('all',
+       type : 'boolean',
+       value : false,
+       description : 'Enable every filesystem backend')
+
+# ---------------------------------------------------------------------------
+# Filesystem backends
+# ---------------------------------------------------------------------------
+option('extfs',    type : 'feature', value : 'disabled', description : 'ext2/3/4 file system')
+option('xfs',      type : 'feature', value : 'disabled', description : 'XFS file system')
+option('reiserfs', type : 'feature', value : 'disabled', description : 'ReiserFS 3.6 file system')
+option('reiser4',  type : 'feature', value : 'disabled', description : 'Reiser4 file system')
+option('hfsp',     type : 'feature', value : 'disabled', description : 'HFS+ file system')
+option('apfs',     type : 'feature', value : 'disabled', description : 'APFS file system')
+option('fat',      type : 'feature', value : 'disabled', description : 'FAT12/16/32 file system')
+option('exfat',    type : 'feature', value : 'disabled', description : 'exFAT file system')
+option('f2fs',     type : 'feature', value : 'disabled', description : 'F2FS file system')
+option('nilfs2',   type : 'feature', value : 'disabled', description : 'NILFS2 file system')
+option('ntfs',     type : 'feature', value : 'disabled', description : 'NTFS file system')
+option('ufs',      type : 'feature', value : 'disabled', description : 'UFS(1/2) file system')
+option('vmfs',     type : 'feature', value : 'disabled', description : 'VMFS file system')
+option('jfs',      type : 'feature', value : 'disabled', description : 'JFS file system')
+option('btrfs',    type : 'feature', value : 'disabled', description : 'BTRFS file system')
+option('minix',    type : 'feature', value : 'disabled', description : 'MINIX file system')
+option('fuse',     type : 'feature', value : 'disabled', description : 'imgfuse: mount an image as a block file')
+option('gtk4',     type : 'feature', value : 'auto',     description : 'GTK4 example application (examples/ptc-gtk4)')
+
+# ---------------------------------------------------------------------------
+# Optional features
+# ---------------------------------------------------------------------------
+option('xxhash',          type : 'boolean', value : true,  description : 'Use xxhash for checksums')
+option('isal',            type : 'boolean', value : false, description : 'Use Intel ISA-L for CRC32')
+option('ncursesw',        type : 'feature', value : 'disabled', description : 'Text user interface (ncursesw)')
+option('nls',             type : 'boolean', value : true,  description : 'Native language support (gettext)')
+option('mtrace',          type : 'boolean', value : false, description : 'Enable memory tracing')
+option('bash-completion', type : 'boolean', value : true,  description : 'Install bash completion')
+option('static-linking',  type : 'boolean', value : false, description : 'Unsupported: loadable backend modules require dynamic linking')
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+option('fs-test',      type : 'boolean', value : false, description : 'Enable file system clone/restore tests')
+option('feature-test', type : 'boolean', value : false, description : 'Enable feature tests')
+
+# ---------------------------------------------------------------------------
+# Installation directories
+# ---------------------------------------------------------------------------
+option('bashcompdir',
+       type : 'string',
+       value : '',
+       description : 'Directory for bash completion files (empty = autodetect)')

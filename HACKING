@@ -1,17 +1,12 @@
 Static Analyzer:
 
-libtoolize --force --copy
-aclocal -I m4
-autoconf
-autoheader
-automake --add-missing
+meson setup build --prefix=/usr --sbindir=/usr/bin \
+    -Dextfs=enabled -Dfat=enabled -Dhfsp=enabled -Dbtrfs=enabled \
+    -Dncursesw=enabled -Dntfs=enabled -Dexfat=enabled -Df2fs=enabled \
+    -Dminix=enabled -Dxfs=enabled
 
-scan-build -k -v -V ./configure --prefix=/usr --enable-extfs --disable-reiserfs --enable-fat \
-    --enable-hfsp --enable-btrfs --enable-ncursesw --enable-ntfs \
-    --enable-exfat --enable-f2fs --enable-minix --disable-nilfs2 --enable-xfs \
-    --sbindir=/usr/bin
-make clean
-scan-build -k -v -V make -j4
+ninja -C build -t clean
+scan-build -k -v -V ninja -C build -j4
 
 
 Sanitizer:
@@ -20,16 +15,10 @@ export CC=clang
 export CFLAGS="$CFLAGS -Wall -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -g"
 export LDFLAGS="$LDFLAGS -fsanitize=address -fsanitize=undefined"
 
-libtoolize --force --copy
-aclocal -I m4
-autoconf
-autoheader
-automake --add-missing
+meson setup build --prefix=/usr --sbindir=/usr/bin \
+    -Dextfs=enabled -Dfat=enabled -Dhfsp=enabled -Dbtrfs=enabled \
+    -Dncursesw=enabled -Dntfs=enabled -Dexfat=enabled -Df2fs=enabled \
+    -Dminix=enabled -Dxfs=enabled
 
-./configure --prefix=/usr --enable-extfs --disable-reiserfs --enable-fat \
-    --enable-hfsp --enable-btrfs --enable-ncursesw --enable-ntfs \
-    --enable-exfat --enable-f2fs --enable-minix --disable-nilfs2 --enable-xfs \
-    --sbindir=/usr/bin
-make clean
-make -j4
-
+ninja -C build -t clean
+ninja -C build -j4

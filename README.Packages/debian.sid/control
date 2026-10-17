@@ -4,7 +4,8 @@ Priority: optional
 Maintainer: Georges Khaznadar <georgesk@debian.org>
 Uploaders: Thomas Tsai <tlinux.tsai@gmail.com>
 Build-Depends: debhelper-compat (= 13),
- libtool,
+ meson,
+ ninja-build,
  architecture-is-little-endian,
  gettext,
  libext2fs-dev,
@@ -31,8 +32,6 @@ Homepage: http://partclone.org/
 Package: partclone
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Conflicts: partclone-static
-Replaces: partclone-static
 Description: Utility to clone and restore a partition
  Partclone is a project like the well-known backup utility 
  "Partition Image" a.k.a. partimage. 
@@ -40,22 +39,6 @@ Description: Utility to clone and restore a partition
  Partclone provides utilities to back up used blocks and 
  design for highest compatibility with file system using 
  supported libraries like e2fslibs.
- .
- check the project website for more details
- http://partclone.org
-
-Package: partclone-static
-Architecture: any
-Depends: ${misc:Depends}
-Conflicts: partclone
-Replaces: partclone
-Provides: partclone (= ${binary:Version})
-Description: Utility to clone and restore a partition (statically linked)
- Partclone is a project like the well-known backup utility 
- "Partition Image" a.k.a. partimage. 
- .
- This package contains statically linked versions of the partclone
- utilities, including partclone-static.ext4, partclone-static.fat, etc.
  .
  check the project website for more details
  http://partclone.org

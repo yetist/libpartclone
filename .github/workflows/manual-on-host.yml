@@ -10,143 +10,140 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: install packages
-      run: | 
+      run: |
           sudo sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
           sudo apt-get update
           sudo apt-get build-dep -y partclone
-          sudo apt-get install -y build-essential autoconf automake autotools-dev libtool libtool-bin gettext intltool pkg-config
+          sudo apt-get install -y build-essential meson ninja-build gettext pkg-config
           sudo apt-get install -y f2fs-tools hfsprogs exfatprogs gddrescue libfuse3-dev fuse3 jfsutils reiser4progs hfsprogs hfsplus reiserfsprogs libxxhash-dev libisal-dev jfsutils libjfs-dev libufs2 ufsutils vmfs-tools libvmfs liburcu-dev btrfs-progs valgrind
-    - name: automake
-      run: ./autogen
-    - name: configure
-      run: ./configure --enable-fs-test --enable-feature-test --enable-extfs --enable-ntfs --enable-fat --enable-exfat --enable-hfsp --enable-apfs --enable-btrfs --enable-minix --enable-f2fs --enable-reiser4 --enable-xfs --enable-nilfs2 --enable-fuse --enable-jfs --enable-ufs --enable-vmfs
-    - name: make
-      run: make
-    - name: makeTest
-      run: make check
+    - name: meson setup
+      run: meson setup build -Dfs-test=true -Dfeature-test=true -Dextfs=enabled -Dntfs=enabled -Dfat=enabled -Dexfat=enabled -Dhfsp=enabled -Dapfs=enabled -Dbtrfs=enabled -Dminix=enabled -Df2fs=enabled -Dreiser4=enabled -Dxfs=enabled -Dnilfs2=enabled -Dfuse=enabled -Djfs=enabled -Dufs=enabled -Dvmfs=enabled
+    - name: meson compile
+      run: meson compile -C build
+    - name: meson test
+      run: meson test -C build --print-errorlogs
   specialFeatureTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: fuse Test
       if: always()
-      run: cd tests && sudo ./imgfuse.test && cd ../ && pwd
+      run: cd build/tests && sudo "$GITHUB_WORKSPACE"/tests/imgfuse.test && cd ../ && pwd
     - name: offset Test
       if: always()
-      run: cd tests && sudo ./offset.test && cd ../ && pwd
+      run: cd build/tests && sudo "$GITHUB_WORKSPACE"/tests/offset.test && cd ../ && pwd
     - name: direct io Test
       if: always()
-      run: cd tests && sudo ./direct_io.test && cd ../ && pwd
+      run: cd build/tests && sudo "$GITHUB_WORKSPACE"/tests/direct_io.test && cd ../ && pwd
   BTRFSDataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: btrfs Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2"  bash -x ./data_clone_restore_test btrfs && cd ../ && pwd
+      run: cd build/tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/data_clone_restore_test btrfs && cd ../ && pwd
   F2FSDataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: f2fs Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2"  bash -x ./data_clone_restore_test f2fs && cd ../ && pwd
+      run: cd build/tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/data_clone_restore_test f2fs && cd ../ && pwd
   NILFSDataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: nilfs2 Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2"  bash -x ./data_clone_restore_test nilfs2 && cd ../ && pwd
+      run: cd build/tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/data_clone_restore_test nilfs2 && cd ../ && pwd
   HFSPDataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: hfsplus Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2"  bash -x ./data_clone_restore_test hfsplus && cd ../ && pwd
+      run: cd build/tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/data_clone_restore_test hfsplus && cd ../ && pwd
   XFSDataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: xfs Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2"  bash -x ./data_clone_restore_test xfs && cd ../ && pwd
+      run: cd build/tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/data_clone_restore_test xfs && cd ../ && pwd
   EXT2DataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: ext2 Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2"  bash -x ./data_clone_restore_test ext2 && cd ../ && pwd
+      run: cd build/tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/data_clone_restore_test ext2 && cd ../ && pwd
   EXT3DataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: ext3 Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2"  bash -x ./data_clone_restore_test ext3 && cd ../ && pwd
+      run: cd build/tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/data_clone_restore_test ext3 && cd ../ && pwd
   EXT4DataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: ext4 Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2"  bash -x ./data_clone_restore_test ext4 && cd ../ && pwd
+      run: cd build/tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/data_clone_restore_test ext4 && cd ../ && pwd
   VFATDataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: vfat Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2"  bash -x ./data_clone_restore_test vfat && cd ../ && pwd
+      run: cd build/tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/data_clone_restore_test vfat && cd ../ && pwd
   EXFATDataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: exfat Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2"  bash -x ./data_clone_restore_test exfat && cd ../ && pwd
+      run: cd build/tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/data_clone_restore_test exfat && cd ../ && pwd
   NTFSDataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: ntfs Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2"  bash -x ./data_clone_restore_test ntfs && cd ../ && pwd
+      run: cd build/tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/data_clone_restore_test ntfs && cd ../ && pwd
   MINIXDataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: minix Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2"  bash -x ./data_clone_restore_test minix && cd ../ && pwd
+      run: cd build/tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/data_clone_restore_test minix && cd ../ && pwd
   JFSDataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: jfs Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2"  bash -x ./data_clone_restore_test jfs && cd ../ && pwd
+      run: cd build/tests && sudo env SOURCEPART="/dev/vdb1" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/data_clone_restore_test jfs && cd ../ && pwd
   APFSDataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: apfs Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/test/apfs.raw" env TARGETPART="/dev/vdb2"  bash -x ./rawfs_clone_restore_test apfs && cd ../ && pwd
+      run: cd build/tests && sudo env SOURCEPART="/test/apfs.raw" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/rawfs_clone_restore_test apfs && cd ../ && pwd
   UFSDataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: apfs Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/test/ufs.raw" env TARGETPART="/dev/vdb2"  bash -x ./rawfs_clone_restore_test ufs && cd ../ && pwd
+      run: cd build/tests && sudo env SOURCEPART="/test/ufs.raw" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/rawfs_clone_restore_test ufs && cd ../ && pwd
   VMFS5DataIOTest:
     runs-on: self-hosted
     needs: build
     steps:
     - name: vmfs5 Data Test
       if: always()
-      run: cd tests && sudo env SOURCEPART="/test/vmfs.raw" env TARGETPART="/dev/vdb2"  bash -x ./rawfs_clone_restore_test vmfs && cd ../ && pwd
-
+      run: cd build/tests && sudo env SOURCEPART="/test/vmfs.raw" env TARGETPART="/dev/vdb2" bash -x "$GITHUB_WORKSPACE"/tests/rawfs_clone_restore_test vmfs && cd ../ && pwd

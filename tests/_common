@@ -187,8 +187,16 @@ _convert_to_bytes(){
 
 _configure_feature(){
     feature=$1
-    feature_test=$(cat ../config.log | grep '$ ./configure' | grep $feature)
-    if [[ "X$feature_test" != "X" ]]; then
+    # The build system is Meson: the selected features are reflected in the
+    # generated ../config.h (relative to the tests working directory, which is
+    # the tests/ subdirectory of the Meson build directory).
+    case "$feature" in
+	ncursesw)	macro=HAVE_LIBNCURSESW ;;
+	xxhash)		macro=HAVE_XXHASH ;;
+	isal)		macro=HAVE_ISAL ;;
+	*)		macro=HAVE_$(echo "$feature" | tr '[:lower:]' '[:upper:]') ;;
+    esac
+    if grep -q "^#define $macro 1" ../config.h 2>/dev/null; then
         #feature enabled
         echo 1
         return

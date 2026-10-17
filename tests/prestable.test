@@ -13,13 +13,12 @@ function_test="dd.test ncursesw.test quiet.test imager.test  info.test offset.te
 empty_part_test="mini_clone_restore_test"
 data_part_test="data_clone_restore_test"
 pushd $PARTCLONE_PATH
-make clean
-./autogen
-./configure --enable-all --enable-ncursesw
-make
+rm -rf build
+meson setup build -Dall=true -Dncursesw=enabled
+meson compile -C build
 popd
 
-pushd $PARTCLONE_PATH/tests
+pushd $PARTCLONE_PATH/build/tests
 ver=$(../src/partclone.extfs -v | grep Partclone|awk '{print $4}' | sed s/\(//g)
 ver=$(echo ${ver:0:6})
 REPORT_PATH="/test/report/$ver"
@@ -34,7 +33,7 @@ mkdir -p $REPORT_PATH
 echo "start $function_test test"
 for fun in $function_test; do
     echo "@@@ start $func test"
-    ./$fun 2>&1 | tee $REPORT_PATH/func-`date +%F`-$fun.md
+    $PARTCLONE_PATH/tests/$fun 2>&1 | tee $REPORT_PATH/func-`date +%F`-$fun.md
     echo "@@@ end $func test"
 done
 echo "end $function_test test"
@@ -42,7 +41,7 @@ echo "end $function_test test"
 echo "start $empty_part_test test"
 for fs in $empty_part_test; do
     echo "@@@ start $fs test"
-    ./$fs 2>&1 | tee $REPORT_PATH/mini-`date +%F`-$fs.md
+    $PARTCLONE_PATH/tests/$fs 2>&1 | tee $REPORT_PATH/mini-`date +%F`-$fs.md
     echo "@@@ end $fs test"
 done
 echo "end $empty_part_test test"
@@ -50,7 +49,7 @@ echo "end $empty_part_test test"
 echo "start $data_part_test test"
 for fs in $data_part_test; do
     echo "@@@ start $fs test"
-    ./$fs 2>&1 | tee $REPORT_PATH/data-`date +%F`-$fs.md
+    $PARTCLONE_PATH/tests/$fs 2>&1 | tee $REPORT_PATH/data-`date +%F`-$fs.md
     echo "@@@ end $fs test"
 done
 echo "end data $empty_part_test test"

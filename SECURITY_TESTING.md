@@ -179,23 +179,27 @@ To detect subtle memory errors like heap overflows, it is highly recommended to 
 ASan is a compiler feature that adds extra instrumentation to the code to detect memory errors at runtime. When a memory error occurs, it prints a detailed report and stops the program, making it an incredibly powerful debugging tool.
 
 ### 3.2 Building with ASan
-To enable ASan, you need to pass the `-fsanitize=address` flag to both the compiler and the linker. The easiest way to do this is by setting `CFLAGS` and `LDFLAGS` when running the `configure` script.
+To enable ASan, you need to pass the `-fsanitize=address` flag to both the compiler and the linker. With Meson this is done by passing `-Dc_args` and `-Dc_link_args` when configuring.
 
 1.  **Clean the build** (if you have built before):
     ```bash
-    make clean
+    rm -rf build
     ```
 
 2.  **Configure with ASan flags**:
     ```bash
-    ./configure --enable-all CFLAGS="-fsanitize=address -g" CXXFLAGS="-fsanitize=address -g" LDFLAGS="-fsanitize=address"
+    meson setup build --buildtype=debug -Dall=true \
+        -Dc_args="-fsanitize=address -g" \
+        -Dc_link_args="-fsanitize=address"
     ```
     *   `-g` is included to ensure ASan reports have precise file and line number information.
 
 3.  **Build the project**:
     ```bash
-    make
+    meson compile -C build
     ```
+
+All tools are produced inside the build directory, e.g. `build/src/partclone.restore`. Use those paths (instead of `./src/partclone.*`) when following the procedures in the next section.
 
 ### 3.3 Running Tests with ASan
 After building with ASan, run the test procedures as described below. If a memory error (like a heap overflow) occurs, the program will halt and print a detailed report to stderr. If there are no memory errors, the program will behave as expected (e.g., exiting gracefully with an error message for invalid images).

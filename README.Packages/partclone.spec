@@ -8,7 +8,7 @@ Summary:      File System Clone Utilities for xfs, ntfs, fat, exfat, and some ot
 Source:       https://sourceforge.net/projects/%{name}/files/stable/%{version}/%{name}-%{version}.tar.gz
 Patch:        %{name}-el6-ext2fslib.patch
 Prefix:       /usr
-BuildRequires: e2fsprogs-devel, xfsprogs-devel, ntfs-3g-devel
+BuildRequires: e2fsprogs-devel, xfsprogs-devel, ntfs-3g-devel, meson, ninja-build
 #BuildRequires: e2fsprogs-devel, libprogsreiserfs-devel-static, reiser4progs, xfsprogs-devel, ntfs-3g-devel, ncurses-static
 
 %description
@@ -30,13 +30,12 @@ Authors:
 
 %build
 [ -d $RPM_BUILD_ROOT ] && rm -rf $RPM_BUILD_ROOT
-./configure --prefix=%{prefix} --enable-extfs --enable-xfs --enable-hfsp --enable-fat --enable-exfat --enable-f2fs --enable-ntfs --enable-btrfs --enable-minix --enable-ncursesw
-#./configure --prefix=%{prefix} --enable-all --enable-static --enable-ncursesw LIBS=-ltinfo 
-make %{?_smp_mflags} CFLAGS="%{optflags}"
+%meson -Dextfs=enabled -Dxfs=enabled -Dhfsp=enabled -Dfat=enabled -Dexfat=enabled -Df2fs=enabled -Dntfs=enabled -Dbtrfs=enabled -Dminix=enabled -Dncursesw=enabled
+%meson_build
 
 %install
 rm -rf %{buildroot}
-make DESTDIR=%{buildroot} install
+%meson_install
 
 %post
 
@@ -48,6 +47,10 @@ ldconfig
 %doc AUTHORS COPYING ChangeLog NEWS README.md TODO
 %doc %{_mandir}/man?/*
 %{_sbindir}/*
+%{_libdir}/libpartclone.so*
+%{_libdir}/partclone/*
+%{_includedir}/partclone/*
+%{_libdir}/pkgconfig/partclone.pc
 %{_datadir}/locale/*
 %{_datadir}/%{name}/*
 

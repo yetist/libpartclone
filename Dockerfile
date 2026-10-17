@@ -20,6 +20,7 @@ Signed-By: /etc/apt/trusted.gpg.d/drbl-gpg.asc" > /etc/apt/sources.list.d/drbl.s
 RUN apt-get update && \
     apt-get build-dep -y partclone && \
     apt-get install -y \
+    meson ninja-build \
     f2fs-tools hfsplus exfatprogs gddrescue libfuse-dev jfsutils \
     hfsprogs reiserfsprogs btrfs-progs libxxhash-dev libfuse3-dev\
     libisal-dev zlib1g-dev libzstd-dev libjfs-dev libufs2 ufsutils \
@@ -29,14 +30,13 @@ RUN apt-get update && \
 
 WORKDIR /partclone
 RUN git clone https://github.com/Thomas-Tsai/partclone.git . && \
-    ./autogen && \
-    CFLAGS="-std=gnu99 -g -O2" ./configure \
-    --enable-fs-test --enable-feature-test --enable-ncursesw --enable-xxhash \
-    --enable-extfs --enable-ntfs --enable-fat --enable-exfat \
-    --enable-hfsp --enable-apfs --enable-btrfs --enable-minix --enable-f2fs \
-    --enable-xfs --enable-nilfs2 --enable-fuse --enable-jfs \
-    --enable-ufs --enable-vmfs && \
-    make && \
-    make install
+    meson setup build \
+    -Dfs-test=true -Dfeature-test=true -Dncursesw=enabled -Dxxhash=true \
+    -Dextfs=enabled -Dntfs=enabled -Dfat=enabled -Dexfat=enabled \
+    -Dhfsp=enabled -Dapfs=enabled -Dbtrfs=enabled -Dminix=enabled -Df2fs=enabled \
+    -Dxfs=enabled -Dnilfs2=enabled -Dfuse=enabled -Djfs=enabled \
+    -Dufs=enabled -Dvmfs=enabled && \
+    meson compile -C build && \
+    meson install -C build
 
-WORKDIR /partclone/tests
+WORKDIR /partclone/build
