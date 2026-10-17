@@ -95,5 +95,6 @@ po/insert-header.sed
 
 # Example build output
 examples/ptc-demo
+examples/ptc-gtk4
 examples/.libs/
 

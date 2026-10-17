@@ -84,6 +84,10 @@ if test "$HAVE_BLKID" = "1"; then
     AC_DEFINE([HAVE_BLKID], [1], [libblkid available for filesystem auto detection])
 fi
 
+dnl Optional: GTK4, used by the example application in examples/
+PKG_CHECK_MODULES([GTK4], [gtk4 >= 4.10], [have_gtk4=yes], [have_gtk4=no])
+AM_CONDITIONAL([ENABLE_GTK4], [test "$have_gtk4" = yes])
+
 ## Intel ISA-L ##
 AC_ARG_ENABLE([isal],
     AS_HELP_STRING(
@@ -616,4 +620,7 @@ echo "btrfs......... ${enable_btrfs:-no}, ${btrfs_version:-}"
 echo "minix......... ${enable_minix:-no}, ${minix_version:-}"
 echo "f2fs.......... ${enable_f2fs:-no}, ${f2fs_version:-}"
 echo "nilfs2.........${enable_nilfs2:-no}, ${nilfs2_version:-}"
+echo ""
+echo "Examples:"
+echo "gtk4 example... ${have_gtk4:-no}"
 #echo $supported_fs
