@@ -50,6 +50,7 @@ fail-mbr/fail-mbr.image
 clang_output_*
 *.exec
 *.nilfs2
+src/partclone.pc
 
 # Executables in src/
 src/partclone.apfs
@@ -90,4 +91,8 @@ docs/partclone.restore.8
 # Manually added generated files
 /libtool
 po/insert-header.sed
+
+# Example build output
+examples/ptc-demo
+examples/.libs/
 

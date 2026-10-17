@@ -11,6 +11,9 @@
  * (at your option) any later version.
  */
 
+#ifndef PARTCLONE_H
+#define PARTCLONE_H
+
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -277,6 +280,28 @@ typedef file_system_info_v2 file_system_info;
 typedef image_options_v2    image_options;
 
 extern image_options img_opt;
+/// global command line options, defined by the library (see engine.c)
+extern cmd_opt opt;
+
+/**
+ * ptc_cli_mode:
+ * @PTC_CLI_MODE_FULL: the classic full featured tool (clone/restore/dev-to-dev/domain).
+ * @PTC_CLI_MODE_RESTORE: partclone.restore.
+ * @PTC_CLI_MODE_CHKIMG: partclone.chkimg.
+ * @PTC_CLI_MODE_DD: partclone.dd (defaults to the dd-like mode).
+ *
+ * The command line front ends now share a single implementation of the option
+ * parser; this selects the default mode and the accepted option set.
+ */
+typedef enum {
+	PTC_CLI_MODE_FULL    = 0,
+	PTC_CLI_MODE_RESTORE = 1u << 0,
+	PTC_CLI_MODE_CHKIMG  = 1u << 1,
+	PTC_CLI_MODE_DD      = 1u << 2
+} ptc_cli_mode;
+
+extern void ptc_parse_options(int argc, char **argv, cmd_opt *opt, ptc_cli_mode mode);
+extern void ptc_opt_init(cmd_opt *opt);
 
 extern void usage(void);
 extern void print_version(void);
@@ -396,3 +421,5 @@ extern void update_bt_info(bt_info_t * bt, unsigned long long offset,
  * @return    0 on success, non-zero on failure (logged but non-fatal)
  */
 extern int post_clone_fixup(int* dfw, file_system_info fs_info, cmd_opt opt);
+
+#endif /* PARTCLONE_H */

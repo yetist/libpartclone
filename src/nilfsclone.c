@@ -45,7 +45,7 @@ extern fs_cmd_opt fs_opt;
 
 static struct nilfs_suinfo suinfos[LSSU_NSEGS];
 int blocks_per_segment;
-unsigned long long total_block;
+static unsigned long long total_block;
 
 ///set useb block
 static void set_bitmap(unsigned long* bitmap, uint64_t segm, uint64_t count){

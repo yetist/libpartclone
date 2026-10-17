@@ -36,7 +36,7 @@
 struct HFSPlusVolumeHeader sb;
 static struct HFSVolumeHeader hsb;
 static UInt64 partition_size;
-int ret;
+static int ret;
 
 static int IsAllocationBlockUsed(UInt32 thisAllocationBlock, UInt8* allocationFileContents)
 {

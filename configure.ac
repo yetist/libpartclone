@@ -74,6 +74,16 @@ fi
 dnl Check for uuid
 PKG_CHECK_MODULES([UUID], [uuid], [], [AC_MSG_ERROR([uuid library not found])])
 
+dnl Check for glib / gobject / gio (required by the libpartclone GObject API)
+PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.44 gobject-2.0 gio-2.0], [],
+    [AC_MSG_ERROR([glib-2.0, gobject-2.0 and gio-2.0 are required to build libpartclone])])
+
+dnl Optional: libblkid for filesystem auto detection in the library
+PKG_CHECK_MODULES([BLKID], [blkid], [HAVE_BLKID=1], [HAVE_BLKID=0])
+if test "$HAVE_BLKID" = "1"; then
+    AC_DEFINE([HAVE_BLKID], [1], [libblkid available for filesystem auto detection])
+fi
+
 ## Intel ISA-L ##
 AC_ARG_ENABLE([isal],
     AS_HELP_STRING(
@@ -572,8 +582,10 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
 	Makefile
 	src/Makefile
+	src/partclone.pc
 	po/Makefile.in
 	docs/Makefile
+	examples/Makefile
 	tests/Makefile
 	])
 AC_OUTPUT

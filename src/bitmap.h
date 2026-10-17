@@ -1,3 +1,6 @@
+#ifndef PTC_BITMAP_H
+#define PTC_BITMAP_H
+
 #include <string.h>
 #include <limits.h>
 
@@ -93,3 +96,5 @@ static inline void pc_init_bitmap(unsigned long* bitmap, char value, unsigned lo
 
 	memset(bitmap, value, byte_count);
 }
+
+#endif /* PTC_BITMAP_H */

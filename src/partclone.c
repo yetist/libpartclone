@@ -221,26 +221,13 @@ void print_readable_size_str(unsigned long long size_byte, char *new_size_str) {
  */
 void usage(void) {
 	fprintf(stderr, "%s v%s http://partclone.org\nUsage: %s [OPTIONS]\n"
-#ifdef CHKIMG
-		"    Check partclone image.\n"
-#else
-#ifdef RESTORE
-		"    Restore partclone image to a device or standard output.\n"
-#else
-		"    Efficiently clone to an image, device or standard output.\n"
-#endif
-#endif
+		"    Efficiently clone/restore a partition to/from an image, device or stdout.\n"
 		"\n"
-#ifndef CHKIMG
 		"    -o,  --output FILE      Output FILE\n"
 		"    -O   --overwrite FILE   Output FILE, overwriting if exists\n"
 		"    -W   --restore_raw_file create special raw file for loop device\n"
-#endif
 		"    -s,  --source FILE      Source FILE\n"
 		"    -L,  --logfile FILE     Log FILE\n"
-#ifndef CHKIMG
-#ifndef RESTORE
-#ifndef DD
 		"    -c,  --clone            Save to the special image format\n"
 		"    -r,  --restore          Restore from the special image format\n"
 		"    -b,  --dev-to-dev       Local device to device copy mode\n"
@@ -249,6 +236,7 @@ void usage(void) {
 		"    -D,  --domain           Create ddrescue domain log from source device\n"
 		"         --offset_domain=X  Add offset X (bytes) to domain log values\n"
 		"    -R,  --rescue           Continue clone while disk read errors\n"
+		"    -S,  --device-size      Define device size\n"
 		"    -aX  --checksum-mode=X  Checksum formula to use to add error detection\n"
 		"                            where X:\n"
 		"                            0: No checksum (no slowdown, smallest image)\n"
@@ -260,22 +248,15 @@ void usage(void) {
 		"    -kX  --blocks-per-checksum=X\n"
 		"                            Write one checksum for every X blocks\n"
 		"    -K,  --no-reseed        Do not reseed the checksum at each write (TEST)\n"
-#else
-		"    -S,  --device-size      Define device size\n"
-#endif
-#endif
 		"    -w,  --skip_write_error Continue restore while write errors\n"
-#endif
 		"    -dX, --debug=X          Set the debug level to X = [0|1|2]\n"
 		"    -C,  --no_check         Don't check device size and free space\n"
 #ifdef HAVE_LIBNCURSESW
 		"    -N,  --ncurses          Using Ncurses User Interface\n"
 #endif
-#ifndef CHKIMG
 		"    -I,  --ignore_fschk     Ignore filesystem check\n"
                 "         --write-direct-io  Writing data to TARGET partition without cache\n"
                 "         --read-direct-io   Reading data from SOURCE partition without cache\n"
-#endif
 		"    -i,  --ignore_crc       Ignore checksum error\n"
 		"    -F,  --force            Force progress\n"
 		"    -f,  --UI-fresh         Fresh times of progress\n"
@@ -286,12 +267,10 @@ void usage(void) {
 		"                            (default FILE: /var/log/partclone.json)\n"
 		"         --json-fresh=N     JSON status fresh interval in seconds (default: 1)\n"
 		"    -z,  --buffer_size SIZE Read/write buffer size (default: %d)\n"
-#ifndef CHKIMG
 		"    -q,  --quiet            Disable progress message\n"
 		"    -E,  --offset=X         Add offset X (bytes) to OUTPUT\n"
 		"    -T,  --btfiles          Restore block as file for ClonezillaBT\n"
 		"    -t,  --btfiles_torrent  Restore block as file for ClonezillaBT but only generate torrent\n"
-#endif
 		"    -v,  --version          Display partclone version\n"
 		"    -h,  --help             Display this help\n"
 		, get_exec_name(), VERSION, get_exec_name(), DEFAULT_BUFFER_SIZE);
@@ -301,6 +280,16 @@ void usage(void) {
 void print_version(void){
 	printf("Partclone : v%s (%s) \n", VERSION, git_version);
 	exit(0);
+}
+
+/**
+ * ptc_version_string:
+ *
+ * Public accessor for the libpartclone version (see libpartclone.h).
+ */
+const char *ptc_version_string(void)
+{
+	return VERSION;
 }
 
 int convert_to_checksum_mode(unsigned long mode) {
@@ -354,18 +343,43 @@ static void save_program_name(const char* argv0) {
 	}
 }
 
-void parse_options(int argc, char **argv, cmd_opt* opt) {
+/**
+ * ptc_opt_init:
+ * @opt: (out): the option structure to initialise.
+ *
+ * Fills @opt with the same defaults used by ptc_parse_options().  The GObject
+ * API (see ptc-client.h) uses this to set up the global #opt before it invokes
+ * the engine directly.
+ */
+void ptc_opt_init(cmd_opt *opt) {
+	memset(opt, 0, sizeof(cmd_opt));
 
-#if CHKIMG
-	static const char *sopt = "-hvd::L:s:f:CFiBz:Nn:";
-#elif RESTORE
-	static const char *sopt = "-hvd::L:o:O:s:f:CFINiqwWBz:E:n:Tt";
-#elif DD
-	static const char *sopt = "-hvd::L:o:O:s:f:CFINiqwWBz:E:n:TtS:a:k:K";
-#else
-	static const char *sopt = "-hvd::L:cx:brDo:O:s:f:RCFINiqwWBz:E:a:k:Kn:Tt";
-#endif
+	opt->debug = 0;
+	opt->offset = 0;
+	opt->rescue = 0;
+	opt->skip_write_error = 0;
+	opt->check = 1;
+	opt->ignore_crc = 0;
+	opt->quiet = 0;
+	opt->no_block_detail = 0;
+	opt->fresh = 2;
+	opt->logfile = "/var/log/partclone.log";
+	opt->json_path = NULL;
+	opt->json_fresh = 1;
+	opt->buffer_size = DEFAULT_BUFFER_SIZE;
+	opt->checksum_mode = CSM_CRC32;
+	opt->reseed_checksum = 1;
+	opt->blocks_per_checksum = 0;
+	opt->blockfile = 0;
+	opt->write_direct_io = 0;
+	opt->read_direct_io = 0;
+	opt->binary_prefix = 0;
+	opt->prog_second = 0;
+}
 
+void ptc_parse_options(int argc, char **argv, cmd_opt* opt, ptc_cli_mode mode) {
+
+	static const char *sopt = "-hvd::L:cx:brDo:O:s:f:RS:CFINiqwWBz:E:a:k:Kn:Tt";
 	static const struct option lopt[] = {
 // common options
 		{ "help",		no_argument,		NULL,   'h' },
@@ -386,10 +400,7 @@ void parse_options(int argc, char **argv, cmd_opt* opt) {
 		{ "read-direct-io",	no_argument,	        NULL,   OPT_READ_DIRECT_IO },
 		{ "json-status",	optional_argument,	NULL,   OPT_JSON_STATUS },
 		{ "json-fresh",		required_argument,	NULL,   OPT_JSON_FRESH },
-// not RESTORE and not CHKIMG
-#ifndef CHKIMG
-#ifndef RESTORE
-#ifndef DD
+// all modes are accepted at runtime; the default mode is selected by the caller
 		{ "clone",		no_argument,		NULL,   'c' },
 		{ "compresscmd",	required_argument,	NULL,	'x' },
 		{ "restore",		no_argument,		NULL,   'r' },
@@ -397,16 +408,10 @@ void parse_options(int argc, char **argv, cmd_opt* opt) {
 		{ "domain",		no_argument,		NULL,   'D' },
 		{ "offset_domain",	required_argument,	NULL,   OPT_OFFSET_DOMAIN },
 		{ "rescue",		no_argument,		NULL,   'R' },
-#else
 		{ "device-size",	required_argument,	NULL,   'S' },
-#endif
 		{ "checksum-mode",       required_argument, NULL, 'a' },
 		{ "blocks-per-checksum", required_argument, NULL, 'k' },
 		{ "no-reseed",           no_argument,       NULL, 'K' },
-#endif
-#endif
-// not CHKIMG
-#ifndef CHKIMG
 		{ "output",		required_argument,	NULL,   'o' },
 		{ "overwrite",		required_argument,	NULL,   'O' },
 		{ "restore_raw_file",	no_argument,		NULL,   'W' },
@@ -416,7 +421,6 @@ void parse_options(int argc, char **argv, cmd_opt* opt) {
 		{ "offset",		required_argument,	NULL,   'E' },
 		{ "btfiles",		no_argument,		NULL,   'T' },
 		{ "btfiles_torrent",	no_argument,		NULL,   't' },
-#endif
 #ifdef HAVE_LIBNCURSESW
 		{ "ncurses",		no_argument,		NULL,   'N' },
 #endif
@@ -426,50 +430,23 @@ void parse_options(int argc, char **argv, cmd_opt* opt) {
     save_program_name(argv[0]);
 
 	int c;
-	int mode = 0;
-	memset(opt, 0, sizeof(cmd_opt));
+	int mode_selected = 0;
+	ptc_opt_init(opt);
 
-	opt->debug = 0;
-	opt->offset = 0;
-	opt->rescue = 0;
-	opt->skip_write_error = 0;
-	opt->check = 1;
-	opt->ignore_crc = 0;
-	opt->quiet = 0;
-	opt->no_block_detail = 0;
-	opt->fresh = 2;
-	opt->logfile = "/var/log/partclone.log";
-	opt->json_path = NULL;
-	opt->json_fresh = 1;
-	opt->buffer_size = DEFAULT_BUFFER_SIZE;
-	opt->checksum_mode = CSM_CRC32;
-	opt->reseed_checksum = 1;
-	opt->blocks_per_checksum = 0;
-	opt->blockfile = 0;
-        opt->write_direct_io = 0;
-        opt->read_direct_io = 0;
-        opt->binary_prefix = 0;
-        opt->prog_second = 0;
-
-
-#ifdef DD
-#ifndef RESTORE
-#ifndef CHKIMG
-    opt->ddd++;
-    opt->checksum_mode = CSM_NONE;
-    mode=1;
-#endif
-#endif
-#endif
-#ifdef RESTORE
-	opt->restore++;
-	mode=1;
-#endif
-#ifdef CHKIMG
-	opt->restore++;
-	opt->chkimg++;
-	mode=1;
-#endif
+	if (mode & PTC_CLI_MODE_RESTORE) {
+		opt->restore++;
+		mode_selected = 1;
+	}
+	if (mode & PTC_CLI_MODE_CHKIMG) {
+		opt->restore++;
+		opt->chkimg++;
+		mode_selected = 1;
+	}
+	if (mode & PTC_CLI_MODE_DD) {
+		opt->ddd++;
+		opt->checksum_mode = CSM_NONE;
+		mode_selected = 1;
+	}
 
 	while ((c = getopt_long(argc, argv, sopt, lopt, NULL)) != -1) {
 		switch (c) {
@@ -531,27 +508,24 @@ void parse_options(int argc, char **argv, cmd_opt* opt) {
                 assert(optarg != NULL);
 				opt->buffer_size = atol(optarg);
 				break;
-#ifndef CHKIMG
-#ifndef RESTORE
-#ifndef DD
 			case 'c':
 				opt->clone++;
-				mode=1;
+				mode_selected=1;
 				break;
 			case 'x':
 				opt->compresscmd = optarg;
 				break;
 			case 'r':
 				opt->restore++;
-				mode=1;
+				mode_selected=1;
 				break;
 			case 'b':
 				opt->dd++;
-				mode=1;
+				mode_selected=1;
 				break;
 			case 'D':
 				opt->domain++;
-				mode=1;
+				mode_selected=1;
 				break;
 			case OPT_OFFSET_DOMAIN:
                 assert(optarg != NULL);
@@ -560,38 +534,33 @@ void parse_options(int argc, char **argv, cmd_opt* opt) {
 			case 'R':
 				opt->rescue++;
 				break;
-#else
 			case 'S':
 				assert(optarg != NULL);
 				opt->device_size = (off_t)strtoull(optarg, NULL, 0);
 				break;
-#endif
 			case 'a':
-#ifdef DD
-				fprintf(stderr, "Warning: checksum-mode option is ignored in DD mode\n");
-#else
-                assert(optarg != NULL);
-				opt->checksum_mode = convert_to_checksum_mode(atol(optarg));
-#endif
+				if (opt->ddd) {
+					fprintf(stderr, "Warning: checksum-mode option is ignored in DD mode\n");
+				} else {
+					assert(optarg != NULL);
+					opt->checksum_mode = convert_to_checksum_mode(atol(optarg));
+				}
 				break;
 			case 'k':
-#ifdef DD
-				fprintf(stderr, "Warning: blocks-per-checksum option is ignored in DD mode\n");
-#else
-                assert(optarg != NULL);
-				opt->blocks_per_checksum = atol(optarg);
-#endif
+				if (opt->ddd) {
+					fprintf(stderr, "Warning: blocks-per-checksum option is ignored in DD mode\n");
+				} else {
+					assert(optarg != NULL);
+					opt->blocks_per_checksum = atol(optarg);
+				}
 				break;
 			case 'K':
-#ifdef DD
-				fprintf(stderr, "Warning: no-reseed option is ignored in DD mode\n");
-#else
-				opt->reseed_checksum = 0;
-#endif
+				if (opt->ddd) {
+					fprintf(stderr, "Warning: no-reseed option is ignored in DD mode\n");
+				} else {
+					opt->reseed_checksum = 0;
+				}
 				break;
-#endif
-#endif
-#ifndef CHKIMG
 			case 'O':
 				opt->overwrite++;
 			case 'o':
@@ -620,7 +589,6 @@ void parse_options(int argc, char **argv, cmd_opt* opt) {
                 assert(optarg != NULL);
 				opt->offset = (off_t)atol(optarg);
 				break;
-#endif
 #ifdef HAVE_LIBNCURSESW
 			case 'N':
 				opt->ncurses = 1;
@@ -632,7 +600,7 @@ void parse_options(int argc, char **argv, cmd_opt* opt) {
 		}
 	}
 
-	if (mode != 1) {
+	if (mode_selected != 1) {
 		usage();
 	}
 
@@ -701,6 +669,15 @@ void parse_options(int argc, char **argv, cmd_opt* opt) {
 		}
 
 	}
+}
+
+/**
+ * parse_options:
+ *
+ * Backward compatible entry point that parses the classic full option set.
+ */
+void parse_options(int argc, char **argv, cmd_opt* opt) {
+	ptc_parse_options(argc, argv, opt, PTC_CLI_MODE_FULL);
 }
 
 /**

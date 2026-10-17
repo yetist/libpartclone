@@ -30,7 +30,6 @@
 
 #include "partclone.h"
 off_t baseseek=0;
-cmd_opt opt;
 image_options    img_opt;
 int dfr;                  /// file descriptor for source and target
 unsigned long   *bitmap;  /// the point for bitmap data

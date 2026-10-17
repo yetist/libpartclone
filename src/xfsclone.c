@@ -26,7 +26,7 @@ int	source_fd = -1;
 int     first_residue;
 extern progress_bar prog;
 unsigned long long checked;
-unsigned long long total_block;
+static unsigned long long total_block;
 int bitmap_done = 0;
 unsigned long* xfs_bitmap;
 
@@ -37,7 +37,7 @@ unsigned int    source_blocksize;       /* source filesystem blocksize */
 unsigned int    source_sectorsize;      /* source disk sectorsize */
 
 
-void *thread_update_bitmap_pui(void *arg);
+static void *thread_update_bitmap_pui(void *arg);
 #define rounddown(x, y) (((x)/(y))*(y))
 
 void get_sb(xfs_sb_t *sbp, xfs_off_t off, int size, xfs_agnumber_t agno)
@@ -436,7 +436,7 @@ void read_bitmap(char* device, file_system_info fs_info, unsigned long* bitmap, 
     update_pui(&prog, 1, 1, 1);
 
 }
-void *thread_update_bitmap_pui(void *arg){
+static void *thread_update_bitmap_pui(void *arg){
 
     while (bitmap_done == 0) {
 	update_pui(&prog, checked, checked, 0);

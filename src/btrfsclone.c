@@ -42,7 +42,7 @@ struct btrfs_root *root;
 struct btrfs_path path = { 0 };
 int block_size = 0;
 uint64_t dev_size = 0;
-unsigned long long total_block = 0;
+static unsigned long long total_block = 0;
 
 extern progress_bar prog;
 static unsigned long long walk_items = 0;
@@ -66,7 +66,7 @@ static double root_item_weight(struct extent_buffer *eb)
     return est > 0 ? est : 1;
 }
 
-void *thread_update_bitmap_pui(void *arg);
+static void *thread_update_bitmap_pui(void *arg);
 
 /// number of tree blocks that could not be read while building the bitmap;
 /// any non-zero value means the resulting image would silently miss data,
@@ -692,7 +692,7 @@ void read_super_blocks(char* device, file_system_info* fs_info)
     log_mesg(0, 0, 0, fs_opt.debug, "%s: fs_close\n", __FILE__);
 }
 
-void *thread_update_bitmap_pui(void *arg){
+static void *thread_update_bitmap_pui(void *arg){
 
     static const unsigned long long stage_floor[] = { 1 * 100, 5 * 100, 10 * 100, 15 * 100 };
     unsigned long long display;

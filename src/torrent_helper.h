@@ -17,6 +17,9 @@
  * https://github.com/tjjh89017/ezio utils/partclone_create_torrent.py
  */
 
+#ifndef PTC_TORRENT_HELPER_H
+#define PTC_TORRENT_HELPER_H
+
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,3 +61,5 @@ void torrent_final(torrent_generator *torrent);
 void torrent_start_offset(torrent_generator *torrent, unsigned long long offset);
 // print length, end a block
 void torrent_end_length(torrent_generator *torrent, unsigned long long length);
+
+#endif /* PTC_TORRENT_HELPER_H */

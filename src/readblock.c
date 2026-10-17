@@ -26,9 +26,6 @@
 
 #include "partclone.h"
 
-/// cmd_opt structure defined in partclone.h
-cmd_opt opt;
-
 void info_usage(void) {
 	fprintf(stderr, "partclone v%s http://partclone.org\n"
 	                "Usage: partclone.info [FILE]\n"

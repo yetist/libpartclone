@@ -1,3 +1,11 @@
+## ---------------------------------------------------------------------------
+## libpartclone
+##
+## Every enabled filesystem backend is compiled into one shared library and
+## selected at runtime (see src/ptc-fs-backend.c).  The command line tools are
+## thin front ends that link against libpartclone.la.
+## ---------------------------------------------------------------------------
+
 if ENABLE_XXHASH
 PCL_XXHASH_LIBS = $(XXHASH_LIBS)
 PCL_XXHASH_CFLAGS = $(XXHASH_CFLAGS)
@@ -7,10 +15,10 @@ PCL_XXHASH_CFLAGS =
 endif
 
 AUTOMAKE_OPTIONS = subdir-objects
-AM_CPPFLAGS = -DLOCALEDIR=\"$(localedir)\" -D_FILE_OFFSET_BITS=64 $(PCL_XXHASH_CFLAGS) $(ISAL_CFLAGS)
+AM_CPPFLAGS = -DLOCALEDIR=\"$(localedir)\" -D_FILE_OFFSET_BITS=64 $(PCL_XXHASH_CFLAGS) $(ISAL_CFLAGS) $(GLIB_CFLAGS)
 LDADD = $(LIBINTL) $(PCL_XXHASH_LIBS)
 LIBS += $(ISAL_LIBS)
-sbin_PROGRAMS=partclone.info partclone.dd partclone.restore partclone.chkimg partclone.imager #partclone.imgfuse #partclone.block
+sbin_PROGRAMS=partclone.info partclone.dd partclone.restore partclone.chkimg partclone.imager
 TOOLBOX = srcdir=$(top_srcdir) builddir=$(top_builddir) $(top_srcdir)/toolbox
 
 
@@ -49,174 +57,339 @@ endif
 
 version.h: FORCE
 
-main_files=main.c partclone.c progress.c json_status.c checksum.c partclone.h progress.h json_status.h gettext.h checksum.h bitmap.h
-partclone_info_SOURCES=info.c partclone.c checksum.c partclone.h fs_common.h checksum.h
-partclone_info_LDADD=torrent_helper.o $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
-partclone_restore_SOURCES=$(main_files) ddclone.c ddclone.h
-partclone_restore_CFLAGS=-DRESTORE -DDD
-partclone_restore_LDADD=torrent_helper.o $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
+## ---------------------------------------------------------------------------
+## The shared library
+## ---------------------------------------------------------------------------
 
-partclone_chkimg_SOURCES=$(main_files) ddclone.c ddclone.h
-partclone_chkimg_CFLAGS=-DCHKIMG -DDD
-partclone_chkimg_LDADD=torrent_helper.o $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
+lib_LTLIBRARIES = libpartclone.la
 
-partclone_dd_SOURCES=$(main_files) ddclone.c ddclone.h
-partclone_dd_CFLAGS=-DDD
-partclone_dd_LDADD=torrent_helper.o $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
+PTC_LIB_SOURCES = \
+	partclone.c partclone.h \
+	progress.c progress.h \
+	json_status.c json_status.h \
+	checksum.c checksum.h \
+	torrent_helper.c torrent_helper.h \
+	engine.c engine.h \
+	ptc-fs-backend.c ptc-fs-backend.h \
+	ptc-client.c ptc-client.h \
+	libpartclone.h \
+	gettext.h bitmap.h fs_common.h
 
-partclone_imager_SOURCES=$(main_files) ddclone.c ddclone.h
-partclone_imager_CFLAGS=-DIMG
-partclone_imager_LDADD=torrent_helper.o $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
+libpartclone_la_SOURCES = $(PTC_LIB_SOURCES)
+
+# Filesystem backends, convenience libraries and external dependencies are
+# accumulated by the per-filesystem blocks below.
+PTC_BACKEND_LIBS = libptc_raw.la
+PTC_FS_DEFINES = -DPTC_HAVE_DD
+
+libpartclone_la_CFLAGS = $(AM_CFLAGS) $(GLIB_CFLAGS) $(BLKID_CFLAGS) $(PTC_FS_DEFINES)
+libpartclone_la_LDFLAGS = -version-info 0:0:0 -no-undefined
+libpartclone_la_LIBADD = \
+	$(PTC_BACKEND_LIBS) \
+	$(GLIB_LIBS) $(BLKID_LIBS) $(CRYPTO_DEPS) $(PCL_XXHASH_LIBS) \
+	$(LIBINTL) $(URCU_LIBS) -lpthread
+
+# Public, self contained headers and pkg-config file.
+partcloneincludedir = $(includedir)/partclone
+partcloneinclude_HEADERS = libpartclone.h ptc-client.h
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = partclone.pc
+EXTRA_DIST = partclone.pc.in
+
+# The raw (dd) backend is always available.
+noinst_LTLIBRARIES = libptc_raw.la
+libptc_raw_la_SOURCES = ddclone.c ddclone.h
+libptc_raw_la_CFLAGS = $(AM_CFLAGS) \
+	-Dread_super_blocks=dd_read_super_blocks \
+	-Dread_bitmap=dd_read_bitmap
+
+## ---------------------------------------------------------------------------
+## Command line front ends
+## ---------------------------------------------------------------------------
+
+partclone_info_SOURCES = info.c
+partclone_info_LDADD = libpartclone.la
+
+partclone_dd_SOURCES = main.c
+partclone_dd_LDADD = libpartclone.la
+
+partclone_restore_SOURCES = main.c
+partclone_restore_LDADD = libpartclone.la
+
+partclone_chkimg_SOURCES = main.c
+partclone_chkimg_LDADD = libpartclone.la
+
+partclone_imager_SOURCES = main.c
+partclone_imager_LDADD = libpartclone.la
+
+## ntfsfixboot is a standalone, libc only helper.
+sbin_PROGRAMS += partclone.ntfsfixboot
+partclone_ntfsfixboot_SOURCES = ntfsfixboot.c
+
+## ---------------------------------------------------------------------------
+## Filesystem backends
+## ---------------------------------------------------------------------------
 
 if ENABLE_EXTFS
+noinst_LTLIBRARIES += libptc_extfs.la
+libptc_extfs_la_SOURCES = extfsclone.c extfsclone.h
+libptc_extfs_la_CFLAGS = $(AM_CFLAGS) \
+	-Dread_super_blocks=extfs_read_super_blocks \
+	-Dread_bitmap=extfs_read_bitmap
+PTC_BACKEND_LIBS += libptc_extfs.la -lext2fs -lcom_err
+PTC_FS_DEFINES += -DPTC_HAVE_EXTFS
+
 sbin_PROGRAMS += partclone.extfs
-partclone_extfs_SOURCES=$(main_files) extfsclone.c extfsclone.h
-partclone_extfs_CFLAGS=-DEXTFS
-partclone_extfs_LDADD=torrent_helper.o -lext2fs -lcom_err $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static} -lpthread
+partclone_extfs_SOURCES = main.c
+partclone_extfs_LDADD = libpartclone.la
 endif
 
 if ENABLE_REISERFS
+noinst_LTLIBRARIES += libptc_reiserfs.la
+libptc_reiserfs_la_SOURCES = reiserfsclone.c reiserfsclone.h
+libptc_reiserfs_la_CFLAGS = $(AM_CFLAGS) \
+	-Dread_super_blocks=reiserfs_read_super_blocks \
+	-Dread_bitmap=reiserfs_read_bitmap
+PTC_BACKEND_LIBS += libptc_reiserfs.la -lreiserfs -ldal
+PTC_FS_DEFINES += -DPTC_HAVE_REISERFS
+
 sbin_PROGRAMS += partclone.reiserfs
-partclone_reiserfs_SOURCES=$(main_files) reiserfsclone.c reiserfsclone.h
-partclone_reiserfs_CFLAGS=-DREISERFS
-partclone_reiserfs_LDADD=torrent_helper.o -lreiserfs -ldal $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
+partclone_reiserfs_SOURCES = main.c
+partclone_reiserfs_LDADD = libpartclone.la
 endif
 
 if ENABLE_REISER4
+noinst_LTLIBRARIES += libptc_reiser4.la
+libptc_reiser4_la_SOURCES = reiser4clone.c reiser4clone.h
+libptc_reiser4_la_CFLAGS = $(AM_CFLAGS) \
+	-Dread_super_blocks=reiser4_read_super_blocks \
+	-Dread_bitmap=reiser4_read_bitmap
+PTC_BACKEND_LIBS += libptc_reiser4.la -lreiser4 -laal
+PTC_FS_DEFINES += -DPTC_HAVE_REISER4
+
 sbin_PROGRAMS += partclone.reiser4
-partclone_reiser4_SOURCES=$(main_files) reiser4clone.c reiser4clone.h
-partclone_reiser4_CFLAGS=-DREISER4
-partclone_reiser4_LDADD=torrent_helper.o -lreiser4 -laal $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
+partclone_reiser4_SOURCES = main.c
+partclone_reiser4_LDADD = libpartclone.la
 endif
 
 if ENABLE_HFSP
+noinst_LTLIBRARIES += libptc_hfsp.la
+libptc_hfsp_la_SOURCES = hfsplusclone.c hfsplusclone.h
+libptc_hfsp_la_CFLAGS = $(AM_CFLAGS) \
+	-Dread_super_blocks=hfsp_read_super_blocks \
+	-Dread_bitmap=hfsp_read_bitmap \
+	-Dpost_clone_fixup=hfsp_post_clone_fixup
+PTC_BACKEND_LIBS += libptc_hfsp.la
+PTC_FS_DEFINES += -DPTC_HAVE_HFSP
+
 sbin_PROGRAMS += partclone.hfsp
-partclone_hfsp_SOURCES=$(main_files) hfsplusclone.c hfsplusclone.h
-partclone_hfsp_CFLAGS=-DHFSPLUS
-partclone_hfsp_LDADD=torrent_helper.o $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
+partclone_hfsp_SOURCES = main.c
+partclone_hfsp_LDADD = libpartclone.la
 endif
 
 if ENABLE_APFS
+noinst_LTLIBRARIES += libptc_apfs.la
+libptc_apfs_la_SOURCES = apfsclone.c apfsclone.h
+libptc_apfs_la_CFLAGS = $(AM_CFLAGS) \
+	-Dread_super_blocks=apfs_read_super_blocks \
+	-Dread_bitmap=apfs_read_bitmap
+PTC_BACKEND_LIBS += libptc_apfs.la
+PTC_FS_DEFINES += -DPTC_HAVE_APFS
+
 sbin_PROGRAMS += partclone.apfs
-partclone_apfs_SOURCES=$(main_files) apfsclone.c apfsclone.h
-partclone_apfs_CFLAGS=-DAPFS
-partclone_apfs_LDADD=torrent_helper.o $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
-endif
-
-
-if ENABLE_XFS
-sbin_PROGRAMS += partclone.xfs
-partclone_xfs_SOURCES=$(main_files) xfsclone.c xfsclone.h $(XFS_SOURCE)
-partclone_xfs_CFLAGS=-I$(srcdir)/xfs/include -I$(srcdir)/xfs/libxfs/ -I$(srcdir)/xfs/include/xfs/ -I$(srcdir)/xfs/ -DXFS -D_GNU_SOURCE -DNDEBUG  $(UUID_CFLAGS) $(URCU_CFLAGS)
-partclone_xfs_LDADD=torrent_helper.o -lrt -luuid -lblkid $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static} -lpthread $(URCU_LIBS)
-endif
-
-if ENABLE_EXFAT
-sbin_PROGRAMS += partclone.exfat
-partclone_exfat_SOURCES=$(main_files) exfatclone.c exfatclone.h $(EXFATFS_SOURCE)
-partclone_exfat_CFLAGS=-DEXFAT -D_GNU_SOURCE -std=c99
-partclone_exfat_LDADD=torrent_helper.o $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
-endif
-
-if ENABLE_F2FS
-sbin_PROGRAMS += partclone.f2fs
-partclone_f2fs_SOURCES=$(main_files) f2fsclone.c f2fsclone.h $(F2FS_SOURCE)
-partclone_f2fs_CFLAGS=-DF2FS -DHAVE_MNTENT_H=1 -DHAVE_SYS_MOUNT_H=1 -DHAVE_SYS_SYSMACROS_H=1 -DHAVE_SYS_UTSNAME_H=1 -DHAVE_SCSI_SG_H=1  -DHAVE_SYS_IOCTL_H=1 -DHAVE_LINUX_HDREG_H  -DHAVE_LINUX_LIMITS_H=1 -DHAVE_LINUX_TYPES_H=1 -DHAVE_LSEEK64=1 -DHAVE_SETMNTENT=1  -I$(srcdir)/f2fs/
-partclone_f2fs_LDADD=torrent_helper.o -luuid $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
-endif
-
-if ENABLE_NILFS2
-sbin_PROGRAMS += partclone.nilfs2
-partclone_nilfs2_SOURCES=$(main_files) nilfsclone.c nilfsclone.h
-partclone_nilfs2_CFLAGS=-DNILFS
-partclone_nilfs2_LDADD=torrent_helper.o -lnilfs $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
+partclone_apfs_SOURCES = main.c
+partclone_apfs_LDADD = libpartclone.la
 endif
 
 if ENABLE_FAT
+noinst_LTLIBRARIES += libptc_fat.la
+libptc_fat_la_SOURCES = fatclone.c fatclone.h
+libptc_fat_la_CFLAGS = $(AM_CFLAGS) \
+	-Dread_super_blocks=fat_read_super_blocks \
+	-Dread_bitmap=fat_read_bitmap
+PTC_BACKEND_LIBS += libptc_fat.la
+PTC_FS_DEFINES += -DPTC_HAVE_FAT
+
 sbin_PROGRAMS += partclone.fat
-partclone_fat_SOURCES=$(main_files) fatclone.c fatclone.h
-partclone_fat_CFLAGS=-DFAT
-partclone_fat_LDADD=torrent_helper.o $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
+partclone_fat_SOURCES = main.c
+partclone_fat_LDADD = libpartclone.la
 endif
 
-sbin_PROGRAMS += partclone.ntfsfixboot
-partclone_ntfsfixboot_SOURCES=ntfsfixboot.c
-if ENABLE_NTFS
-sbin_PROGRAMS += partclone.ntfs
-partclone_ntfs_SOURCES=$(main_files) ntfsclone-ng.c ntfsclone-ng.h
-if ENABLE_NTFS_3G
-partclone_ntfs_CFLAGS=-DNTFS3G
-partclone_ntfs_LDADD=torrent_helper.o -lntfs-3g $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
-else
-partclone_ntfs_CFLAGS=-DNTFS
-partclone_ntfs_LDADD=torrent_helper.o -lntfs $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
+if ENABLE_EXFAT
+noinst_LTLIBRARIES += libptc_exfat.la
+libptc_exfat_la_SOURCES = exfatclone.c exfatclone.h $(EXFATFS_SOURCE)
+libptc_exfat_la_CFLAGS = $(AM_CFLAGS) -DEXFAT -D_GNU_SOURCE -std=c99 \
+	-Dread_super_blocks=exfat_read_super_blocks \
+	-Dread_bitmap=exfat_read_bitmap \
+	-Dutf16_to_utf8=exfat_utf16_to_utf8 \
+	-Dutf8_to_utf16=exfat_utf8_to_utf16
+PTC_BACKEND_LIBS += libptc_exfat.la
+PTC_FS_DEFINES += -DPTC_HAVE_EXFAT
+
+sbin_PROGRAMS += partclone.exfat
+partclone_exfat_SOURCES = main.c
+partclone_exfat_LDADD = libpartclone.la
 endif
+
+if ENABLE_F2FS
+noinst_LTLIBRARIES += libptc_f2fs.la
+libptc_f2fs_la_SOURCES = f2fsclone.c f2fsclone.h $(F2FS_SOURCE)
+libptc_f2fs_la_CFLAGS = $(AM_CFLAGS) -DF2FS -DHAVE_MNTENT_H=1 -DHAVE_SYS_MOUNT_H=1 -DHAVE_SYS_SYSMACROS_H=1 -DHAVE_SYS_UTSNAME_H=1 -DHAVE_SCSI_SG_H=1  -DHAVE_SYS_IOCTL_H=1 -DHAVE_LINUX_HDREG_H  -DHAVE_LINUX_LIMITS_H=1 -DHAVE_LINUX_TYPES_H=1 -DHAVE_LSEEK64=1 -DHAVE_SETMNTENT=1  -I$(srcdir)/f2fs/ \
+	-Dread_super_blocks=f2fs_read_super_blocks \
+	-Dread_bitmap=f2fs_read_bitmap \
+	-Dutf16_to_utf8=f2fs_utf16_to_utf8 \
+	-Dutf8_to_utf16=f2fs_utf8_to_utf16
+PTC_BACKEND_LIBS += libptc_f2fs.la -luuid
+PTC_FS_DEFINES += -DPTC_HAVE_F2FS
+
+sbin_PROGRAMS += partclone.f2fs
+partclone_f2fs_SOURCES = main.c
+partclone_f2fs_LDADD = libpartclone.la
+endif
+
+if ENABLE_NILFS2
+noinst_LTLIBRARIES += libptc_nilfs2.la
+libptc_nilfs2_la_SOURCES = nilfsclone.c nilfsclone.h
+libptc_nilfs2_la_CFLAGS = $(AM_CFLAGS) \
+	-Dread_super_blocks=nilfs2_read_super_blocks \
+	-Dread_bitmap=nilfs2_read_bitmap
+PTC_BACKEND_LIBS += libptc_nilfs2.la -lnilfs
+PTC_FS_DEFINES += -DPTC_HAVE_NILFS2
+
+sbin_PROGRAMS += partclone.nilfs2
+partclone_nilfs2_SOURCES = main.c
+partclone_nilfs2_LDADD = libpartclone.la
+endif
+
+if ENABLE_NTFS
+noinst_LTLIBRARIES += libptc_ntfs.la
+libptc_ntfs_la_SOURCES = ntfsclone-ng.c ntfsclone-ng.h
+if ENABLE_NTFS_3G
+libptc_ntfs_la_CFLAGS = $(AM_CFLAGS) -DNTFS3G \
+	-Dread_super_blocks=ntfs_read_super_blocks \
+	-Dread_bitmap=ntfs_read_bitmap
+PTC_BACKEND_LIBS += libptc_ntfs.la -lntfs-3g
+else
+libptc_ntfs_la_CFLAGS = $(AM_CFLAGS) -DNTFS \
+	-Dread_super_blocks=ntfs_read_super_blocks \
+	-Dread_bitmap=ntfs_read_bitmap
+PTC_BACKEND_LIBS += libptc_ntfs.la -lntfs
+endif
+PTC_FS_DEFINES += -DPTC_HAVE_NTFS
+
+sbin_PROGRAMS += partclone.ntfs
+partclone_ntfs_SOURCES = main.c
+partclone_ntfs_LDADD = libpartclone.la
 endif
 
 if ENABLE_UFS
+noinst_LTLIBRARIES += libptc_ufs.la
+libptc_ufs_la_SOURCES = ufsclone.c ufsclone.h
+libptc_ufs_la_CFLAGS = $(AM_CFLAGS) -D_GNU_SOURCE \
+	-Dread_super_blocks=ufs_read_super_blocks \
+	-Dread_bitmap=ufs_read_bitmap
+PTC_BACKEND_LIBS += libptc_ufs.la -lufs -lbsd
+PTC_FS_DEFINES += -DPTC_HAVE_UFS
+
 sbin_PROGRAMS += partclone.ufs
-partclone_ufs_SOURCES=$(main_files) ufsclone.c ufsclone.h
-partclone_ufs_CFLAGS=-DUFS -D_GNU_SOURCE
-partclone_ufs_LDADD=torrent_helper.o -lufs -lbsd $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
+partclone_ufs_SOURCES = main.c
+partclone_ufs_LDADD = libpartclone.la
 endif
 
 if ENABLE_VMFS
-sbin_PROGRAMS += partclone.vmfs
-partclone_vmfs_SOURCES=$(main_files) vmfsclone.c vmfsclone.h
-partclone_vmfs_CFLAGS=-DVMFS -D_GNU_SOURCE $(UUID_CFLAGS)
-partclone_vmfs_LDADD=torrent_helper.o -lvmfs -luuid $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
+noinst_LTLIBRARIES += libptc_vmfs.la libptc_vmfs5.la
+libptc_vmfs_la_SOURCES = vmfsclone.c vmfsclone.h
+libptc_vmfs_la_CFLAGS = $(AM_CFLAGS) -D_GNU_SOURCE $(UUID_CFLAGS) \
+	-Dread_super_blocks=vmfs_read_super_blocks \
+	-Dread_bitmap=vmfs_read_bitmap
+libptc_vmfs5_la_SOURCES = vmfs5clone.c vmfsclone.h
+libptc_vmfs5_la_CFLAGS = $(AM_CFLAGS) -D_GNU_SOURCE $(UUID_CFLAGS) \
+	-Dread_super_blocks=vmfs5_read_super_blocks \
+	-Dread_bitmap=vmfs5_read_bitmap
+PTC_BACKEND_LIBS += libptc_vmfs.la libptc_vmfs5.la -lvmfs -luuid
+PTC_FS_DEFINES += -DPTC_HAVE_VMFS -DPTC_HAVE_VMFS5
 
-sbin_PROGRAMS += partclone.vmfs5
-partclone_vmfs5_SOURCES=$(main_files) vmfs5clone.c vmfsclone.h
-partclone_vmfs5_CFLAGS=-DVMFS -D_GNU_SOURCE $(UUID_CFLAGS)
-partclone_vmfs5_LDADD=torrent_helper.o -lvmfs -luuid $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
-
-sbin_PROGRAMS += partclone.fstype
-partclone_fstype_SOURCES=fstype.c
-partclone_fstype_CFLAGS=-DVMFS -D_GNU_SOURCE $(UUID_CFLAGS)
-partclone_fstype_LDADD=torrent_helper.o -lvmfs -luuid $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
-
+sbin_PROGRAMS += partclone.vmfs partclone.vmfs5 partclone.fstype
+partclone_vmfs_SOURCES = main.c
+partclone_vmfs_LDADD = libpartclone.la
+partclone_vmfs5_SOURCES = main.c
+partclone_vmfs5_LDADD = libpartclone.la
+partclone_fstype_SOURCES = fstype.c
+partclone_fstype_CFLAGS = $(AM_CFLAGS) -D_GNU_SOURCE $(UUID_CFLAGS)
+partclone_fstype_LDADD = -lvmfs -luuid $(LDADD)
 endif
 
 if ENABLE_JFS
+noinst_LTLIBRARIES += libptc_jfs.la
+libptc_jfs_la_SOURCES = jfsclone.c jfsclone.h
+libptc_jfs_la_CFLAGS = $(AM_CFLAGS) \
+	-Dread_super_blocks=jfs_read_super_blocks \
+	-Dread_bitmap=jfs_read_bitmap
+PTC_BACKEND_LIBS += libptc_jfs.la -ljfs -luuid
+PTC_FS_DEFINES += -DPTC_HAVE_JFS
+
 sbin_PROGRAMS += partclone.jfs
-#partclone_jfs_SOURCES=$(main_files) jfs_devices.c jfs_devices.h jfsclone.c jfsclone.h
-partclone_jfs_SOURCES=$(main_files) jfsclone.c jfsclone.h
-partclone_jfs_CFLAGS=-DJFS
-partclone_jfs_LDADD=torrent_helper.o -ljfs -luuid $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
+partclone_jfs_SOURCES = main.c
+partclone_jfs_LDADD = libpartclone.la
 endif
 
 if ENABLE_BTRFS
-noinst_LTLIBRARIES = libpartclone_btrfs.la
-libpartclone_btrfs_la_SOURCES = $(BTRFS_SOURCE) btrfs_static_fixes.c
-libpartclone_btrfs_la_CFLAGS = -std=gnu11 -DBTRFS -DBTRFS_FLAT_INCLUDES -D_XOPEN_SOURCE=700 -D_GNU_SOURCE -DCRYPTOPROVIDER_BUILTIN=1 -I$(srcdir)/btrfs -I$(srcdir)/btrfs/include -I$(srcdir)/btrfs/libbtrfsutil
+noinst_LTLIBRARIES += libptc_btrfs.la
+libptc_btrfs_la_SOURCES = btrfsclone.c btrfsclone.h btrfs_static_fixes.c $(BTRFS_SOURCE)
+libptc_btrfs_la_CFLAGS = $(AM_CFLAGS) -std=gnu11 -DBTRFS -DBTRFS_FLAT_INCLUDES -D_XOPEN_SOURCE=700 -D_GNU_SOURCE -DCRYPTOPROVIDER_BUILTIN=1 -I$(srcdir)/btrfs -I$(srcdir)/btrfs/include -I$(srcdir)/btrfs/libbtrfsutil \
+	-Dread_super_blocks=btrfs_read_super_blocks \
+	-Dread_bitmap=btrfs_read_bitmap \
+	-Dcrc32c_le=btrfs_crc32c_le \
+	-Dlist_sort=btrfs_list_sort
 if ENABLE_STATIC
-libpartclone_btrfs_la_CFLAGS += -Dparse_range=btrfs_parse_range -DXXH_NAMESPACE=BTRFS_
+libptc_btrfs_la_CFLAGS += -Dparse_range=btrfs_parse_range
 endif
+PTC_BACKEND_LIBS += libptc_btrfs.la -luuid -lblkid
+PTC_FS_DEFINES += -DPTC_HAVE_BTRFS
 
 sbin_PROGRAMS += partclone.btrfs
-partclone_btrfs_SOURCES=$(main_files) btrfsclone.c btrfsclone.h
-partclone_btrfs_CFLAGS=-std=gnu11 -DBTRFS -DBTRFS_FLAT_INCLUDES -D_XOPEN_SOURCE=700 -D_GNU_SOURCE -DCRYPTOPROVIDER_BUILTIN=1 -I$(srcdir)/btrfs -I$(srcdir)/btrfs/include -I$(srcdir)/btrfs/libbtrfsutil 
-if ENABLE_STATIC
-partclone_btrfs_CFLAGS += -Dparse_range=btrfs_parse_range
-endif
-partclone_btrfs_LDADD=libpartclone_btrfs.la torrent_helper.o -luuid -lblkid $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static} 
+partclone_btrfs_SOURCES = main.c
+partclone_btrfs_LDADD = libpartclone.la
 endif
 
 if ENABLE_MINIX
+noinst_LTLIBRARIES += libptc_minix.la
+libptc_minix_la_SOURCES = minixclone.c minixclone.h
+libptc_minix_la_CFLAGS = $(AM_CFLAGS) \
+	-Dread_super_blocks=minix_read_super_blocks \
+	-Dread_bitmap=minix_read_bitmap
+PTC_BACKEND_LIBS += libptc_minix.la
+PTC_FS_DEFINES += -DPTC_HAVE_MINIX
+
 sbin_PROGRAMS += partclone.minix
-partclone_minix_SOURCES=$(main_files) minixclone.c minixclone.h
-partclone_minix_CFLAGS=-DMINIX
-partclone_minix_LDADD=torrent_helper.o $(PCL_XXHASH_LIBS) $(CRYPTO_DEPS) ${LDADD_static}
+partclone_minix_SOURCES = main.c
+partclone_minix_LDADD = libpartclone.la
+endif
+
+if ENABLE_XFS
+noinst_LTLIBRARIES += libptc_xfs.la
+libptc_xfs_la_SOURCES = xfsclone.c xfsclone.h $(XFS_SOURCE)
+libptc_xfs_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/xfs/include -I$(srcdir)/xfs/libxfs/ -I$(srcdir)/xfs/include/xfs/ -I$(srcdir)/xfs/ -DXFS -D_GNU_SOURCE -DNDEBUG $(UUID_CFLAGS) $(URCU_CFLAGS) \
+	-Dread_super_blocks=xfs_read_super_blocks \
+	-Dread_bitmap=xfs_read_bitmap \
+	-Dcrc32c_le=xfs_crc32c_le \
+	-Dlist_sort=xfs_list_sort
+PTC_BACKEND_LIBS += libptc_xfs.la -lrt -luuid -lblkid
+PTC_FS_DEFINES += -DPTC_HAVE_XFS
+
+sbin_PROGRAMS += partclone.xfs
+partclone_xfs_SOURCES = main.c
+partclone_xfs_LDADD = libpartclone.la
 endif
 
 if ENABLE_FUSE
-sbin_PROGRAMS+=partclone.imgfuse
-partclone_imgfuse_SOURCES=fuseimg.c partclone.c checksum.c partclone.h fs_common.h checksum.h
-partclone_imgfuse_CFLAGS=$(FUSE_CFLAGS)
-partclone_imgfuse_LDADD=$(FUSE_LIBS) torrent_helper.o $(CRYPTO_DEPS) ${LDADD_static} $(PCL_XXHASH_LIBS)
+sbin_PROGRAMS += partclone.imgfuse
+partclone_imgfuse_SOURCES = fuseimg.c
+partclone_imgfuse_CFLAGS = $(AM_CFLAGS) $(FUSE_CFLAGS)
+partclone_imgfuse_LDADD = libpartclone.la $(FUSE_LIBS)
 if ENABLE_STATIC
-partclone_imgfuse_LDADD+=-ldl
+partclone_imgfuse_LDADD += -ldl
 endif
 endif
 

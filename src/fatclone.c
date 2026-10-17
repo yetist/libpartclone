@@ -29,7 +29,7 @@
 
 struct FatBootSector fat_sb;
 struct FatFsInfo fatfs_info;
-int ret;
+static int ret;
 int FS;
 /* Buffered nibble when reading FAT12 entries, otherwise 0xFF */
 uint8_t nibble;
@@ -42,7 +42,7 @@ char *fat_type = "FATXX";
 #define ROUND_TO_MULTIPLE(n,m) ((n) && (m) ? (n)+(m)-1-((n)-1)%(m) : 0)
 #define MSDOS_DIR_BITS 5        /* log2(sizeof(struct msdos_dir_entry)) */
 #define MAX_FAT_CLUSTERS (0x0FFFFFF6ULL) // Max valid clusters for FAT32 to prevent DoS from maliciously large cluster count(1-8TB)
-unsigned long long total_block = 0;
+static unsigned long long total_block = 0;
 
 static unsigned long long get_used_block();
 
