@@ -29,7 +29,7 @@ option('jfs',      type : 'feature', value : 'disabled', description : 'JFS file
 option('btrfs',    type : 'feature', value : 'disabled', description : 'BTRFS file system')
 option('minix',    type : 'feature', value : 'disabled', description : 'MINIX file system')
 option('fuse',     type : 'feature', value : 'disabled', description : 'imgfuse: mount an image as a block file')
-option('gtk4',     type : 'feature', value : 'auto',     description : 'GTK4 example application (examples/ptc-gtk4)')
+option('gtk4',     type : 'feature', value : 'auto',     description : 'GTK4 front end (src/ptc-gtk4)')
 
 # ---------------------------------------------------------------------------
 # Optional features

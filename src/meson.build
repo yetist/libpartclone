@@ -80,6 +80,17 @@ if build_fuse
 endif
 
 ## ---------------------------------------------------------------------------
+## GTK4 front end (optional, built only when GTK4 is available)
+## ---------------------------------------------------------------------------
+if build_gtk4
+  executable('ptc-gtk4', 'ptc-gtk4.c',
+    dependencies : [libpartclone_dep, gtk4_dep],
+    install : true,
+    install_dir : bindir,
+  )
+endif
+
+## ---------------------------------------------------------------------------
 ## Command name aliases (partclone.ext2, partclone.vfat, ...)
 ## ---------------------------------------------------------------------------
 aliases = []

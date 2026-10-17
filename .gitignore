@@ -52,4 +52,6 @@ clang_output_*
 
 # Example build output
 /examples/ptc-demo
-/examples/ptc-gtk4
+
+# In-tree front end binaries
+/src/ptc-gtk4
