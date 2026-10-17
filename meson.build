@@ -87,6 +87,7 @@ build_gtk4 = gtk4_opt.enabled() or (gtk4_opt.auto() and gtk4_dep.found())
 # ---------------------------------------------------------------------------
 conf = configuration_data()
 conf.set_quoted('PACKAGE', 'partclone')
+conf.set_quoted('GETTEXT_PACKAGE', 'partclone')
 conf.set_quoted('PACKAGE_NAME', 'Partclone')
 conf.set_quoted('PACKAGE_TARNAME', 'partclone')
 conf.set_quoted('PACKAGE_VERSION', meson.project_version())

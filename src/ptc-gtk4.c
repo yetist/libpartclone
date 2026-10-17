@@ -26,13 +26,10 @@
 #include <stdio.h>
 
 #include <glib/gstdio.h>
+#include <glib/gi18n.h>
 #include <gtk/gtk.h>
 
 #include <libpartclone.h>
-
-#include "gettext.h"
-
-#define _(STRING) gettext(STRING)
 
 typedef struct {
     GtkApplication *app;
@@ -110,9 +107,9 @@ setup_i18n(void)
 {
 #ifdef ENABLE_NLS
     setlocale(LC_ALL, "");
-    bindtextdomain(PACKAGE, LOCALEDIR);
-    bind_textdomain_codeset(PACKAGE, "UTF-8");
-    textdomain(PACKAGE);
+    bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
+    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
+    textdomain(GETTEXT_PACKAGE);
 #endif
 }
 

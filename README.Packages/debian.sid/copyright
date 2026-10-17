@@ -54,11 +54,6 @@ License: GPL-3+
 Comment: This file originates from the ntfsfixboot project.
          Original work is loosely based on Daniel J. Grace (2006).
 
-Files: lib/gettext.h
-Copyright: Free Software Foundation, Inc.
-License: LGPL-2.0+
-Comment: File from GNU gettext project.
-
 License: BSD-2-Clause
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions
@@ -114,15 +109,6 @@ License: GPL-3+
  .
  On Debian systems, the full text of the GNU General Public License
  version 3 can be found in `/usr/share/common-licenses/GPL-3'.
-
-License: LGPL-2.0+
- This library is free software; you can redistribute it and/or
- modify it under the terms of the GNU Library General Public
- License as published by the Free Software Foundation; either
- version 2 of the License, or (at your option) any later version.
- .
- On Debian systems, the full text of the GNU Library General Public
- License version 2 can be found in `/usr/share/common-licenses/LGPL-2'.
 
 License: LGPL-2.1+
  This library is free software; you can redistribute it and/or

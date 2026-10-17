@@ -40,11 +40,10 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <assert.h>
-#include "gettext.h"
+#include <glib/gi18n-lib.h>
 #include <linux/fs.h>
 #include <sys/types.h>
 #include <dirent.h>
-#define _(STRING) gettext(STRING)
 //#define PACKAGE "partclone"
 #include "version.h"
 #include "partclone.h"
@@ -902,8 +901,8 @@ void log_mesg(int log_level, int log_exit, int log_stderr, int debug, const char
 	if (opt.ncurses) {
 #ifdef HAVE_LIBNCURSESW
 		setlocale(LC_ALL, "");
-		bindtextdomain(PACKAGE, LOCALEDIR);
-		textdomain(PACKAGE);
+		bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
+		textdomain(GETTEXT_PACKAGE);
 		if ((log_stderr) && (log_level <= debug)) {
 			if (log_exit)
 				wattron(log_win, A_STANDOUT);
@@ -2132,8 +2131,8 @@ void print_partclone_info(cmd_opt opt) {
 	int debug = opt.debug;
 
 	setlocale(LC_ALL, "");
-	bindtextdomain(PACKAGE, LOCALEDIR);
-	textdomain(PACKAGE);
+	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
+	textdomain(GETTEXT_PACKAGE);
 	log_mesg(0, 0, 1, debug, _("Partclone v%s http://partclone.org\n"), VERSION);
 	if (opt.chkimg)
 		log_mesg(0, 0, 1, debug, _("Starting to check image (%s)\n"), opt.source);	
@@ -2177,8 +2176,8 @@ void print_file_system_info(file_system_info fs_info, cmd_opt opt) {
 	char size_str[11];
 
 	setlocale(LC_ALL, "");
-	bindtextdomain(PACKAGE, LOCALEDIR);
-	textdomain(PACKAGE);
+	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
+	textdomain(GETTEXT_PACKAGE);
 	log_mesg(0, 0, 1, debug, _("File system:  %s\n"), fs_info.fs);
 
 	print_readable_size_str(total*block_s, size_str);
@@ -2201,8 +2200,8 @@ void print_image_info(image_head_v2 img_head, image_options img_opt, cmd_opt opt
 	char bufstr[64];
 
 	setlocale(LC_ALL, "");
-	bindtextdomain(PACKAGE, LOCALEDIR);
-	textdomain(PACKAGE);
+	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
+	textdomain(GETTEXT_PACKAGE);
 
 	log_mesg(0, 0, 1, debug, _("image format:    %04d\n"), img_opt.image_version);
 
@@ -2251,8 +2250,8 @@ void print_finish_info(cmd_opt opt) {
 	int debug = opt.debug;
 
 	setlocale(LC_ALL, "");
-	bindtextdomain(PACKAGE, LOCALEDIR);
-	textdomain(PACKAGE);
+	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
+	textdomain(GETTEXT_PACKAGE);
 	if (opt.chkimg)
 		log_mesg(0, 0, 1, debug, _("Partclone successfully checked the image (%s)\n"), opt.source);
 	else if (opt.clone)

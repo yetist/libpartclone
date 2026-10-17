@@ -20,8 +20,7 @@
 #include <math.h>
 #include "config.h"
 #include "progress.h"
-#include "gettext.h"
-#define _(STRING) gettext(STRING)
+#include <glib/gi18n-lib.h>
 #include "partclone.h"
 #include "json_status.h"
 
@@ -239,8 +238,8 @@ extern void progress_update(struct progress_bar *prog, unsigned long long copied
     if (done != 1){
 	prog->resolution_time = time(0);
 	setlocale(LC_ALL, "");
-	bindtextdomain(PACKAGE, LOCALEDIR);
-	textdomain(PACKAGE);
+	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
+	textdomain(GETTEXT_PACKAGE);
 
 	fprintf(stderr, "\r%80c\r", clear_buf);
 	fprintf(stderr, _("Elapsed: %s, Remaining: %s, Completed: %6.2f%%"), prog_stat.Eformated, prog_stat.Rformated, prog_stat.percent);
@@ -254,8 +253,8 @@ extern void progress_update(struct progress_bar *prog, unsigned long long copied
 	}
     } else {
 	setlocale(LC_ALL, "");
-	bindtextdomain(PACKAGE, LOCALEDIR);
-	textdomain(PACKAGE);
+	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
+	textdomain(GETTEXT_PACKAGE);
 
 	fprintf(stderr, "\r%80c\r", clear_buf);
 	fprintf(stderr, _("Elapsed: %s, Remaining: %s, Completed: 100.00%%"), prog_stat.Eformated, prog_stat.Rformated);
