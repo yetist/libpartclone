@@ -1,43 +1,55 @@
-# Backup and swap files
+# Editor and OS cruft
 *~
 *.swp
+.DS_Store
 
 # Meson build directories
 /build/
 /build-*/
 /_build/
 /_build*/
+
+# Meson / Ninja files (normally found inside a build directory)
 .ninja_deps
 .ninja_log
+compile_commands.json
 meson-logs/
 meson-private/
 meson-info/
 meson-dist/
 
-# Object files (out of tree builds place these in the build directory)
+# Meson subprojects (sources fetched from wrap files)
+subprojects/*/
+
+# Build outputs
 *.o
 *.lo
 *.la
+*.a
+*.so
+*.so.*
+*.dylib
+*.gmo
 
 # Partclone specific generated files
-get_lib_version
-fail-mbr/fail-mbr.bin
-fail-mbr/fail-mbr.image
+/get_lib_version
+/fail-mbr/fail-mbr.bin
+/fail-mbr/fail-mbr.image
 *.plist
 clang_output_*
 *.exec
 *.nilfs2
-lib/partclone.pc
+/lib/partclone.pc
 
 # Generated man pages (built from the DocBook XML sources)
-docs/partclone.8
-docs/partclone.chkimg.8
-docs/partclone.dd.8
-docs/partclone.fstype.8
-docs/partclone.info.8
-docs/partclone.ntfsfixboot.8
-docs/partclone.restore.8
+/docs/partclone.8
+/docs/partclone.chkimg.8
+/docs/partclone.dd.8
+/docs/partclone.fstype.8
+/docs/partclone.info.8
+/docs/partclone.ntfsfixboot.8
+/docs/partclone.restore.8
 
 # Example build output
-examples/ptc-demo
-examples/ptc-gtk4
+/examples/ptc-demo
+/examples/ptc-gtk4
