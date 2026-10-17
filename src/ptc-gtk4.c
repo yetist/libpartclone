@@ -105,12 +105,10 @@ static GtkWidget *build_window(PtcGtkApp *self);
 static void
 setup_i18n(void)
 {
-#ifdef ENABLE_NLS
     setlocale(LC_ALL, "");
     bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
     bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
     textdomain(GETTEXT_PACKAGE);
-#endif
 }
 
 static void

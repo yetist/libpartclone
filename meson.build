@@ -97,10 +97,6 @@ conf.set_quoted('PACKAGE_URL', '')
 conf.set_quoted('VERSION', meson.project_version())
 conf.set_quoted('LOCALEDIR', localedir)
 
-if get_option('nls')
-  conf.set('ENABLE_NLS', 1)
-endif
-
 if blkid_dep.found()
   conf.set('HAVE_BLKID', 1)
 endif
@@ -281,7 +277,6 @@ summary({
   'isal'      : isal_dep.found(),
   'ncursesw'  : want_ncurses and ncurses_dep.found(),
   'fuse'      : build_fuse,
-  'nls'       : get_option('nls'),
 }, section : 'Configuration')
 
 summary({

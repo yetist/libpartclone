@@ -37,7 +37,6 @@ option('gtk4',     type : 'feature', value : 'auto',     description : 'GTK4 fro
 option('xxhash',          type : 'boolean', value : true,  description : 'Use xxhash for checksums')
 option('isal',            type : 'boolean', value : false, description : 'Use Intel ISA-L for CRC32')
 option('ncursesw',        type : 'feature', value : 'disabled', description : 'Text user interface (ncursesw)')
-option('nls',             type : 'boolean', value : true,  description : 'Native language support (gettext)')
 option('mtrace',          type : 'boolean', value : false, description : 'Enable memory tracing')
 option('bash-completion', type : 'boolean', value : true,  description : 'Install bash completion')
 
