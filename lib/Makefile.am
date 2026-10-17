@@ -1,9 +1,10 @@
 ## ---------------------------------------------------------------------------
 ## libpartclone
 ##
-## Every enabled filesystem backend is compiled into one shared library and
-## selected at runtime (see ptc-fs-backend.c).  The command line tools in
-## ../src are thin front ends that link against libpartclone.la.
+## libpartclone.so contains the core engine only.  Every filesystem backend is
+## built as its own loadable module (libpartclone_<name>.so) and discovered at
+## runtime (see ptc-fs-backend.c).  The command line tools in ../src link
+## against the core library.
 ## ---------------------------------------------------------------------------
 
 if ENABLE_XXHASH
@@ -35,11 +36,6 @@ F2FS_SOURCE=f2fs/fsck.c f2fs/fsck.h f2fs/f2fs.h f2fs/mount.c f2fs/mkquota.c f2fs
 
 CRYPTO_DEPS = $(OPENSSL_LIBS) $(ZLIB_LIBS) $(ZSTD_LIBS)
 
-if ENABLE_STATIC
-AM_LDFLAGS=-all-static
-LDADD_static=-ldl
-endif
-
 if ENABLE_TINFO
 LIBS+=-ltinfo
 endif
@@ -57,7 +53,24 @@ endif
 version.h: FORCE
 
 ## ---------------------------------------------------------------------------
-## The shared library
+## Filesystem backend modules
+##
+## Each backend is built in two parts:
+##   * a convenience library (libptc_<name>.la) holding the implementation,
+##     compiled with the historical entry points renamed to unique symbols;
+##   * a loadable module (libpartclone_<name>.la) that wraps it with a
+##     ptc_fs_backend descriptor and is installed into $(partclone_plugindir).
+## ---------------------------------------------------------------------------
+
+partclone_plugindir = $(libdir)/partclone
+
+# Common link flags for a loadable module.
+PTC_MODULE_LDFLAGS = -module -avoid-version -no-undefined
+# Everything a module needs from the core library.
+PTC_MODULE_LIBS = libpartclone.la $(GLIB_LIBS) -lpthread
+
+## ---------------------------------------------------------------------------
+## The core library
 ## ---------------------------------------------------------------------------
 
 lib_LTLIBRARIES = libpartclone.la
@@ -76,17 +89,12 @@ PTC_LIB_SOURCES = \
 
 libpartclone_la_SOURCES = $(PTC_LIB_SOURCES)
 
-# Filesystem backends, convenience libraries and external dependencies are
-# accumulated by the per-filesystem blocks below.
-PTC_BACKEND_LIBS = libptc_raw.la
-PTC_FS_DEFINES = -DPTC_HAVE_DD
-
-libpartclone_la_CFLAGS = $(AM_CFLAGS) $(GLIB_CFLAGS) $(BLKID_CFLAGS) $(PTC_FS_DEFINES)
+libpartclone_la_CFLAGS = $(AM_CFLAGS) $(GLIB_CFLAGS) $(BLKID_CFLAGS) \
+	-DPTC_PLUGIN_DIR=\"$(partclone_plugindir)\"
 libpartclone_la_LDFLAGS = -version-info 0:0:0 -no-undefined
 libpartclone_la_LIBADD = \
-	$(PTC_BACKEND_LIBS) \
 	$(GLIB_LIBS) $(BLKID_LIBS) $(CRYPTO_DEPS) $(PCL_XXHASH_LIBS) \
-	$(LIBINTL) $(URCU_LIBS) -lpthread
+	$(LIBINTL) -lgmodule-2.0 -lpthread
 
 # Public, self contained headers and pkg-config file.
 partcloneincludedir = $(includedir)/partclone
@@ -96,16 +104,27 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = partclone.pc
 EXTRA_DIST = partclone.pc.in
 
+## ---------------------------------------------------------------------------
+## Filesystem backends
+## ---------------------------------------------------------------------------
+
+partclone_plugin_LTLIBRARIES = libpartclone_raw.la
+
 # The raw (dd) backend is always available.
 noinst_LTLIBRARIES = libptc_raw.la
 libptc_raw_la_SOURCES = ddclone.c ddclone.h
 libptc_raw_la_CFLAGS = $(AM_CFLAGS) \
 	-Dread_super_blocks=dd_read_super_blocks \
 	-Dread_bitmap=dd_read_bitmap
-
-## ---------------------------------------------------------------------------
-## Filesystem backends
-## ---------------------------------------------------------------------------
+libpartclone_raw_la_SOURCES = backend-module.c
+libpartclone_raw_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"raw\" \
+	-DPTC_MODULE_MAGIC=raw_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"Raw / device to device (dd)"' \
+	-DPTC_MODULE_READ_SUPER=dd_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=dd_read_bitmap
+libpartclone_raw_la_LIBADD = libptc_raw.la $(PTC_MODULE_LIBS)
+libpartclone_raw_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 
 if ENABLE_EXTFS
 noinst_LTLIBRARIES += libptc_extfs.la
@@ -113,8 +132,16 @@ libptc_extfs_la_SOURCES = extfsclone.c extfsclone.h
 libptc_extfs_la_CFLAGS = $(AM_CFLAGS) \
 	-Dread_super_blocks=extfs_read_super_blocks \
 	-Dread_bitmap=extfs_read_bitmap
-PTC_BACKEND_LIBS += libptc_extfs.la -lext2fs -lcom_err
-PTC_FS_DEFINES += -DPTC_HAVE_EXTFS
+partclone_plugin_LTLIBRARIES += libpartclone_extfs.la
+libpartclone_extfs_la_SOURCES = backend-module.c
+libpartclone_extfs_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"extfs\" \
+	-DPTC_MODULE_MAGIC=extfs_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"ext2/ext3/ext4"' \
+	-DPTC_MODULE_READ_SUPER=extfs_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=extfs_read_bitmap
+libpartclone_extfs_la_LIBADD = libptc_extfs.la $(PTC_MODULE_LIBS) -lext2fs -lcom_err
+libpartclone_extfs_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 if ENABLE_REISERFS
@@ -123,8 +150,16 @@ libptc_reiserfs_la_SOURCES = reiserfsclone.c reiserfsclone.h
 libptc_reiserfs_la_CFLAGS = $(AM_CFLAGS) \
 	-Dread_super_blocks=reiserfs_read_super_blocks \
 	-Dread_bitmap=reiserfs_read_bitmap
-PTC_BACKEND_LIBS += libptc_reiserfs.la -lreiserfs -ldal
-PTC_FS_DEFINES += -DPTC_HAVE_REISERFS
+partclone_plugin_LTLIBRARIES += libpartclone_reiserfs.la
+libpartclone_reiserfs_la_SOURCES = backend-module.c
+libpartclone_reiserfs_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"reiserfs\" \
+	-DPTC_MODULE_MAGIC=reiserfs_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"ReiserFS 3.6"' \
+	-DPTC_MODULE_READ_SUPER=reiserfs_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=reiserfs_read_bitmap
+libpartclone_reiserfs_la_LIBADD = libptc_reiserfs.la $(PTC_MODULE_LIBS) -lreiserfs -ldal
+libpartclone_reiserfs_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 if ENABLE_REISER4
@@ -133,8 +168,16 @@ libptc_reiser4_la_SOURCES = reiser4clone.c reiser4clone.h
 libptc_reiser4_la_CFLAGS = $(AM_CFLAGS) \
 	-Dread_super_blocks=reiser4_read_super_blocks \
 	-Dread_bitmap=reiser4_read_bitmap
-PTC_BACKEND_LIBS += libptc_reiser4.la -lreiser4 -laal
-PTC_FS_DEFINES += -DPTC_HAVE_REISER4
+partclone_plugin_LTLIBRARIES += libpartclone_reiser4.la
+libpartclone_reiser4_la_SOURCES = backend-module.c
+libpartclone_reiser4_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"reiser4\" \
+	-DPTC_MODULE_MAGIC=reiser4_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"Reiser4"' \
+	-DPTC_MODULE_READ_SUPER=reiser4_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=reiser4_read_bitmap
+libpartclone_reiser4_la_LIBADD = libptc_reiser4.la $(PTC_MODULE_LIBS) -lreiser4 -laal
+libpartclone_reiser4_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 if ENABLE_HFSP
@@ -144,8 +187,17 @@ libptc_hfsp_la_CFLAGS = $(AM_CFLAGS) \
 	-Dread_super_blocks=hfsp_read_super_blocks \
 	-Dread_bitmap=hfsp_read_bitmap \
 	-Dpost_clone_fixup=hfsp_post_clone_fixup
-PTC_BACKEND_LIBS += libptc_hfsp.la
-PTC_FS_DEFINES += -DPTC_HAVE_HFSP
+partclone_plugin_LTLIBRARIES += libpartclone_hfsp.la
+libpartclone_hfsp_la_SOURCES = backend-module.c
+libpartclone_hfsp_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"hfsp\" \
+	-DPTC_MODULE_MAGIC=hfsplus_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"HFS+"' \
+	-DPTC_MODULE_READ_SUPER=hfsp_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=hfsp_read_bitmap \
+	-DPTC_MODULE_POST_FIXUP=hfsp_post_clone_fixup
+libpartclone_hfsp_la_LIBADD = libptc_hfsp.la $(PTC_MODULE_LIBS)
+libpartclone_hfsp_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 if ENABLE_APFS
@@ -154,8 +206,16 @@ libptc_apfs_la_SOURCES = apfsclone.c apfsclone.h
 libptc_apfs_la_CFLAGS = $(AM_CFLAGS) \
 	-Dread_super_blocks=apfs_read_super_blocks \
 	-Dread_bitmap=apfs_read_bitmap
-PTC_BACKEND_LIBS += libptc_apfs.la
-PTC_FS_DEFINES += -DPTC_HAVE_APFS
+partclone_plugin_LTLIBRARIES += libpartclone_apfs.la
+libpartclone_apfs_la_SOURCES = backend-module.c
+libpartclone_apfs_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"apfs\" \
+	-DPTC_MODULE_MAGIC=apfs_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"APFS"' \
+	-DPTC_MODULE_READ_SUPER=apfs_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=apfs_read_bitmap
+libpartclone_apfs_la_LIBADD = libptc_apfs.la $(PTC_MODULE_LIBS)
+libpartclone_apfs_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 if ENABLE_FAT
@@ -164,8 +224,16 @@ libptc_fat_la_SOURCES = fatclone.c fatclone.h
 libptc_fat_la_CFLAGS = $(AM_CFLAGS) \
 	-Dread_super_blocks=fat_read_super_blocks \
 	-Dread_bitmap=fat_read_bitmap
-PTC_BACKEND_LIBS += libptc_fat.la
-PTC_FS_DEFINES += -DPTC_HAVE_FAT
+partclone_plugin_LTLIBRARIES += libpartclone_fat.la
+libpartclone_fat_la_SOURCES = backend-module.c
+libpartclone_fat_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"fat\" \
+	-DPTC_MODULE_MAGIC=fat_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"FAT12/16/32"' \
+	-DPTC_MODULE_READ_SUPER=fat_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=fat_read_bitmap
+libpartclone_fat_la_LIBADD = libptc_fat.la $(PTC_MODULE_LIBS)
+libpartclone_fat_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 if ENABLE_EXFAT
@@ -176,8 +244,16 @@ libptc_exfat_la_CFLAGS = $(AM_CFLAGS) -DEXFAT -D_GNU_SOURCE -std=c99 \
 	-Dread_bitmap=exfat_read_bitmap \
 	-Dutf16_to_utf8=exfat_utf16_to_utf8 \
 	-Dutf8_to_utf16=exfat_utf8_to_utf16
-PTC_BACKEND_LIBS += libptc_exfat.la
-PTC_FS_DEFINES += -DPTC_HAVE_EXFAT
+partclone_plugin_LTLIBRARIES += libpartclone_exfat.la
+libpartclone_exfat_la_SOURCES = backend-module.c
+libpartclone_exfat_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"exfat\" \
+	-DPTC_MODULE_MAGIC=exfat_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"exFAT"' \
+	-DPTC_MODULE_READ_SUPER=exfat_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=exfat_read_bitmap
+libpartclone_exfat_la_LIBADD = libptc_exfat.la $(PTC_MODULE_LIBS)
+libpartclone_exfat_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 if ENABLE_F2FS
@@ -188,8 +264,16 @@ libptc_f2fs_la_CFLAGS = $(AM_CFLAGS) -DF2FS -DHAVE_MNTENT_H=1 -DHAVE_SYS_MOUNT_H
 	-Dread_bitmap=f2fs_read_bitmap \
 	-Dutf16_to_utf8=f2fs_utf16_to_utf8 \
 	-Dutf8_to_utf16=f2fs_utf8_to_utf16
-PTC_BACKEND_LIBS += libptc_f2fs.la -luuid
-PTC_FS_DEFINES += -DPTC_HAVE_F2FS
+partclone_plugin_LTLIBRARIES += libpartclone_f2fs.la
+libpartclone_f2fs_la_SOURCES = backend-module.c
+libpartclone_f2fs_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"f2fs\" \
+	-DPTC_MODULE_MAGIC=f2fs_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"F2FS"' \
+	-DPTC_MODULE_READ_SUPER=f2fs_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=f2fs_read_bitmap
+libpartclone_f2fs_la_LIBADD = libptc_f2fs.la $(PTC_MODULE_LIBS) -luuid
+libpartclone_f2fs_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 if ENABLE_NILFS2
@@ -198,8 +282,16 @@ libptc_nilfs2_la_SOURCES = nilfsclone.c nilfsclone.h
 libptc_nilfs2_la_CFLAGS = $(AM_CFLAGS) \
 	-Dread_super_blocks=nilfs2_read_super_blocks \
 	-Dread_bitmap=nilfs2_read_bitmap
-PTC_BACKEND_LIBS += libptc_nilfs2.la -lnilfs
-PTC_FS_DEFINES += -DPTC_HAVE_NILFS2
+partclone_plugin_LTLIBRARIES += libpartclone_nilfs2.la
+libpartclone_nilfs2_la_SOURCES = backend-module.c
+libpartclone_nilfs2_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"nilfs2\" \
+	-DPTC_MODULE_MAGIC=nilfs_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"NILFS2"' \
+	-DPTC_MODULE_READ_SUPER=nilfs2_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=nilfs2_read_bitmap
+libpartclone_nilfs2_la_LIBADD = libptc_nilfs2.la $(PTC_MODULE_LIBS) -lnilfs
+libpartclone_nilfs2_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 if ENABLE_NTFS
@@ -209,14 +301,23 @@ if ENABLE_NTFS_3G
 libptc_ntfs_la_CFLAGS = $(AM_CFLAGS) -DNTFS3G \
 	-Dread_super_blocks=ntfs_read_super_blocks \
 	-Dread_bitmap=ntfs_read_bitmap
-PTC_BACKEND_LIBS += libptc_ntfs.la -lntfs-3g
+PTC_NTFS_LIBS = -lntfs-3g
 else
 libptc_ntfs_la_CFLAGS = $(AM_CFLAGS) -DNTFS \
 	-Dread_super_blocks=ntfs_read_super_blocks \
 	-Dread_bitmap=ntfs_read_bitmap
-PTC_BACKEND_LIBS += libptc_ntfs.la -lntfs
+PTC_NTFS_LIBS = -lntfs
 endif
-PTC_FS_DEFINES += -DPTC_HAVE_NTFS
+partclone_plugin_LTLIBRARIES += libpartclone_ntfs.la
+libpartclone_ntfs_la_SOURCES = backend-module.c
+libpartclone_ntfs_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"ntfs\" \
+	-DPTC_MODULE_MAGIC=ntfs_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"NTFS"' \
+	-DPTC_MODULE_READ_SUPER=ntfs_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=ntfs_read_bitmap
+libpartclone_ntfs_la_LIBADD = libptc_ntfs.la $(PTC_MODULE_LIBS) $(PTC_NTFS_LIBS)
+libpartclone_ntfs_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 if ENABLE_UFS
@@ -225,8 +326,16 @@ libptc_ufs_la_SOURCES = ufsclone.c ufsclone.h
 libptc_ufs_la_CFLAGS = $(AM_CFLAGS) -D_GNU_SOURCE \
 	-Dread_super_blocks=ufs_read_super_blocks \
 	-Dread_bitmap=ufs_read_bitmap
-PTC_BACKEND_LIBS += libptc_ufs.la -lufs -lbsd
-PTC_FS_DEFINES += -DPTC_HAVE_UFS
+partclone_plugin_LTLIBRARIES += libpartclone_ufs.la
+libpartclone_ufs_la_SOURCES = backend-module.c
+libpartclone_ufs_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"ufs\" \
+	-DPTC_MODULE_MAGIC=ufs_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"UFS1/UFS2"' \
+	-DPTC_MODULE_READ_SUPER=ufs_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=ufs_read_bitmap
+libpartclone_ufs_la_LIBADD = libptc_ufs.la $(PTC_MODULE_LIBS) -lufs -lbsd
+libpartclone_ufs_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 if ENABLE_VMFS
@@ -239,8 +348,25 @@ libptc_vmfs5_la_SOURCES = vmfs5clone.c vmfsclone.h
 libptc_vmfs5_la_CFLAGS = $(AM_CFLAGS) -D_GNU_SOURCE $(UUID_CFLAGS) \
 	-Dread_super_blocks=vmfs5_read_super_blocks \
 	-Dread_bitmap=vmfs5_read_bitmap
-PTC_BACKEND_LIBS += libptc_vmfs.la libptc_vmfs5.la -lvmfs -luuid
-PTC_FS_DEFINES += -DPTC_HAVE_VMFS -DPTC_HAVE_VMFS5
+partclone_plugin_LTLIBRARIES += libpartclone_vmfs.la libpartclone_vmfs5.la
+libpartclone_vmfs_la_SOURCES = backend-module.c
+libpartclone_vmfs_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"vmfs\" \
+	-DPTC_MODULE_MAGIC=vmfs_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"VMFS"' \
+	-DPTC_MODULE_READ_SUPER=vmfs_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=vmfs_read_bitmap
+libpartclone_vmfs_la_LIBADD = libptc_vmfs.la $(PTC_MODULE_LIBS) -lvmfs -luuid
+libpartclone_vmfs_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
+libpartclone_vmfs5_la_SOURCES = backend-module.c
+libpartclone_vmfs5_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"vmfs5\" \
+	-DPTC_MODULE_MAGIC=vmfs_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"VMFS5"' \
+	-DPTC_MODULE_READ_SUPER=vmfs5_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=vmfs5_read_bitmap
+libpartclone_vmfs5_la_LIBADD = libptc_vmfs5.la $(PTC_MODULE_LIBS) -lvmfs -luuid
+libpartclone_vmfs5_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 if ENABLE_JFS
@@ -249,8 +375,16 @@ libptc_jfs_la_SOURCES = jfsclone.c jfsclone.h
 libptc_jfs_la_CFLAGS = $(AM_CFLAGS) \
 	-Dread_super_blocks=jfs_read_super_blocks \
 	-Dread_bitmap=jfs_read_bitmap
-PTC_BACKEND_LIBS += libptc_jfs.la -ljfs -luuid
-PTC_FS_DEFINES += -DPTC_HAVE_JFS
+partclone_plugin_LTLIBRARIES += libpartclone_jfs.la
+libpartclone_jfs_la_SOURCES = backend-module.c
+libpartclone_jfs_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"jfs\" \
+	-DPTC_MODULE_MAGIC=jfs_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"JFS"' \
+	-DPTC_MODULE_READ_SUPER=jfs_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=jfs_read_bitmap
+libpartclone_jfs_la_LIBADD = libptc_jfs.la $(PTC_MODULE_LIBS) -ljfs -luuid
+libpartclone_jfs_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 if ENABLE_BTRFS
@@ -264,8 +398,16 @@ libptc_btrfs_la_CFLAGS = $(AM_CFLAGS) -std=gnu11 -DBTRFS -DBTRFS_FLAT_INCLUDES -
 if ENABLE_STATIC
 libptc_btrfs_la_CFLAGS += -Dparse_range=btrfs_parse_range
 endif
-PTC_BACKEND_LIBS += libptc_btrfs.la -luuid -lblkid
-PTC_FS_DEFINES += -DPTC_HAVE_BTRFS
+partclone_plugin_LTLIBRARIES += libpartclone_btrfs.la
+libpartclone_btrfs_la_SOURCES = backend-module.c
+libpartclone_btrfs_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"btrfs\" \
+	-DPTC_MODULE_MAGIC=btrfs_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"BTRFS"' \
+	-DPTC_MODULE_READ_SUPER=btrfs_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=btrfs_read_bitmap
+libpartclone_btrfs_la_LIBADD = libptc_btrfs.la $(PTC_MODULE_LIBS) -luuid -lblkid $(CRYPTO_DEPS)
+libpartclone_btrfs_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 if ENABLE_MINIX
@@ -274,8 +416,16 @@ libptc_minix_la_SOURCES = minixclone.c minixclone.h
 libptc_minix_la_CFLAGS = $(AM_CFLAGS) \
 	-Dread_super_blocks=minix_read_super_blocks \
 	-Dread_bitmap=minix_read_bitmap
-PTC_BACKEND_LIBS += libptc_minix.la
-PTC_FS_DEFINES += -DPTC_HAVE_MINIX
+partclone_plugin_LTLIBRARIES += libpartclone_minix.la
+libpartclone_minix_la_SOURCES = backend-module.c
+libpartclone_minix_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"minix\" \
+	-DPTC_MODULE_MAGIC=minix_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"MINIX"' \
+	-DPTC_MODULE_READ_SUPER=minix_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=minix_read_bitmap
+libpartclone_minix_la_LIBADD = libptc_minix.la $(PTC_MODULE_LIBS)
+libpartclone_minix_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 if ENABLE_XFS
@@ -286,8 +436,16 @@ libptc_xfs_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/xfs/include -I$(srcdir)/xfs/libx
 	-Dread_bitmap=xfs_read_bitmap \
 	-Dcrc32c_le=xfs_crc32c_le \
 	-Dlist_sort=xfs_list_sort
-PTC_BACKEND_LIBS += libptc_xfs.la -lrt -luuid -lblkid
-PTC_FS_DEFINES += -DPTC_HAVE_XFS
+partclone_plugin_LTLIBRARIES += libpartclone_xfs.la
+libpartclone_xfs_la_SOURCES = backend-module.c
+libpartclone_xfs_la_CFLAGS = $(AM_CFLAGS) \
+	-DPTC_MODULE_NAME=\"xfs\" \
+	-DPTC_MODULE_MAGIC=xfs_MAGIC \
+	-DPTC_MODULE_DESCRIPTION='"XFS"' \
+	-DPTC_MODULE_READ_SUPER=xfs_read_super_blocks \
+	-DPTC_MODULE_READ_BITMAP=xfs_read_bitmap
+libpartclone_xfs_la_LIBADD = libptc_xfs.la $(PTC_MODULE_LIBS) -lrt -luuid -lblkid $(URCU_LIBS)
+libpartclone_xfs_la_LDFLAGS = $(PTC_MODULE_LDFLAGS)
 endif
 
 distclean-local:

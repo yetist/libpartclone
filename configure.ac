@@ -156,6 +156,11 @@ fi
 
 AC_CHECK_LIB([pthread], [pthread_create], [], AC_MSG_ERROR([*** pthread library (libpthread) not found]))
 
+dnl The filesystem libraries are only needed by the backend modules, so keep
+dnl them out of the global LIBS: libpartclone.so itself must not link against
+dnl every filesystem.  They are listed explicitly in lib/Makefile.am instead.
+save_LIBS="$LIBS"
+
 ##ext2/3##
 AC_ARG_ENABLE([extfs],
     AS_HELP_STRING(
@@ -459,6 +464,7 @@ supported_fs=$supported_fs" jfs"
 jfs_version="unknown, suggest 1.1.12"
 fi
 #end of check jfs
+LIBS="$save_LIBS"
 
 ##btrfs##
 AC_ARG_ENABLE([btrfs],

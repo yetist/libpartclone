@@ -4,7 +4,7 @@
  * Copyright (c) 2007~ Thomas Tsai <thomas at nchc org tw>
  *
  * Demonstrates the public GObject/GIO API of libpartclone:
- *   - enumerate the compiled in filesystem backends,
+ *   - enumerate the available filesystem backends,
  *   - clone a device/image into a partclone image (synchronous),
  *   - report progress through the ::progress signal,
  *   - restore the image (synchronous),

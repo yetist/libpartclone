@@ -53,7 +53,10 @@ const char *ptc_version_string(void);
 /**
  * ptc_backend_names:
  *
- * Lists every filesystem backend compiled into this build of libpartclone.
+ * Lists every filesystem backend available to this installation of
+ * libpartclone.  Backends are provided as loadable modules that are discovered
+ * at runtime; the search path can be overridden with the PARTCLONE_PLUGIN_DIR
+ * environment variable.
  *
  * Returns: (transfer none) (array zero-terminated=1): a %NULL terminated array
  * of backend names such as `"extfs"` or `"btrfs"`.

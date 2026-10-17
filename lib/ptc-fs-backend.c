@@ -5,10 +5,15 @@
  *
  * Runtime filesystem backend registry.
  *
- * Every enabled backend is compiled into its own libtool convenience library
- * with -Dread_super_blocks=<prefix>_read_super_blocks and
- * -Dread_bitmap=<prefix>_read_bitmap so that the historical, non-namespaced
- * entry points become unique symbols inside the single libpartclone.so.
+ * The core library (libpartclone.so) does not contain any filesystem backend.
+ * Every backend is a loadable module named libpartclone_<name>.so that exports
+ * a single symbol (#PTC_FS_BACKEND_MODULE_SYMBOL).  The modules are discovered
+ * at runtime in (in this order):
+ *
+ *   1. $PARTCLONE_PLUGIN_DIR, when set (exclusive),
+ *   2. <dir of libpartclone.so>/partclone (the installed layout),
+ *   3. <dir of libpartclone.so> (the uninstalled build tree),
+ *   4. $(libdir)/partclone, compiled in as a last resort.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,9 +21,13 @@
  * (at your option) any later version.
  */
 
+#define _GNU_SOURCE
+
 #include <config.h>
 #include <string.h>
+#include <dlfcn.h>
 #include <glib.h>
+#include <gmodule.h>
 
 #include "ptc-fs-backend.h"
 
@@ -26,185 +35,243 @@
 #include <blkid/blkid.h>
 #endif
 
-/* Declare the (renamed) entry points of every backend. */
-#define PTC_DECLARE_BACKEND(prefix)                                         \
-    extern void prefix##_read_super_blocks(char *device,                    \
-                                           file_system_info *fs_info);      \
-    extern void prefix##_read_bitmap(char *device, file_system_info fs_info, \
-                                     unsigned long *bitmap, int pui)
-
-#ifdef PTC_HAVE_EXTFS
-PTC_DECLARE_BACKEND(extfs);
-#endif
-#ifdef PTC_HAVE_REISERFS
-PTC_DECLARE_BACKEND(reiserfs);
-#endif
-#ifdef PTC_HAVE_REISER4
-PTC_DECLARE_BACKEND(reiser4);
-#endif
-#ifdef PTC_HAVE_HFSP
-PTC_DECLARE_BACKEND(hfsp);
-extern int hfsp_post_clone_fixup(int *dfw, file_system_info fs_info, cmd_opt opt);
-#endif
-#ifdef PTC_HAVE_APFS
-PTC_DECLARE_BACKEND(apfs);
-#endif
-#ifdef PTC_HAVE_FAT
-PTC_DECLARE_BACKEND(fat);
-#endif
-#ifdef PTC_HAVE_EXFAT
-PTC_DECLARE_BACKEND(exfat);
-#endif
-#ifdef PTC_HAVE_F2FS
-PTC_DECLARE_BACKEND(f2fs);
-#endif
-#ifdef PTC_HAVE_NILFS2
-PTC_DECLARE_BACKEND(nilfs2);
-#endif
-#ifdef PTC_HAVE_NTFS
-PTC_DECLARE_BACKEND(ntfs);
-#endif
-#ifdef PTC_HAVE_UFS
-PTC_DECLARE_BACKEND(ufs);
-#endif
-#ifdef PTC_HAVE_VMFS
-PTC_DECLARE_BACKEND(vmfs);
-#endif
-#ifdef PTC_HAVE_VMFS5
-PTC_DECLARE_BACKEND(vmfs5);
-#endif
-#ifdef PTC_HAVE_JFS
-PTC_DECLARE_BACKEND(jfs);
-#endif
-#ifdef PTC_HAVE_BTRFS
-PTC_DECLARE_BACKEND(btrfs);
-#endif
-#ifdef PTC_HAVE_MINIX
-PTC_DECLARE_BACKEND(minix);
-#endif
-#ifdef PTC_HAVE_XFS
-PTC_DECLARE_BACKEND(xfs);
-#endif
-#ifdef PTC_HAVE_DD
-PTC_DECLARE_BACKEND(dd);
+#ifndef PTC_PLUGIN_DIR
+# define PTC_PLUGIN_DIR "/usr/local/lib/partclone"
 #endif
 
-#define PTC_BACKEND(prefix, name_, magic_, desc_)                          \
-    {                                                                      \
-        name_, magic_, desc_, prefix##_read_super_blocks,                  \
-        prefix##_read_bitmap, NULL                                         \
+#define PTC_PLUGIN_PREFIX   "libpartclone_"
+#define PTC_PLUGIN_SUFFIX   ".so"
+#define PTC_MAX_BACKENDS    64
+
+static GMutex backend_lock;
+static gboolean backends_loaded;
+
+static const ptc_fs_backend *backends[PTC_MAX_BACKENDS + 1];
+static guint n_backends;
+
+/* Keep every successfully opened module resident for the lifetime of the
+ * process; the descriptors handed out point straight at it. */
+static GPtrArray *modules;
+
+/* ------------------------------------------------------------------ */
+/* Module loading                                                      */
+/* ------------------------------------------------------------------ */
+
+static gboolean
+ptc_backend_try_load(const char *dir, const char *name)
+{
+    gpointer symbol = NULL;
+    GModule *module;
+    char *path;
+    guint i;
+
+    if (dir == NULL || name == NULL)
+        return FALSE;
+
+    path = g_strdup_printf("%s/%s%s%s", dir, PTC_PLUGIN_PREFIX, name,
+                           PTC_PLUGIN_SUFFIX);
+    module = g_module_open(path, G_MODULE_BIND_LAZY);
+    g_free(path);
+
+    if (module == NULL)
+        return FALSE;
+
+    if (!g_module_symbol(module, PTC_FS_BACKEND_MODULE_SYMBOL, &symbol) ||
+        symbol == NULL) {
+        g_module_close(module);
+        return FALSE;
     }
 
-static const ptc_fs_backend backends_static[] = {
-#ifdef PTC_HAVE_DD
-    PTC_BACKEND(dd, "raw", raw_MAGIC, "Raw / device to device (dd)"),
-#endif
-#ifdef PTC_HAVE_EXTFS
-    PTC_BACKEND(extfs, "extfs", extfs_MAGIC, "ext2/ext3/ext4"),
-#endif
-#ifdef PTC_HAVE_REISERFS
-    PTC_BACKEND(reiserfs, "reiserfs", reiserfs_MAGIC, "ReiserFS 3.6"),
-#endif
-#ifdef PTC_HAVE_REISER4
-    PTC_BACKEND(reiser4, "reiser4", reiser4_MAGIC, "Reiser4"),
-#endif
-#ifdef PTC_HAVE_HFSP
-    {
-        "hfsp", hfsplus_MAGIC, "HFS+",
-        hfsp_read_super_blocks, hfsp_read_bitmap, hfsp_post_clone_fixup
-    },
-#endif
-#ifdef PTC_HAVE_APFS
-    PTC_BACKEND(apfs, "apfs", apfs_MAGIC, "APFS"),
-#endif
-#ifdef PTC_HAVE_FAT
-    PTC_BACKEND(fat, "fat", fat_MAGIC, "FAT12/16/32"),
-#endif
-#ifdef PTC_HAVE_EXFAT
-    PTC_BACKEND(exfat, "exfat", exfat_MAGIC, "exFAT"),
-#endif
-#ifdef PTC_HAVE_F2FS
-    PTC_BACKEND(f2fs, "f2fs", f2fs_MAGIC, "F2FS"),
-#endif
-#ifdef PTC_HAVE_NILFS2
-    PTC_BACKEND(nilfs2, "nilfs2", nilfs_MAGIC, "NILFS2"),
-#endif
-#ifdef PTC_HAVE_NTFS
-    PTC_BACKEND(ntfs, "ntfs", ntfs_MAGIC, "NTFS"),
-#endif
-#ifdef PTC_HAVE_UFS
-    PTC_BACKEND(ufs, "ufs", ufs_MAGIC, "UFS1/UFS2"),
-#endif
-#ifdef PTC_HAVE_VMFS
-    PTC_BACKEND(vmfs, "vmfs", vmfs_MAGIC, "VMFS"),
-#endif
-#ifdef PTC_HAVE_VMFS5
-    PTC_BACKEND(vmfs5, "vmfs5", vmfs_MAGIC, "VMFS5"),
-#endif
-#ifdef PTC_HAVE_JFS
-    PTC_BACKEND(jfs, "jfs", jfs_MAGIC, "JFS"),
-#endif
-#ifdef PTC_HAVE_BTRFS
-    PTC_BACKEND(btrfs, "btrfs", btrfs_MAGIC, "BTRFS"),
-#endif
-#ifdef PTC_HAVE_MINIX
-    PTC_BACKEND(minix, "minix", minix_MAGIC, "MINIX"),
-#endif
-#ifdef PTC_HAVE_XFS
-    PTC_BACKEND(xfs, "xfs", xfs_MAGIC, "XFS"),
-#endif
-};
+    const ptc_fs_backend *backend = symbol;
 
-static const ptc_fs_backend *backends[G_N_ELEMENTS(backends_static) + 1];
-static int backends_initialized;
+    if (backend->name == NULL || backend->name[0] == '\0' ||
+        backend->read_super_blocks == NULL || backend->read_bitmap == NULL) {
+        g_module_close(module);
+        return FALSE;
+    }
+
+    /* Do not register the same backend twice (e.g. found both in the build
+     * tree and in the installed directory). */
+    for (i = 0; i < n_backends; i++) {
+        if (g_ascii_strcasecmp(backends[i]->name, backend->name) == 0) {
+            g_module_close(module);
+            return TRUE;
+        }
+    }
+
+    if (n_backends >= PTC_MAX_BACKENDS) {
+        g_module_close(module);
+        return FALSE;
+    }
+
+    if (modules == NULL)
+        modules = g_ptr_array_new();
+    g_ptr_array_add(modules, module);
+
+    backends[n_backends++] = backend;
+    backends[n_backends] = NULL;
+    return TRUE;
+}
 
 static void
-ptc_fs_backends_init(void)
+ptc_backend_scan_dir(const char *dir)
 {
-    if (backends_initialized)
+    const gsize prefix_len = strlen(PTC_PLUGIN_PREFIX);
+    const gsize suffix_len = strlen(PTC_PLUGIN_SUFFIX);
+    GDir *gdir;
+    const char *entry;
+
+    if (dir == NULL || dir[0] == '\0')
         return;
-    for (unsigned int i = 0; i < G_N_ELEMENTS(backends_static); i++)
-        backends[i] = &backends_static[i];
-    backends[G_N_ELEMENTS(backends_static)] = NULL;
-    backends_initialized = 1;
+
+    gdir = g_dir_open(dir, 0, NULL);
+    if (gdir == NULL)
+        return;
+
+    while ((entry = g_dir_read_name(gdir)) != NULL) {
+        gsize entry_len = strlen(entry);
+        char *name;
+
+        if (entry_len <= prefix_len + suffix_len)
+            continue;
+        if (!g_str_has_prefix(entry, PTC_PLUGIN_PREFIX))
+            continue;
+        if (!g_str_has_suffix(entry, PTC_PLUGIN_SUFFIX))
+            continue;
+
+        name = g_strndup(entry + prefix_len, entry_len - prefix_len - suffix_len);
+        ptc_backend_try_load(dir, name);
+        g_free(name);
+    }
+
+    g_dir_close(gdir);
 }
+
+/* Stable, alphabetical ordering so that the enumeration is deterministic
+ * regardless of the order the filesystem returns directory entries in. */
+static void
+ptc_backend_sort(void)
+{
+    for (guint i = 1; i < n_backends; i++) {
+        const ptc_fs_backend *key = backends[i];
+        guint j = i;
+
+        while (j > 0 && g_ascii_strcasecmp(backends[j - 1]->name, key->name) > 0) {
+            backends[j] = backends[j - 1];
+            j--;
+        }
+        backends[j] = key;
+    }
+}
+
+/* Directory that holds libpartclone.so itself, so that the backend modules can
+ * be found both in an installed tree (<dir>/partclone) and in the build tree
+ * (<dir>/.libs, where the modules sit next to the library). */
+static char *
+ptc_backend_self_dir(void)
+{
+    Dl_info info;
+
+    if (dladdr((void *)ptc_fs_backend_list, &info) != 0 &&
+        info.dli_fname != NULL && info.dli_fname[0] != '\0')
+        return g_path_get_dirname(info.dli_fname);
+
+    return NULL;
+}
+
+static void
+ptc_backends_init(void)
+{
+    const char *env;
+
+    if (backends_loaded)
+        return;
+
+    env = g_getenv("PARTCLONE_PLUGIN_DIR");
+    if (env != NULL && env[0] != '\0') {
+        /* An explicit override is authoritative. */
+        ptc_backend_scan_dir(env);
+    } else {
+        char *self = ptc_backend_self_dir();
+
+        if (self != NULL) {
+            char *installed = g_build_filename(self, "partclone", NULL);
+
+            /* Installed layout: $(libdir)/partclone. */
+            ptc_backend_scan_dir(installed);
+            /* Uninstalled build tree: the modules live next to the core. */
+            ptc_backend_scan_dir(self);
+
+            g_free(installed);
+            g_free(self);
+        }
+
+        /* Last resort when the library location could not be determined. */
+        ptc_backend_scan_dir(PTC_PLUGIN_DIR);
+    }
+
+    if (n_backends > 1)
+        ptc_backend_sort();
+
+    backends_loaded = TRUE;
+}
+
+static void
+ptc_backends_ensure_loaded(void)
+{
+    g_mutex_lock(&backend_lock);
+    ptc_backends_init();
+    g_mutex_unlock(&backend_lock);
+}
+
+/* ------------------------------------------------------------------ */
+/* Lookup                                                              */
+/* ------------------------------------------------------------------ */
 
 const ptc_fs_backend *const *
 ptc_fs_backend_list(void)
 {
-    ptc_fs_backends_init();
+    ptc_backends_ensure_loaded();
     return backends;
+}
+
+/* Map historical command line / libblkid names onto canonical backend names. */
+static const char *
+ptc_fs_backend_canonical(const char *name)
+{
+    if (g_ascii_strcasecmp(name, "ext2") == 0 ||
+        g_ascii_strcasecmp(name, "ext3") == 0 ||
+        g_ascii_strcasecmp(name, "ext4") == 0)
+        return "extfs";
+    if (g_ascii_strcasecmp(name, "hfsplus") == 0 ||
+        g_ascii_strcasecmp(name, "hfs+") == 0)
+        return "hfsp";
+    if (g_ascii_strcasecmp(name, "vfat") == 0 ||
+        g_ascii_strcasecmp(name, "fat12") == 0 ||
+        g_ascii_strcasecmp(name, "fat16") == 0 ||
+        g_ascii_strcasecmp(name, "fat32") == 0)
+        return "fat";
+    if (g_ascii_strcasecmp(name, "dd") == 0 ||
+        g_ascii_strcasecmp(name, "none") == 0)
+        return "raw";
+    return name;
 }
 
 const ptc_fs_backend *
 ptc_fs_backend_lookup(const char *name)
 {
+    const char *canonical;
+
     if (name == NULL)
         return NULL;
 
-    ptc_fs_backends_init();
+    ptc_backends_ensure_loaded();
 
-    for (const ptc_fs_backend *const *it = backends; *it != NULL; it++) {
-        if (g_ascii_strcasecmp((*it)->name, name) == 0)
-            return *it;
+    canonical = ptc_fs_backend_canonical(name);
+    for (guint i = 0; i < n_backends; i++) {
+        if (g_ascii_strcasecmp(backends[i]->name, canonical) == 0)
+            return backends[i];
     }
-
-    /* A few historical aliases. */
-    if (g_ascii_strcasecmp(name, "ext2") == 0 ||
-        g_ascii_strcasecmp(name, "ext3") == 0 ||
-        g_ascii_strcasecmp(name, "ext4") == 0)
-        return ptc_fs_backend_lookup("extfs");
-    if (g_ascii_strcasecmp(name, "hfsplus") == 0 ||
-        g_ascii_strcasecmp(name, "hfs+") == 0)
-        return ptc_fs_backend_lookup("hfsp");
-    if (g_ascii_strcasecmp(name, "vfat") == 0 ||
-        g_ascii_strcasecmp(name, "fat12") == 0 ||
-        g_ascii_strcasecmp(name, "fat16") == 0 ||
-        g_ascii_strcasecmp(name, "fat32") == 0)
-        return ptc_fs_backend_lookup("fat");
-    if (g_ascii_strcasecmp(name, "dd") == 0 ||
-        g_ascii_strcasecmp(name, "none") == 0)
-        return ptc_fs_backend_lookup("raw");
 
     return NULL;
 }
@@ -215,11 +282,12 @@ ptc_fs_backend_by_magic(const char *magic)
     if (magic == NULL)
         return NULL;
 
-    ptc_fs_backends_init();
+    ptc_backends_ensure_loaded();
 
-    for (const ptc_fs_backend *const *it = backends; *it != NULL; it++) {
-        if ((*it)->magic != NULL && strcmp((*it)->magic, magic) == 0)
-            return *it;
+    for (guint i = 0; i < n_backends; i++) {
+        if (backends[i]->magic != NULL &&
+            strcmp(backends[i]->magic, magic) == 0)
+            return backends[i];
     }
     return NULL;
 }
@@ -292,17 +360,15 @@ ptc_fs_backend_detect(const char *device)
 const char *const *
 ptc_backend_names(void)
 {
-    static const char *names[64];
+    static const char *names[PTC_MAX_BACKENDS + 1];
     static gsize initialized = 0;
 
     if (g_once_init_enter(&initialized)) {
-        const ptc_fs_backend *const *it;
-        unsigned int i = 0;
+        guint i;
 
-        for (it = ptc_fs_backend_list();
-             *it != NULL && i < G_N_ELEMENTS(names) - 1;
-             it++)
-            names[i++] = (*it)->name;
+        ptc_backends_ensure_loaded();
+        for (i = 0; i < n_backends; i++)
+            names[i] = backends[i]->name;
         names[i] = NULL;
 
         g_once_init_leave(&initialized, 1);

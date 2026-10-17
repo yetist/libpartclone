@@ -7,8 +7,10 @@
  *
  * Historically each partclone command line tool was linked against exactly one
  * filesystem backend, selected at compile time with -D<FS>.  libpartclone
- * compiles every enabled backend into a single shared object and selects the
- * right one at runtime through this descriptor table.
+ * instead builds the core engine into libpartclone.so and every filesystem
+ * backend into its own loadable module (libpartclone_<name>.so).  The core
+ * discovers the modules at runtime and selects one through this descriptor
+ * table.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,6 +47,19 @@ struct _ptc_fs_backend {
 };
 
 /**
+ * PTC_FS_BACKEND_MODULE_SYMBOL:
+ *
+ * The exported symbol a backend module must define.  It is a
+ * #ptc_fs_backend (not a pointer) so that the core can reference it
+ * directly after looking it up with g_module_symbol().
+ *
+ * A module is named libpartclone_&lt;name&gt;.so and is normally installed into
+ * $(libdir)/partclone.  The directory can be overridden at runtime with the
+ * PARTCLONE_PLUGIN_DIR environment variable.
+ */
+#define PTC_FS_BACKEND_MODULE_SYMBOL "ptc_fs_backend_module"
+
+/**
  * ptc_fs_backend_lookup:
  * @name: backend name, e.g. "extfs".
  *
@@ -64,7 +79,7 @@ const ptc_fs_backend *ptc_fs_backend_by_magic(const char *magic);
  * ptc_fs_backend_list:
  *
  * Returns: (transfer none) (array zero-terminated=1): %NULL terminated array
- * of every backend compiled into this build.
+ * of every backend module that could be loaded.
  */
 const ptc_fs_backend *const *ptc_fs_backend_list(void);
 
