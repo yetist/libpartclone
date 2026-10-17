@@ -581,8 +581,9 @@ AM_CONDITIONAL([ENABLE_BASH_COMPLETION], [test -n "$bashcompdir"])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
 	Makefile
+	lib/Makefile
+	lib/partclone.pc
 	src/Makefile
-	src/partclone.pc
 	po/Makefile.in
 	docs/Makefile
 	examples/Makefile

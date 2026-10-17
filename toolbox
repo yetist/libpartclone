@@ -39,7 +39,7 @@ btrfs_update(){
     tag=$3
     echo $@ $tag $partcloneGitRepo $btrfsprogsGitRepo
 
-    pushd $partcloneGitRepo/src/
+    pushd $partcloneGitRepo/lib/
         btrfs_files=$(find btrfs -name "*.h" -o -name "*.c")
     popd
     echo $btrfs_files
@@ -57,7 +57,7 @@ btrfs_update(){
         for source_file in $btrfs_files; do 
             echo $source_file
             btrfs_file=$(echo $source_file | sed s/^btrfs//)
-            source_file_path=$(echo "$partcloneGitRepo/src/$source_file" | sed "s#//#/#g")
+            source_file_path=$(echo "$partcloneGitRepo/lib/$source_file" | sed "s#//#/#g")
             btrfs_file_path=$(echo "$btrfsprogsGitRepo/$btrfs_file" | sed "s#//#/#g")
 
             if test -f "$btrfs_file_path"; then

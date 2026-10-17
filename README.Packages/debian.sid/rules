@@ -82,7 +82,7 @@ override_dh_clean:
 	rm -f install-sh
 	rm -f ltmain.sh
 	rm -f docs/Makefile.in
-	rm -f src/Makefile.in
+	rm -f lib/Makefile.in src/Makefile.in
 	rm -f tests/Makefile.in
 	rm -f po/Makefile.in.in
 	rm -rf m4/

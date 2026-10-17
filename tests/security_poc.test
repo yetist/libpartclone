@@ -58,7 +58,7 @@ if [ ! -f "${RESTORE_BIN}" ]; then
 fi
 
 print_info "Compiling the PoC generator..."
-gcc -o ${POC_GENERATOR} ${POC_GENERATOR_SRC} -I.. -I../src -Wall -g
+gcc -o ${POC_GENERATOR} ${POC_GENERATOR_SRC} -I.. -I../lib -Wall -g
 if [ $? -ne 0 ]; then
     print_fail "Failed to compile PoC generator."
 fi

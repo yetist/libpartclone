@@ -13,7 +13,7 @@ cd /workspace
 find . -name "*.o" -delete
 find . -name "*.lo" -delete
 find . -name "*.la" -delete
-rm -rf .deps src/.deps
+rm -rf .deps src/.deps lib/.deps
 
 ./autogen
 ./configure --enable-extfs --enable-xxhash --disable-ncursesw

@@ -16,27 +16,27 @@ Copyright: 2012 Thomas Tsai  <thomas@nchc.org.tw>
 License: GPL-2+
  see below for the text of this license.
 
-Files: src/ufs/libufs.h
+Files: lib/ufs/libufs.h
 Copyright: 2002 Juli Mallett<jmallett@FreeBSD.org>
 License: FreeBSD-like
  see below for the text of this license.
 
-Files: src/ufs/sys/*
+Files: lib/ufs/sys/*
 Copyright: 1987, 1988, 1993 The Regents of the University of California.
 License: FreeBSD-like
  see below for the text of this license.
 
-Files: src/ufs/ffs/*
+Files: lib/ufs/ffs/*
 Copyright: 1982, 1986, 1993 The Regents of the University of California.
 License: FreeBSD-like
  see below for the text of this license.
 
-Files: src/ufs/ufs/fs.h
+Files: lib/ufs/ufs/fs.h
 Copyright: 1982, 1986, 1993 The Regents of the University of California.
 License: FreeBSD-like
  see below for the text of this license.
 
-Files: src/ufs/ufs/dinode.h
+Files: lib/ufs/ufs/dinode.h
 Copyright: 2002 Networks Associates Technology, Inc.
 License: FreeBSD-like
  see below for the text of this license.

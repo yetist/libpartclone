@@ -1,9 +1,9 @@
 AUTOMAKE_OPTIONS = subdir-objects 
-SUBDIRS= po src docs examples tests
+SUBDIRS= po lib src docs examples tests
 
 ACLOCAL_AMFLAGS = -I m4
 
-EXTRA_DIST = m4/ChangeLog  config.rpath toolbox src/deplib_version.c src/version.h src/ufs debian
+EXTRA_DIST = m4/ChangeLog  config.rpath toolbox src/deplib_version.c lib/version.h lib/ufs debian
 
 ChangeLog: FORCE
 	srcdir=. $(SHELL) ./toolbox --update-log

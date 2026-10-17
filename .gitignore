@@ -32,6 +32,7 @@ Makefile.in
 .deps/
 .dirstamp
 src/.libs/
+lib/.libs/
 
 # Translation files
 po/*.gmo
@@ -50,7 +51,7 @@ fail-mbr/fail-mbr.image
 clang_output_*
 *.exec
 *.nilfs2
-src/partclone.pc
+lib/partclone.pc
 
 # Executables in src/
 src/partclone.apfs

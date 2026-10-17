@@ -12,12 +12,12 @@ This program is used to generate malicious partclone images with invalid header 
 #include <stdint.h>
 #include <stdlib.h>
 #include <limits.h>
-#include "src/partclone.h"
-#include "src/checksum.h"
+#include "lib/partclone.h"
+#include "lib/checksum.h"
 
 #define pc_BITS_TO_BYTES(bits) (((bits) + 7) / 8)
 
-// --- CRC32 Implementation (copied from src/checksum.c) ---
+// --- CRC32 Implementation (copied from lib/checksum.c) ---
 static uint32_t crc_tab32[256] = { 0 };
 
 void init_crc32(uint32_t* seed) {

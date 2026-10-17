@@ -25,5 +25,5 @@ po/Makefile.in.in export-ignore
 *.dylib         export-ignore
 
 
-src/version.h export-subst
+lib/version.h export-subst
 toolbox export-subst

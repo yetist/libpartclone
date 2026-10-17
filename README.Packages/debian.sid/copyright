@@ -15,34 +15,34 @@ License: GPL-2+
  .
  see "/usr/share/common-licenses/GPL-2"
 
-Files: src/btrfs/libbtrfsutil/*
+Files: lib/btrfs/libbtrfsutil/*
 Copyright: Various, see source files for details
 License: LGPL-2.1+
 Comment: Files originating from the btrfs-progs project.
 
-Files: src/xfs/include/*
-       src/xfs/libxfs/*
+Files: lib/xfs/include/*
+       lib/xfs/libxfs/*
 Copyright: Various, see source files for details
 License: LGPL-2.1+
 Comment: Files originating from the xfsprogs project.
 
-Files: src/btrfs_static_fixes.c
-       src/btrfs/crypto/xxhash.c
-       src/btrfs/crypto/xxhash.h
+Files: lib/btrfs_static_fixes.c
+       lib/btrfs/crypto/xxhash.c
+       lib/btrfs/crypto/xxhash.h
 Copyright: Various, see source files for details
 License: BSD-2-Clause
 Comment: Files originating from the btrfs-progs project.
 
-Files: src/ufs/ffs/fs.h
-       src/ufs/ufs/fs.h
+Files: lib/ufs/ffs/fs.h
+       lib/ufs/ufs/fs.h
 Copyright: 1982, 1986, 1993 The Regents of the University of California.
 License: BSD-3-Clause
 
-Files: src/ufs/sys/disklabel.h
+Files: lib/ufs/sys/disklabel.h
 Copyright: 1987, 1988, 1993 The Regents of the University of California.
 License: BSD-3-Clause
 
-Files: src/ufs/ufs/dinode.h
+Files: lib/ufs/ufs/dinode.h
 Copyright: 2002 Networks Associates Technology, Inc.
 License: BSD-3-Clause
 Comment: src/cp.txt indicates license is "BSD 2-Clause License and/or BSD 3-Clause License". Using BSD-3-Clause here.
@@ -54,7 +54,7 @@ License: GPL-3+
 Comment: This file originates from the ntfsfixboot project.
          Original work is loosely based on Daniel J. Grace (2006).
 
-Files: src/gettext.h
+Files: lib/gettext.h
 Copyright: Free Software Foundation, Inc.
 License: LGPL-2.0+
 Comment: File from GNU gettext project.

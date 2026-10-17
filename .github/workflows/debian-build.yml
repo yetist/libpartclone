@@ -57,7 +57,7 @@ jobs:
         run: |
           git archive --format=tar.gz --prefix="${PKG}-${UPSTREAM_VER}/" \
             -o "../${PKG}_${UPSTREAM_VER}.orig.tar.gz" HEAD
-          tar -O -xf "../${PKG}_${UPSTREAM_VER}.orig.tar.gz" "${PKG}-${UPSTREAM_VER}/src/version.h" > src/version.h || true
+          tar -O -xf "../${PKG}_${UPSTREAM_VER}.orig.tar.gz" "${PKG}-${UPSTREAM_VER}/lib/version.h" > lib/version.h || true
 
       - name: Build Debian package
         run: |

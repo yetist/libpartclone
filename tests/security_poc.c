@@ -3,8 +3,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <limits.h>
-#include "src/partclone.h"
-#include "src/checksum.h"
+#include "lib/partclone.h"
+#include "lib/checksum.h"
 
 #define pc_BITS_TO_BYTES(bits) (((bits) + 7) / 8)
 
