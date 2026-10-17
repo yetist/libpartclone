@@ -22,8 +22,6 @@ core_sources = files(
 )
 
 core_deps = [
-  glib_dep,
-  gobject_dep,
   gio_dep,
   openssl_dep,
   zlib_dep,
@@ -51,7 +49,7 @@ libpartclone_inc = include_directories('.')
 
 libpartclone_dep = declare_dependency(
   link_with : core_lib,
-  dependencies : [glib_dep, gobject_dep, gio_dep],
+  dependencies : [gio_dep],
   include_directories : [libpartclone_inc, top_inc],
 )
 
@@ -64,7 +62,7 @@ pkg = import('pkgconfig')
 pkg.generate(core_lib,
   name : 'partclone',
   description : 'Partition cloning library (libpartclone)',
-  requires : [glib_dep, gobject_dep, gio_dep],
+  requires : [gio_dep],
   subdirs : 'partclone',
 )
 
@@ -518,7 +516,7 @@ foreach name, spec : backend
     c_args : mod_args,
     include_directories : top_inc,
     link_with : [conv, core_lib],
-    dependencies : [glib_dep, threads_dep] + deps,
+    dependencies : [threads_dep] + deps,
     override_options : ['b_lundef=true'],
     install : true,
     install_dir : plugin_dir,

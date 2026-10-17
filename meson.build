@@ -43,9 +43,10 @@ endif
 # ---------------------------------------------------------------------------
 # Required dependencies
 # ---------------------------------------------------------------------------
-glib_dep    = dependency('glib-2.0', version : '>= 2.44')
-gobject_dep = dependency('gobject-2.0')
-gio_dep     = dependency('gio-2.0')
+# gio-2.0 pulls in gobject-2.0 and glib-2.0 (and gobject in turn requires
+# glib), so a single dependency provides the entire GLib/GObject/GIO API used
+# by libpartclone and its public headers.
+gio_dep     = dependency('gio-2.0', version : '>= 2.44')
 uuid_dep    = dependency('uuid')
 openssl_dep = dependency('openssl')
 zlib_dep    = dependency('zlib')
@@ -54,10 +55,10 @@ threads_dep = dependency('threads')
 intl_dep    = dependency('intl', required : false)
 math_dep    = cc.find_library('m', required : false)
 
-# gmodule is used to dlopen the backend modules.  Use find_library() instead
-# of the pkg-config module so that -Wl,--export-dynamic is not added to the
-# command line (see the original lib/Makefile.am).
-gmodule_dep = cc.find_library('gmodule-2.0', required : true)
+# gmodule is used to dlopen the backend modules.  The -no-export pkg-config
+# module provides the same library as gmodule-2.0 but without adding
+# -Wl,--export-dynamic to the command line.
+gmodule_dep = dependency('gmodule-no-export-2.0')
 
 # ---------------------------------------------------------------------------
 # Optional dependencies
