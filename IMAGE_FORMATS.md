@@ -113,3 +113,570 @@ written one after the other.
     Disabling the checksum allows partclone to run a little bit faster.
   - By default, Image 0002 reset the checksum after writting it. This allows to verify a "checksum strip"
     without reading all the blocks since the beginning of the image.
+
+
+# Format 0003 — whole-disk images
+
+> **Status: design proposal.** This section describes an image format and the
+> backup/restore strategy for backing up an *entire disk* (partition table +
+> every partition) with `partclone` / `libpartclone`. No code implements
+> format 0003 yet; format 0001 and 0002 are unchanged and remain the formats
+> actually produced today.
+
+## Motivation
+
+Formats 0001 and 0002 each describe **exactly one filesystem** (or one raw
+device) and carry no information about where that filesystem sits on a disk.
+Backing up a whole disk therefore currently requires an external orchestrator
+(for example Clonezilla) that saves the MBR/GPT separately and runs partclone
+once per partition, then reassembles everything on restore.
+
+Format 0003 makes the whole disk a first-class object:
+
+  - one self-describing image for one disk;
+  - the partition table, the gaps between partitions (boot loaders, GPT
+    backup header, alignment padding) and every partition are preserved;
+  - space is still saved per partition through the existing per-filesystem
+    bitmaps and checksums;
+  - both directions stay sequential and pipe friendly (`... | partclone.disk`,
+    `partclone.disk | ...`).
+
+### Goals
+
+  - Back up a whole block device to a single image.
+  - Restore that image to a disk of the same size or larger.
+  - Reuse the existing clone/restore engine and per-filesystem backends.
+  - Remain streamable (no seeking required) in both directions.
+  - Stay additive: 0001/0002 images keep working exactly as before.
+
+### Non-goals
+
+  - Reassembling multi-device storage (LVM volume groups, md/RAID, btrfs
+    multi-device, ...). Format 0003 describes **one** block device only.
+  - Automatic filesystem shrinking. Growing an existing filesystem to fill a
+    bigger partition is an optional, per-filesystem hook (see below).
+  - Concurrent operation. The engine keeps its state in globals and already
+    processes exactly one volume image at a time.
+
+## Design overview
+
+Format 0003 is a **container**.  It has a small, fixed-size *disk header*, a
+*partition table blob* and then a sequence of *volumes*.  Each volume is a
+`(volume descriptor, child image)` pair, and the **child image is a completely
+ordinary format 0002 image** (header + bitmap + blocks, see above).
+
+Because 0002 is self-delimiting once its header has been read (the bitmap size
+follows from `totalblock` and `bitmap_mode`, the block section size follows
+from `usedblocks` and `blocks_per_checksum`), a reader can skip or stream any
+child without knowing the container length in advance.  A *volume descriptor*
+only adds the missing information: **where on the disk** the child belongs and
+what it is.
+
+This keeps the amount of new code small:
+
+  - writing a filesystem volume = what `partclone.<fs> -c` already does, plus a
+    descriptor in front;
+  - restoring a filesystem volume = what `partclone.<fs> -r` already does,
+    started at the volume's disk offset (the engine already supports an
+    arbitrary start offset through `opt.offset`);
+  - raw gaps and unsupported partitions reuse the `raw` backend.
+
+### On-disk layout
+
+```
+image offset 0
+  +==================================================+  <- 512 bytes
+  | Disk header (format 0003)                        |
+  +==================================================+
+  | Partition table blob                             |  table_size bytes
+  +--------------------------------------------------+
+  | Volume descriptor #1 (256 bytes)                 |
+  +--------------------------------------------------+
+  | Child image #1 (format 0002)                     |  payload_length bytes
+  +--------------------------------------------------+
+  | Volume descriptor #2 (256 bytes)                 |
+  +--------------------------------------------------+
+  | Child image #2 (format 0002)                     |
+  +--------------------------------------------------+
+  | ...                                              |
+  +--------------------------------------------------+
+  | Trailer (optional, seekable images only)         |
+  +==================================================+  <- end of image
+```
+
+Volumes are stored in ascending disk-offset order, which is also the order in
+which they are produced and consumed.  The `volume_count` in the disk header is
+known before any data is read (it comes from the partition table), so the header
+can be written first; each descriptor's `payload_length` is known as soon as
+that volume's bitmap has been built, so descriptors can be interleaved with
+payloads in a single pass.
+
+All multi-byte integers are stored little-endian unless the `endianess` marker
+says otherwise.  Every structure is byte-packed; readers must not assume
+natural alignment.
+
+## Disk header
+
+Fixed size, **512 bytes** (a 0002 reader reads the first 110 bytes, finds
+`version == "0003"` and rejects the image cleanly).
+
+| Byte Offset | Size | Description
+|-------------|------|-------------
+|           0 |   16 | Image signature, `"partclone-image"` + NUL (same as 0002)
+|          16 |   14 | Partclone version that created the image, e.g. `"0.3.50"`
+|          30 |    4 | **_Image version, in text: `"0003"`_**
+|          34 |    2 | Endianness marker: `0xC0DE` little-endian, `0xDEC0` big-endian
+|          36 |    4 | Size of this header, in bytes (512)
+|          40 |    2 | Image version, in binary: `0x0003`
+|          42 |    2 | Number of bits of the CPU that created the image (32, 64, ...)
+|          44 |    8 | Source disk size, in bytes
+|          52 |    4 | Logical sector size of the source disk, in bytes (512, 4096, ...)
+|          56 |    4 | Physical sector size of the source disk, in bytes (informative)
+|          60 |    4 | Number of volumes (== number of volume descriptors)
+|          64 |    4 | Size of one volume descriptor, in bytes (256 for 0003)
+|          68 |    4 | Flags, see below
+|          72 |    4 | Partition table type, see below
+|          76 |    4 | Size of the partition table blob, in bytes
+|          80 |    2 | Disk-level checksum mode (informative, same enum as 0002)
+|          82 |    2 | Disk-level checksum size, in bytes
+|          84 |    4 | Size of the feature section, for future extensions
+|          88 |    8 | Total image size in bytes, or 0 when unknown (streamed output)
+|          96 |  412 | Reserved, zero
+|         508 |    4 | CRC32 of the previous 508 bytes
+
+Flags:
+
+| Bit | Name | Meaning
+|-----|------|--------
+|   0 | `PTC_DISK_TABLE_PRESENT` | A partition table blob follows the header
+|   1 | `PTC_DISK_HAS_TRAILER`   | A trailer/index is present at the end of the image
+|   2 | `PTC_DISK_GAPS_INCLUDED` | Gap volumes (boot loaders, padding) are stored
+|   3 | `PTC_DISK_SPARSE_RAW`    | Raw volumes use a zero-detecting bitmap
+
+Partition table type:
+
+| Value | Name | Meaning
+|-------|------|--------
+|     0 | `PTC_TABLE_NONE`    | No partition table (single whole-disk volume)
+|     1 | `PTC_TABLE_MBR`     | DOS/MBR partition table
+|     2 | `PTC_TABLE_GPT`     | GUID Partition Table
+|     3 | `PTC_TABLE_HYBRID`  | Protective/hybrid MBR + GPT
+|     4 | `PTC_TABLE_OTHER`   | Recognised by a tool we do not regenerate; raw only
+
+The reserved area and `feature_size` follow the same extension idea as 0002:
+future revisions may append fields, and older readers must ignore unknown
+trailing bytes within `feature_size`.
+
+## Partition table blob
+
+The blob is placed immediately after the disk header and is `table_size` bytes
+long.  It has two parts: the **raw sectors** needed to rebuild the table
+verbatim, and a **manifest** that describes the partitions in a device-neutral
+way (used for reporting, for validation, and to regenerate the table when the
+target disk is a different size).
+
+```
++--------------------------------------------------+
+| Blob header (32 bytes)                           |
++--------------------------------------------------+
+| Raw record table   (raw_count   * 12 bytes)      |
++--------------------------------------------------+
+| Manifest entries   (part_count  * manifest_size) |
++--------------------------------------------------+
+| Raw data           (raw_data_size bytes)         |
++--------------------------------------------------+
+```
+
+Blob header:
+
+| Byte Offset | Size | Description
+|-------------|------|-------------
+|           0 |    2 | Partition table type (same values as the disk header)
+|           2 |    2 | Sector size used for the LBA arithmetic, in bytes
+|           4 |    4 | Number of raw records
+|           8 |    4 | Number of manifest entries
+|          12 |    4 | Size of one manifest entry, in bytes (128 for 0003)
+|          16 |    8 | Total size of the raw data area, in bytes
+|          24 |    8 | Reserved, zero
+
+A **raw record** points at a byte range that must be written back verbatim:
+
+| Byte Offset | Size | Description
+|-------------|------|-------------
+|           0 |    8 | Byte offset of the range on the disk
+|           8 |    4 | Length of the range, in bytes
+
+Typical raw records for GPT are: the protective MBR (LBA 0, 512 bytes), the
+primary header + entry array (LBA 1 .. 1 + N), and the backup entry array +
+backup header at the end of the disk.  For MBR there is a single 512-byte
+record (LBA 0), which contains both the boot code and the partition table.
+
+A **manifest entry** describes one partition:
+
+| Byte Offset | Size | Description
+|-------------|------|-------------
+|           0 |    4 | Partition index (1-based, as the OS numbers it)
+|           4 |    4 | Flags, see below
+|           8 |    8 | Start LBA
+|          16 |    8 | Size, in LBAs
+|          24 |   16 | Partition type: MBR type byte in byte 0, or a GPT type GUID
+|          40 |   16 | Partition unique GUID (GPT) or all-zero (MBR)
+|          56 |    4 | MBR type byte (duplicated for convenience)
+|          60 |    4 | GPT attributes
+|          64 |   64 | Partition name, UTF-8, NUL padded
+
+Manifest flags:
+
+| Bit | Name | Meaning
+|-----|------|--------
+|   0 | `PTC_PART_BOOTABLE` | Boot flag set
+|   1 | `PTC_PART_CONTAINER`| Extended partition (container of logical ones)
+|   2 | `PTC_PART_LOGICAL`  | Logical partition inside an extended partition
+|   3 | `PTC_PART_RESERVED` | No user data (e.g. BIOS boot, MSR, EFI with no FS)
+
+The manifest is *derived* information: it can always be recomputed from the raw
+sectors with a partition-table library.  Storing it makes the image
+introspectable without that library and lets a restore regenerate a table for a
+different target geometry.
+
+## Volume descriptor
+
+Fixed size, **256 bytes** (`descriptor_size` in the disk header).  One
+descriptor directly precedes its child image.
+
+| Byte Offset | Size | Description
+|-------------|------|-------------
+|           0 |    2 | Volume kind, see below
+|           2 |    2 | Flags, see below
+|           4 |    4 | Partition number, or 0 for a non-partition region
+|           8 |   16 | Filesystem magic of the child image (`"EXTFS"`, `"NTFS"`, `"raw"`, ...)
+|          24 |    8 | Byte offset of this volume on the **disk**
+|          32 |    8 | Byte length of this volume on the disk
+|          40 |    8 | Length of the child image that follows, in bytes
+|          48 |    4 | Block size used by the child image bitmap, in bytes
+|          52 |    4 | Reserved, zero
+|          56 |   16 | Partition type (MBR type byte or GPT type GUID)
+|          72 |   16 | Partition unique GUID (GPT)
+|          88 |   72 | Filesystem label or partition name, UTF-8, NUL padded
+|         160 |   92 | Reserved, zero
+|         252 |    4 | CRC32 of the previous 252 bytes
+
+Volume kinds:
+
+| Value | Name | Meaning
+|-------|------|--------
+|     0 | `PTC_VOL_NONE`       | Reserved
+|     1 | `PTC_VOL_FILESYSTEM` | Child image of a filesystem partition
+|     2 | `PTC_VOL_RAW_SPARSE` | Child image of a raw region, zero blocks omitted
+|     3 | `PTC_VOL_RAW_FULL`   | Child image of a raw region, every block stored
+|     4 | `PTC_VOL_ZERO`       | Region known to be zero; no child image
+
+Volume flags:
+
+| Bit | Name | Meaning
+|-----|------|--------
+|   0 | `PTC_VOL_SPARSE`   | The bitmap marks only blocks with non-zero content
+|   1 | `PTC_VOL_BOOTABLE` | Partition carries the boot flag
+|   2 | `PTC_VOL_SKIP`     | Do not restore this volume (unless explicitly asked)
+|   3 | `PTC_VOL_GROWABLE` | This partition may be grown on a larger target
+
+## Child volume image
+
+For `PTC_VOL_FILESYSTEM`, `PTC_VOL_RAW_SPARSE` and `PTC_VOL_RAW_FULL`, the
+payload is **exactly a format 0002 image** (see the "Format 0002" section):
+
+```
++-------------------------------+  sizeof(image_desc_v2) = 110 bytes
+| image_desc_v2 (magic .. crc)  |  version field is "0002"
++-------------------------------+  bitmap_size bytes
+| bitmap (+ CRC32)              |
++-------------------------------+  blocks_size bytes
+| used blocks, interleaved with |
+| per-strip checksums           |
++-------------------------------+
+```
+
+Conventions:
+
+  - `fs_info.device_size` is the volume's `disk_length`, so
+    `totalblock * block_size` accounts for exactly that range.
+  - `fs_info.fs` is the filesystem magic for filesystem volumes and `"raw"`
+    for raw volumes.
+  - For `PTC_VOL_RAW_FULL` the bitmap has every bit set, i.e. it behaves like a
+    `partclone.imager` / `partclone.dd` image.
+  - For `PTC_VOL_RAW_SPARSE` the bitmap marks each block whose content is not
+    all-zero; the descriptor sets `PTC_VOL_SPARSE`.
+  - `payload_length` equals `110 + bitmap_size + usedblocks * block_size +
+    checksum_bytes`, where `checksum_bytes = ceil(usedblocks /
+    blocks_per_checksum) * checksum_size` when checksums are enabled.  The
+    writer fills it in; readers may use it to skip a volume without parsing it.
+
+`PTC_VOL_ZERO` volumes carry no payload (`payload_length == 0`); they are used
+for free space that is known to be empty so that the region is still described.
+
+## Coverage model
+
+The whole disk address space is divided into non-overlapping regions, emitted in
+ascending offset order:
+
+  - the **partition table sectors** (recorded in the table blob, not as a
+    volume);
+  - one region per **filesystem partition**;
+  - one region per **non-filesystem partition** (BIOS boot, MSR, unknown),
+    stored as raw;
+  - the remaining **gaps** (MBR gap, alignment padding, free space, and the
+    area holding the backup GPT).
+
+Gaps are the only subtle part.  They may contain data that is not part of any
+partition but that matters for booting, most notably the GRUB core image that
+lives in the post-MBR gap or in a BIOS boot partition.  Because free space can
+also be enormous, gap handling is a policy:
+
+| Policy | Stored
+|--------|-------
+| `none`     | No gap volumes at all
+| `metadata` | Only gaps smaller than a threshold (default 1 MiB), for boot loaders
+| `sparse`   | Every gap, using a zero-detecting bitmap
+| `full`     | Every gap, stored as raw
+
+The default is `metadata`.  `sparse` is the safest choice for full fidelity;
+`none` is fastest but discards boot loaders that live outside a partition.
+
+"Free space" that is not stored is described by `PTC_VOL_ZERO` volumes so the
+region map still covers the disk, or simply omitted.
+
+## Backup procedure
+
+```
+1.  Open the disk read-only and lock out concurrent users.
+2.  Read logical and physical sector sizes (BLKSSZGET / BLKPBSZGET).
+3.  Read the partition table:
+      - MBR  -> build a 512-byte raw record and a manifest;
+      - GPT  -> build raw records (protective MBR, primary and backup GPT)
+                and a manifest;
+      - none -> if the whole disk contains one filesystem, emit a single
+                filesystem volume covering the disk; otherwise emit a single
+                raw volume covering the disk.
+4.  Enumerate partitions and classify each one:
+      - probe the filesystem type (libblkid) -> filesystem volume;
+      - no recognised filesystem -> raw volume (sparse).
+5.  Build the gap list from the coverage model and classify gaps.
+6.  Assemble the partition table blob.
+7.  Write the disk header (volume_count, table_size, disk_size, ...).
+8.  Write the partition table blob.
+9.  For every region, in disk-offset order:
+      a. write the volume descriptor;
+      b. write the child format 0002 image.
+10. Optionally append the trailer, then flush and close.
+```
+
+Step 9.b for a filesystem volume is the existing clone path: read the super
+block, build the bitmap, write `image_desc_v2`, write the bitmap, then stream the
+present blocks with per-strip checksums.  For a raw volume it is the same path
+with the `raw` backend (all blocks present) or with a zero-detecting scan.
+
+The important consequence is that **only one partition bitmap is in memory at a
+time**, exactly like today, so memory use does not grow with the number of
+partitions.
+
+### Reading partitions during backup
+
+Building the super block and bitmap of a partition requires reading that
+partition's bytes.  Two strategies exist and should both be supported over time:
+
+  - **Kernel partition devices (v1).**  On Linux each partition is available as
+    `/dev/sdaN` (or an equivalent device-mapper node), so the existing backends,
+    which take a path and read from offset 0, work unchanged.  This requires the
+    partitions to be exposed by the kernel and the process to be root, and it
+    does not work when the source is a regular file holding a disk image.
+  - **Device windows (future).**  A descriptor of `(backing fd, offset, length)`
+    handed to the backends, so a partition inside an image file or inside a
+    device with an unusual table can be read directly.  This needs an extension
+    of the `ptc_fs_backend` interface and, for libraries that only open by path,
+    either a small shim or a loop device.
+
+v1 should use kernel partition devices; device windows are the natural follow-up.
+
+## Restore procedure
+
+```
+1.  Read the disk header and the partition table blob.
+2.  Open the target and check it is large enough for disk_size
+    (allow a larger target; allow a smaller one only with --force).
+3.  Check sector sizes and warn/handle a mismatch.
+4.  Recreate the partition table:
+      - if the table is regenerable and a partition-table library is available,
+        rebuild it from the manifest so the secondary GPT and all CRCs are
+        placed correctly for the actual target size;
+      - otherwise write the raw records back verbatim (same-size target only).
+5.  For every volume, in stream order:
+      a. read the descriptor;
+      b. read the child format 0002 image;
+      c. seek the target to disk_offset;
+      d. restore the child's present blocks (reusing the existing restore
+         loop, with opt.offset set to disk_offset);
+      e. run the filesystem's post_clone_fixup hook.
+6.  If the target is larger, optionally zero the trailing area.
+7.  Flush and re-read the partition table (BLKRRPART / partprobe).
+```
+
+Restoring a child at an arbitrary disk offset is already expressible: the
+restore loop starts by seeking `opt.offset` bytes and then writes blocks
+sequentially relative to that position.  A disk restore therefore sets
+`opt.offset = volume.disk_offset` (and seeks the target to 0) before restoring
+each volume.
+
+### Skipped blocks and gaps
+
+Blocks absent from a child bitmap are *not* written by the existing restore
+loop, i.e. whatever is already on the target is left in place.  On a freshly
+partitioned disk those areas read as zero, which is the usual case.  For a
+defined result on a reused disk, the implementation should offer a policy:
+
+  - `--zero-skipped` (default on for whole-disk restore): write zeros for blocks
+    absent from the bitmap within each volume;
+  - otherwise: seek over them, like today.
+
+Gap volumes are ordinary raw volumes, so their content (mostly zeros) is written
+by the same code.
+
+## Target size changes
+
+  - **Same size:** write the table verbatim and restore every volume in place.
+  - **Larger (GPT):** keep partition offsets; place the backup GPT at the end of
+    the target instead of at the end of the source; optionally grow the last
+    partition and its filesystem (`--grow`).
+  - **Larger (MBR):** keep offsets; optionally enlarge the last primary
+    partition's size field, rewriting the extended partition if present.
+  - **Smaller:** refuse unless `--force`, and then only if every partition still
+    fits.
+
+Growing a filesystem is filesystem-specific.  It should be exposed as an
+optional per-filesystem hook (`resize_fs`) invoked after `post_clone_fixup`,
+symmetric with the existing hook mechanism.  When no hook exists, the partition
+table may still be restored unchanged.
+
+## CLI surface (proposal)
+
+A dedicated front end keeps the existing per-filesystem tools untouched:
+
+```
+partclone.disk -c -s /dev/sda -o /backup/sda.img          # back up the disk
+partclone.disk -r -s /backup/sda.img -o /dev/sda          # restore the disk
+partclone.disk -C -s /backup/sda.img                      # check the disk image
+partclone.info /backup/sda.img                            # list the volumes
+```
+
+Options:
+
+| Option | Meaning
+|--------|--------
+| `--gaps=none|metadata|sparse|full` | Gap policy (default `metadata`)
+| `--partition-table=raw|regenerate` | How to write the table on restore
+| `--partitions=LIST`                | Restrict an operation to selected partitions
+| `--grow` / `--resize-fs`           | Grow the last partition / its filesystem on a larger target
+| `--zero-skipped`                   | Zero blocks that are not in the bitmap
+| `--sector-size=N`                  | Override the logical sector size
+| `-S, --device-size=N`              | As today, override the recorded disk size
+
+`partclone.imager` keeps its current meaning (raw device image).  Whether
+`partclone.disk` should instead be folded into `partclone.imager` by detecting a
+whole disk is an open question.
+
+## libpartclone API (proposal)
+
+The container is a natural fit for the GObject API:
+
+  - `PtcClient` gains `PTC_MODE_DISK_CLONE` and `PTC_MODE_DISK_RESTORE`.
+  - A new introspectable `PtcImage` (or an extension of `PtcClient`) exposes the
+    volume list: index, disk offset, disk length, filesystem, label, flags.
+  - New signals report per-partition progress, e.g. `::volume-started`,
+    `::volume-progress`, `::volume-finished`, in addition to the existing
+    overall `::progress`.
+  - `ptc_image_is_disk()` distinguishes a 0003 container from a plain 0002 image.
+  - A `GCancellable` aborts between volumes and between block strips.
+
+## Integrity, validation and security
+
+  - The disk header and each volume descriptor carry a CRC32; a mismatch is a
+    hard error, as with the 0002 header.
+  - `disk_size` is validated against the sum of the regions; regions must be
+    non-overlapping and must lie inside the disk.
+  - `volume_count`, `descriptor_size` and `table_size` are bounded before any
+    allocation, mirroring the `totalblock` / `block_size` checks in
+    `load_image_desc_v2()`.
+  - Each child image is validated by the existing 0002 checks (block size,
+    usedblocks <= totalblock, checksum mode, overflow guards).
+  - Offset arithmetic uses checked 64-bit operations; overflow is rejected.
+  - The endianness marker must match; a foreign-endian image is refused, as
+    today.
+  - Restoring a partition table is privileged and destructive: the operation
+    refuses mounted targets and requires explicit confirmation before writing a
+    table.
+
+## Compatibility and versioning
+
+  - 0001 and 0002 are untouched; a 0003 reader must still read them.
+  - A 0001/0002 reader sees `version == "0003"` in the first 110 bytes and
+    reports "The image version is not supported", exactly like any unknown
+    future version.
+  - Single-partition use cases should keep producing 0002 images so that
+    existing workflows and tools are unaffected.  0003 is used when the source
+    is a whole disk.
+  - `descriptor_size`, `feature_size` and the reserved areas allow the container
+    to grow without another version number; only incompatible changes bump to
+    `0004`.
+
+### Optional trailer / index
+
+For seekable images, a trailer can be appended (flag `PTC_DISK_HAS_TRAILER`):
+
+  - a small fixed header with a magic and its own length;
+  - a directory of `(image offset, image length, disk offset, disk length)` per
+    volume, for random access to a single partition;
+  - an optional whole-image digest for end-to-end verification.
+
+A pipe reader simply ignores the trailer.  A seekable reader finds it by looking
+at the last few hundred bytes and validating the magic.
+
+## Alternatives considered
+
+  - **One 0002 image per partition plus a separate partition-table file**, which
+    is what Clonezilla does today.  It works, but it is not self-describing and
+    needs the orchestrator to track the relationships.  It remains the correct
+    behaviour for single-partition workflows; 0003 is the native alternative
+    when a single file is preferable.
+  - **Concatenating 0002 images with a text manifest.**  Rejected: fragile to
+    parse, no integrity, no defined framing.
+  - **Adding a partition map to format 0002.**  Rejected: it breaks the
+    invariant that 0002 is exactly one filesystem, complicates streaming, and
+    risks the existing readers.  A container is cleaner.
+  - **Storing the disk as one raw image** (the existing `raw` / `imager`
+    backend).  Rejected as the default because it stores free space and loses
+    per-filesystem awareness, but kept as the fallback for a disk with no table
+    or no recognised filesystems.
+
+## Implementation phases
+
+  1. Define the container reader/writer and the raw-only volumes; this alone
+     gives whole-disk raw backup/restore as 0003.
+  2. Add MBR/GPT parsing, the table blob and manifest, and table restore via a
+     partition-table library.
+  3. Add filesystem volumes through kernel partition devices, reusing the
+     per-filesystem backends and `opt.offset`.
+  4. Add gap handling, `--grow` / `resize_fs`, the CLI front end and the GObject
+     API, plus documentation and tests.
+
+## Open questions
+
+  - Is a partition-table library (libfdisk) acceptable as a dependency for
+    table regeneration, or should 0003 stay dependency-free and write raw
+    sectors only?
+  - Should the default gap policy be `metadata` or `sparse`?
+  - Should absent blocks be zeroed on restore by default, or only on request?
+  - Which filesystems get a `resize_fs` hook, and how is an unsupported one
+    reported?
+  - Is a new `partclone.disk` program preferred, or should `partclone.imager`
+    auto-detect whole disks?
+  - How should the format interact with external compression/encryption, which
+    today happens through pipes around partclone?
