@@ -11,7 +11,7 @@ executable('partclone.info', 'info.c',
   install_dir : sbindir,
 )
 
-foreach prog : ['partclone.dd', 'partclone.restore', 'partclone.chkimg', 'partclone.imager']
+foreach prog : ['partclone.dd', 'partclone.restore', 'partclone.chkimg', 'partclone.imager', 'partclone.disk']
   executable(prog, 'main.c',
     dependencies : libpartclone_dep,
     install : true,

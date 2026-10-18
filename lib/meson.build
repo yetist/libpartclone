@@ -17,6 +17,7 @@ core_sources = files(
   'checksum.c',
   'torrent_helper.c',
   'engine.c',
+  'diskimg.c',
   'ptc-fs-backend.c',
   'ptc-client.c',
 )

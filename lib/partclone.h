@@ -148,6 +148,10 @@ struct cmd_opt
     int reseed_checksum;
     unsigned long blocks_per_checksum;
     unsigned long device_size;
+
+    /* format 0003 (whole-disk) options */
+    int sparse;             /// clone raw volumes with a zero-detecting bitmap
+    int no_zero_skipped;    /// do not zero blocks absent from a child bitmap
 };
 typedef struct cmd_opt cmd_opt;
 
@@ -289,6 +293,7 @@ extern cmd_opt opt;
  * @PTC_CLI_MODE_RESTORE: partclone.restore.
  * @PTC_CLI_MODE_CHKIMG: partclone.chkimg.
  * @PTC_CLI_MODE_DD: partclone.dd (defaults to the dd-like mode).
+ * @PTC_CLI_MODE_DISK: partclone.disk (whole-disk format 0003 images).
  *
  * The command line front ends now share a single implementation of the option
  * parser; this selects the default mode and the accepted option set.
@@ -297,7 +302,8 @@ typedef enum {
 	PTC_CLI_MODE_FULL    = 0,
 	PTC_CLI_MODE_RESTORE = 1u << 0,
 	PTC_CLI_MODE_CHKIMG  = 1u << 1,
-	PTC_CLI_MODE_DD      = 1u << 2
+	PTC_CLI_MODE_DD      = 1u << 2,
+	PTC_CLI_MODE_DISK    = 1u << 3
 } ptc_cli_mode;
 
 extern void ptc_parse_options(int argc, char **argv, cmd_opt *opt, ptc_cli_mode mode);

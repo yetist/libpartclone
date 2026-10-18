@@ -117,11 +117,13 @@ written one after the other.
 
 # Format 0003 — whole-disk images
 
-> **Status: design proposal.** This section describes an image format and the
-> backup/restore strategy for backing up an *entire disk* (partition table +
-> every partition) with `partclone` / `libpartclone`. No code implements
-> format 0003 yet; format 0001 and 0002 are unchanged and remain the formats
-> actually produced today.
+> **Status: phase 1 implemented.** This section describes an image format and
+> the backup/restore strategy for backing up an *entire disk* (partition table
+> plus every partition) with `partclone` / `libpartclone`. Phase 1 (the
+> container reader/writer and raw-only volumes, exposed through the new
+> `partclone.disk` tool) is implemented; the partition table blob, filesystem
+> volumes and gaps are still design only. Formats 0001 and 0002 are unchanged
+> and remain the formats produced by the per-filesystem tools.
 
 ## Motivation
 
@@ -564,19 +566,22 @@ A dedicated front end keeps the existing per-filesystem tools untouched:
 ```
 partclone.disk -c -s /dev/sda -o /backup/sda.img          # back up the disk
 partclone.disk -r -s /backup/sda.img -o /dev/sda          # restore the disk
-partclone.disk -C -s /backup/sda.img                      # check the disk image
+partclone.disk --check-image -s /backup/sda.img           # check the disk image
 partclone.info /backup/sda.img                            # list the volumes
 ```
 
-Options:
+Options below are the eventual surface; only `--sparse`, `--no-zero-skipped`
+and `--check-image` exist in phase 1:
 
 | Option | Meaning
 |--------|--------
+| `--sparse`                         | Clone raw volumes with a zero-detecting bitmap (`PTC_VOL_RAW_SPARSE`)
+| `--check-image`                    | Check a whole-disk image (`partclone.disk` check mode)
+| `--[no-]zero-skipped`              | Zero blocks that are not in the bitmap (default on for disk restore)
 | `--gaps=none|metadata|sparse|full` | Gap policy (default `metadata`, see decision 2)
 | `--partition-table=raw|regenerate` | How to write the table on restore
 | `--partitions=LIST`                | Restrict an operation to selected partitions
 | `--grow`                           | Grow the last partition entry (not the filesystem) on a larger target
-| `--[no-]zero-skipped`              | Zero blocks that are not in the bitmap (default on for disk restore)
 | `--sector-size=N`                  | Override the logical sector size
 | `-S, --device-size=N`              | As today, override the recorded disk size
 
@@ -658,14 +663,18 @@ at the last few hundred bytes and validating the magic.
 
 ## Implementation phases
 
-  1. Define the container reader/writer and the raw-only volumes; this alone
-     gives whole-disk raw backup/restore as 0003.
+  1. **Done.** Define the container reader/writer and the raw-only volumes; this
+     alone gives whole-disk raw backup/restore as 0003.  Implemented in
+     `lib/diskimg.c` / `lib/diskimg.h` and exposed as `partclone.disk` with the
+     `--sparse` (zero-detecting raw volume) and `--check-image` options.  A
+     single raw volume covering the whole device is emitted (no partition table
+     yet).
   2. Add MBR/GPT parsing, the table blob and manifest, and table restore via a
      partition-table library.
   3. Add filesystem volumes through kernel partition devices, reusing the
      per-filesystem backends and `opt.offset`.
-  4. Add gap handling, `--grow` (partition entry only), the CLI front end, the
-     GObject API, documentation and tests.  A per-filesystem `resize_fs` hook is
+  4. Add gap handling, `--grow` (partition entry only), the GObject API and a
+     `partclone.info` view of the volumes.  A per-filesystem `resize_fs` hook is
      a later phase (decision 4).
 
 ## Resolved design decisions

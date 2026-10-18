@@ -63,6 +63,19 @@ int ptc_engine_run_named(const char *backend_name,
                          ptc_progress_func progress,
                          gpointer user_data);
 
+/**
+ * ptc_disk_engine_run:
+ * @progress: (nullable): progress callback.
+ * @user_data: (closure): data passed to @progress.
+ *
+ * Runs the whole-disk (format 0003) engine using the global #cmd_opt.  The mode
+ * is selected by #opt.clone, #opt.chkimg or #opt.restore.  Phase 1 only handles
+ * raw volumes (a whole disk stored as a single raw volume, no partition table).
+ *
+ * Returns: 0 on success, non-zero on failure.
+ */
+int ptc_disk_engine_run(ptc_progress_func progress, gpointer user_data);
+
 G_END_DECLS
 
 #endif /* PTC_ENGINE_H */

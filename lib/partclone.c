@@ -79,6 +79,9 @@ int log_y_line = 0;
 #define OPT_PROG_SEC 1004
 #define OPT_JSON_STATUS 1005
 #define OPT_JSON_FRESH 1006
+#define OPT_IMAGE_CHECK 1007
+#define OPT_DISK_SPARSE 1008
+#define OPT_DISK_NO_ZERO_SKIPPED 1009
 //
 //enum {
 //	OPT_OFFSET_DOMAIN = 1000
@@ -270,6 +273,9 @@ void usage(void) {
 		"    -E,  --offset=X         Add offset X (bytes) to OUTPUT\n"
 		"    -T,  --btfiles          Restore block as file for ClonezillaBT\n"
 		"    -t,  --btfiles_torrent  Restore block as file for ClonezillaBT but only generate torrent\n"
+		"         --check-image      Check a whole-disk image (partclone.disk)\n"
+		"         --sparse           Clone whole-disk raw volumes with a zero-detecting bitmap\n"
+		"         --no-zero-skipped  Do not zero blocks absent from the bitmap on disk restore\n"
 		"    -v,  --version          Display partclone version\n"
 		"    -h,  --help             Display this help\n"
 		, get_exec_name(), VERSION, get_exec_name(), DEFAULT_BUFFER_SIZE);
@@ -399,6 +405,9 @@ void ptc_parse_options(int argc, char **argv, cmd_opt* opt, ptc_cli_mode mode) {
 		{ "read-direct-io",	no_argument,	        NULL,   OPT_READ_DIRECT_IO },
 		{ "json-status",	optional_argument,	NULL,   OPT_JSON_STATUS },
 		{ "json-fresh",		required_argument,	NULL,   OPT_JSON_FRESH },
+		{ "check-image",	no_argument,		NULL,   OPT_IMAGE_CHECK },
+		{ "sparse",		no_argument,		NULL,   OPT_DISK_SPARSE },
+		{ "no-zero-skipped",	no_argument,		NULL,   OPT_DISK_NO_ZERO_SKIPPED },
 // all modes are accepted at runtime; the default mode is selected by the caller
 		{ "clone",		no_argument,		NULL,   'c' },
 		{ "compresscmd",	required_argument,	NULL,	'x' },
@@ -474,6 +483,17 @@ void ptc_parse_options(int argc, char **argv, cmd_opt* opt, ptc_cli_mode mode) {
 			case OPT_JSON_FRESH:
 				assert(optarg != NULL);
 				opt->json_fresh = atol(optarg);
+				break;
+			case OPT_IMAGE_CHECK:
+				opt->chkimg++;
+				opt->restore++;
+				mode_selected = 1;
+				break;
+			case OPT_DISK_SPARSE:
+				opt->sparse = 1;
+				break;
+			case OPT_DISK_NO_ZERO_SKIPPED:
+				opt->no_zero_skipped = 1;
 				break;
 			case 'n':
 				memcpy(opt->note, optarg, NOTE_SIZE);

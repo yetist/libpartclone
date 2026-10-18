@@ -7,7 +7,7 @@
 bash = find_program('bash')
 test_workdir = meson.current_build_dir()
 
-tests = { 'dd' : 'dd.test' }
+tests = { 'dd' : 'dd.test', 'disk' : 'disk.test' }
 
 if get_option('fs-test')
   if fs_build.get('extfs', false)

@@ -1,0 +1,59 @@
+#!/bin/bash
+set -e
+
+. "$(dirname "$0")"/_common
+
+# Whole-disk format 0003 test (phase 1: the container and raw-only volumes).
+# partclone.disk stores a whole disk as a single raw volume inside a 0003
+# container.  Both the raw-full and the sparse (zero-detecting) variants are
+# round-tripped and compared byte for byte.
+
+ptlfs="../src/partclone.disk"
+bs=4096
+count=$((4*1024))   # 16 MiB
+
+echo -e "partclone.disk (format 0003) test"
+echo -e "================================\n"
+_ptlbreak
+
+# A mostly-zero disk with a few random regions, so that the sparse variant has
+# something to skip and something to keep.
+echo -e "create source disk $raw ($((bs*count)) bytes)\n"
+[ -f $raw ] && rm $raw
+dd if=/dev/zero of=$raw bs=$bs count=$count status=none
+dd if=/dev/urandom of=$raw bs=$bs count=8  seek=1    conv=notrunc status=none
+dd if=/dev/urandom of=$raw bs=$bs count=64 seek=1000 conv=notrunc status=none
+smd5=$(md5sum $raw | awk '{print $1}')
+
+for mode in full sparse; do
+    if [ "$mode" = sparse ]; then
+        opt="--sparse"
+    else
+        opt=""
+    fi
+
+    echo -e "\n[$mode] clone $raw to $img\n"
+    [ -f $img ] && rm $img
+    $ptlfs -c $opt -s $raw -O $img -L $logfile -F
+    _check_return_code
+
+    echo -e "[$mode] check $img\n"
+    $ptlfs --check-image -s $img -L $logfile
+    _check_return_code
+
+    echo -e "[$mode] restore $img to $raw_restore\n"
+    [ -f $raw_restore ] && rm $raw_restore
+    dd if=/dev/zero of=$raw_restore bs=$bs count=$count status=none
+    $ptlfs -r -s $img -O $raw_restore -L $logfile -F
+    _check_return_code
+
+    nmd5=$(md5sum $raw_restore | awk '{print $1}')
+    if [ "X$smd5" != "X$nmd5" ]; then
+        echo -e "\ndisk $mode test fail (md5 $smd5 != $nmd5)\n"
+        exit 1
+    fi
+done
+
+echo -e "\ndisk test ok\n"
+_ptlbreak
+rm -f $img $raw $raw_restore $logfile

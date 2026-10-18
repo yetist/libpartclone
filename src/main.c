@@ -66,6 +66,10 @@ ptc_cli_classify_program(const char *argv0,
         *mode = PTC_CLI_MODE_CHKIMG;
         return;
     }
+    if (strcmp(suffix, "disk") == 0) {
+        *mode = PTC_CLI_MODE_DISK;
+        return;
+    }
     if (strcmp(suffix, "dd") == 0) {
         *mode = PTC_CLI_MODE_DD;
         *backend_name = "raw";
@@ -117,6 +121,13 @@ main(int argc, char **argv)
      * #opt (owned by libpartclone) and exits for --help / --version.
      */
     ptc_parse_options(argc, argv, &opt, mode);
+
+    /**
+     * partclone.disk handles whole-disk images (format 0003) with its own
+     * engine; it never needs a filesystem backend nor auto detection.
+     */
+    if (mode == PTC_CLI_MODE_DISK)
+        return ptc_disk_engine_run(NULL, NULL);
 
     /**
      * Restore and check modes do not need a primary backend: the filesystem
