@@ -1566,16 +1566,19 @@ int ptc_disk_engine_run(const ptc_disk_progress *progress)
     if (r != 0)
         ret = r;
 
-    if (!opt.chkimg)
+    if (!opt.chkimg && !disk_cancelled)
         sync_data(dfw, &opt);
-    print_finish_info(opt);
+    if (!disk_cancelled)
+        print_finish_info(opt);
 
     close(dfr);
     if (dfw != -1)
         close_target(dfw);
     close_pui(pui);
 
-    if (!opt.chkimg)
+    if (disk_cancelled)
+        log_mesg(0, 0, 1, debug, "Operation cancelled.\n");
+    else if (!opt.chkimg)
         fprintf(stderr, "Cloned successfully.\n");
     else
         printf("Checked successfully.\n");

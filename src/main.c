@@ -19,6 +19,7 @@
 
 #include <config.h>
 
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -95,6 +96,70 @@ ptc_cli_list_backends(void)
 }
 
 /**
+ * cli_interrupted:
+ *
+ * Set from the SIGINT/SIGTERM handler and polled by the engine cancellation
+ * callback.  `volatile sig_atomic_t` is the only type that is safe to share
+ * with a signal handler.
+ */
+static volatile sig_atomic_t cli_interrupted;
+
+static void
+ptc_cli_signal_handler(int signum)
+{
+    (void)signum;
+    cli_interrupted = 1;
+}
+
+/**
+ * ptc_cli_cancelled:
+ * @user_data: unused.
+ *
+ * Engine cancellation callback: %TRUE once SIGINT/SIGTERM has arrived.
+ */
+static gboolean
+ptc_cli_cancelled(gpointer user_data)
+{
+    (void)user_data;
+    return cli_interrupted != 0;
+}
+
+/**
+ * ptc_cli_install_signal_handlers:
+ *
+ * Ask SIGINT and SIGTERM to set a flag that aborts the running operation at the
+ * next block boundary instead of killing the process and leaving the target
+ * (image or device) dirty.  SA_RESTART keeps the I/O syscalls from failing with
+ * EINTR while the engine is not yet at a cancellation point.
+ */
+static void
+ptc_cli_install_signal_handlers(void)
+{
+    struct sigaction sa;
+
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = ptc_cli_signal_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+
+    sigaction(SIGINT, &sa, NULL);
+    sigaction(SIGTERM, &sa, NULL);
+}
+
+/**
+ * ptc_cli_exit_code:
+ * @ret: engine result (0 = success, -1 = error, -2 = cancelled).
+ *
+ * Returns: the process exit status: 0 on success, 255 on error and 254 when the
+ * operation was cancelled by SIGINT/SIGTERM.
+ */
+static int
+ptc_cli_exit_code(int ret)
+{
+    return ret == -2 ? 254 : ret;
+}
+
+/**
  * main - command line entry point shared by every partclone.<fs> tool.
  */
 int
@@ -123,11 +188,22 @@ main(int argc, char **argv)
     ptc_parse_options(argc, argv, &opt, mode);
 
     /**
+     * Let Ctrl-C / SIGTERM stop a long running operation at the next block
+     * boundary rather than killing the process and leaving the target dirty.
+     * Must be installed before the engine starts.
+     */
+    ptc_cli_install_signal_handlers();
+
+    /**
      * partclone.disk handles whole-disk images (format 0003) with its own
      * engine; it never needs a filesystem backend nor auto detection.
      */
-    if (mode == PTC_CLI_MODE_DISK)
-        return ptc_disk_engine_run(NULL);
+    if (mode == PTC_CLI_MODE_DISK) {
+        ptc_disk_progress progress = { 0 };
+
+        progress.cancelled = ptc_cli_cancelled;
+        return ptc_cli_exit_code(ptc_disk_engine_run(&progress));
+    }
 
     /**
      * Restore and check modes do not need a primary backend: the filesystem
@@ -146,5 +222,6 @@ main(int argc, char **argv)
         }
     }
 
-    return ptc_engine_run(backend, NULL, NULL, NULL);
+    return ptc_cli_exit_code(
+        ptc_engine_run(backend, NULL, ptc_cli_cancelled, NULL));
 }

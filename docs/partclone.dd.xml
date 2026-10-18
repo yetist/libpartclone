@@ -378,7 +378,15 @@ man(1), man(7), http://www.tldp.org/HOWTO/Man-Page/
         <seg><errorcode>1</errorcode></seg>
         <seg>Clone or Restore seem failed.</seg>
       </seglistitem>
+      <seglistitem>
+        <seg><errorcode>254</errorcode></seg>
+        <seg>Operation cancelled by SIGINT or SIGTERM.</seg>
+      </seglistitem>
     </segmentedlist>
+    <para><command>&dhpackage;</command> catches SIGINT (Ctrl-C) and SIGTERM
+      during a long running clone, restore or check.  The operation then stops
+      at the next block boundary, the target (image or device) is left
+      incomplete and the exit status is <errorcode>254</errorcode>.</para>
   </refsect1>
   <refsect1 id="bugs">
     <!-- Or use this section to tell about upstream BTS. -->

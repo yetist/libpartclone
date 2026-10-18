@@ -47,6 +47,34 @@ $ptlfs -d -s $img -O $raw -F -L $logfile
 _check_return_code
 nmd5=$(md5sum $raw)
 
+echo -e "\nSIGINT gracefully cancels a clone\n"
+sig_img="$$_sigint.ptc"
+sig_log="$$_sigint.log"
+rm -f $sig_img $sig_log
+# Feed the clone from a slow pipe so that it is still running when the signal
+# arrives: the engine must stop at the next block boundary (exit status 254 and
+# an "Operation cancelled" report) rather than being killed.
+( for _ in $(seq 1 64); do dd if=/dev/zero bs=1M count=8 status=none; sleep 0.1; done ) 2>/dev/null | \
+    $ptlfs --device-size $((512*1024*1024)) -s - -O $sig_img -F -L $sig_log >/dev/null 2>&1 &
+sig_pid=$!
+sleep 0.5
+kill -INT $sig_pid
+if wait $sig_pid; then sig_rc=0; else sig_rc=$?; fi
+if [ "$sig_rc" != 254 ]; then
+    echo -e "\nSIGINT test fail: exit code $sig_rc, expected 254\n"
+    exit 1
+fi
+if ! grep -q "Operation cancelled" $sig_log; then
+    echo -e "\nSIGINT test fail: no cancellation report in $sig_log\n"
+    cat $sig_log
+    exit 1
+fi
+if grep -q "successfully" $sig_log; then
+    echo -e "\nSIGINT test fail: reported success after cancellation\n"
+    exit 1
+fi
+rm -f $sig_img $sig_log
+
 if [ "X$smd5" == "X$nmd5" ]; then
     echo -e "\n$fs test ok\n"
     echo -e "\nclear tmp files $img $raw $logfile $md5\n"

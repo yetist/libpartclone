@@ -19,6 +19,8 @@ set -e
 # Phase 4: --grow (partition entry only), the partclone.info view of the volumes
 # and the libpartclone GObject API (PtcImage / PtcClient disk modes, with
 # GCancellable cancellation of both the plain and the whole-disk operations).
+# The CLI's SIGINT/SIGTERM handling is checked as well (partclone.dd in
+# dd.test, partclone.disk below).
 
 ptlfs="../src/partclone.disk"
 bs=4096
@@ -476,6 +478,35 @@ EOF
     else
         echo -e "[goapi] ptc-image-probe not built; skipping GObject API test\n"
     fi
+
+    echo -e "\n[sigint] SIGTERM gracefully cancels a whole-disk clone\n"
+    p4_sig="$$_p4sig.raw"
+    p4_sigimg="$$_p4sig.ptc"
+    p4_siglog="$$_p4sig.log"
+    rm -f $p4_sig $p4_sigimg $p4_siglog
+    truncate -s $((512*1024*1024)) $p4_sig
+    dd if=/dev/urandom of=$p4_sig bs=1M count=8 seek=1 conv=notrunc status=none
+    # A large raw disk (no partition table) cloned with a tiny buffer keeps the
+    # engine busy long enough to be interrupted; it must stop gracefully.
+    $ptlfs -c -s $p4_sig -O $p4_sigimg -F -L $p4_siglog -z 512 >/dev/null 2>&1 &
+    sig_pid=$!
+    sleep 0.5
+    kill -TERM $sig_pid
+    if wait $sig_pid; then sig_rc=0; else sig_rc=$?; fi
+    if [ "$sig_rc" != 254 ]; then
+        echo -e "\n[sigint] unexpected exit code $sig_rc, expected 254\n"
+        exit 1
+    fi
+    if ! grep -q "Operation cancelled" $p4_siglog; then
+        echo -e "\n[sigint] no cancellation report in $p4_siglog\n"
+        cat $p4_siglog
+        exit 1
+    fi
+    if grep -q "successfully" $p4_siglog; then
+        echo -e "\n[sigint] reported success after cancellation\n"
+        exit 1
+    fi
+    rm -f $p4_sig $p4_sigimg $p4_siglog
 
     rm -f $p4_src $p4_img $p4_out $p4_mbr $p4_mimg $p4_mout
 else

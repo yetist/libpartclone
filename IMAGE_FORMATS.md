@@ -603,6 +603,10 @@ exist today, the rest are planned:
 `partclone.imager` keeps its current meaning (raw device image) and is not
 changed; whole-disk images are handled by `partclone.disk` (decision 5).
 
+Every command line tool stops at the next block boundary when it receives
+`SIGINT` (Ctrl-C) or `SIGTERM`, leaves the target incomplete and exits with
+status `254`.
+
 ## libpartclone API
 
 The container is a natural fit for the GObject API; this is implemented in
