@@ -10,9 +10,9 @@
  * reused unchanged.
  *
  * See IMAGE_FORMATS.md ("Format 0003 - whole-disk images") for the full
- * description of every field.  This header only implements phase 1: the
- * container reader/writer and raw-only volumes (one raw volume covering the
- * whole device, no partition table yet).
+ * description of every field and of the implementation phases; phases 1 to 3
+ * (container, partition tables and filesystem volumes) are implemented in
+ * diskimg.c.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

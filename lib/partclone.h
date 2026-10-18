@@ -165,6 +165,7 @@ struct cmd_opt
     int no_zero_skipped;    /// do not zero blocks absent from a child bitmap
     int gaps;               /// gap policy (PTC_GAPS_*)
     int ptable;             /// table restore mode (PTC_PT_*)
+    int no_fs_volumes;      /// store partitions as raw volumes instead of filesystem ones
 };
 typedef struct cmd_opt cmd_opt;
 

@@ -171,6 +171,162 @@ EOF
         exit 1
     fi
     rm -f $cimg $bad $gpt $mbr
+
+    # -----------------------------------------------------------------------
+    # Phase 3: filesystem volumes (kernel partition devices)
+    # -----------------------------------------------------------------------
+    #
+    # A partition holding a recognised filesystem is stored as a filesystem
+    # volume (only its used blocks) and restored into place.  This needs a real
+    # block device with kernel partition nodes, so it is skipped when loop
+    # devices are not usable.
+
+    _loop_priv() {
+        if [ "$(id -u)" -eq 0 ]; then
+            SUDO=""
+            return 0
+        fi
+        if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+            SUDO="sudo"
+            return 0
+        fi
+        return 1
+    }
+
+    _find_part() {
+        # $1: loop device, $2: partition number
+        local d=$1 n=$2 c
+        for c in "${d}p${n}" "${d}${n}"; do
+            if [ -b "$c" ]; then
+                echo "$c"
+                return 0
+            fi
+        done
+        return 1
+    }
+
+    _loop_unlock() {
+        # Allow this user to open the loop device and its partitions.
+        [ -n "$SUDO" ] && $SUDO chmod 666 "$fs_dev" "$fs_p1" "$fs_p2" 2>/dev/null
+    }
+
+    _loop_readable() {
+        # Ready once the loop device and p1 can be read by this user; udev
+        # settles the node permissions asynchronously, hence the retries.
+        local i
+        for i in $(seq 1 25); do
+            _loop_unlock
+            if [ -r "$fs_dev" ] && [ -r "$fs_p1" ]; then
+                return 0
+            fi
+            sleep 0.2
+        done
+        return 1
+    }
+
+    if command -v losetup >/dev/null 2>&1 && command -v mkfs.ext4 >/dev/null 2>&1 && _loop_priv; then
+        echo -e "\nphase 3: filesystem volumes through kernel partition devices\n"
+
+        fs_disk="$$_fsdisk.raw"
+        fs_img="$$_fs.ptc"
+        fs_rawimg="$$_fsraw.ptc"
+        fs_out="$$_fs.out"
+        fs_big="$$_fsbig.out"
+        fs_dev=""
+        fs_p1=""
+
+        _fs_cleanup() {
+            [ -n "$fs_dev" ] && $SUDO losetup -d "$fs_dev" 2>/dev/null
+            rm -f "$fs_disk" "$fs_img" "$fs_rawimg" "$fs_out" "$fs_big"
+        }
+        trap _fs_cleanup EXIT
+
+        rm -f "$fs_disk"
+        truncate -s $((128*1024*512)) "$fs_disk"
+        sfdisk "$fs_disk" >/dev/null 2>&1 <<'EOF'
+label: gpt
+start=2048, size=40960, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, name="p1"
+start=43008, size=20480, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, name="p2"
+EOF
+
+        fs_dev=$($SUDO losetup -f --show -P "$fs_disk" 2>/dev/null || true)
+
+        # Wait for the kernel/udev to expose the partition devices.  The nodes
+        # are created with restrictive permissions and udev keeps adjusting them
+        # for a moment, so also make them readable by this user and retry until
+        # that sticks.
+        fs_p1=""
+        fs_p2=""
+        if [ -n "$fs_dev" ]; then
+            for _ in $(seq 1 25); do
+                fs_p1=$(_find_part "$fs_dev" 1 || true)
+                [ -n "$fs_p1" ] && break
+                sleep 0.2
+            done
+            fs_p2=$(_find_part "$fs_dev" 2 || true)
+        fi
+
+        if [ -z "$fs_dev" ] || [ -z "$fs_p1" ] || ! _loop_readable; then
+            echo -e "loop devices not usable; skipping phase 3\n"
+        else
+            # p1 gets an ext4 filesystem, p2 stays raw (no filesystem).
+            $SUDO mkfs.ext4 -q -F "$fs_p1"
+            # mkfs triggers a partition "change" uevent; wait for the nodes to
+            # be readable again before the tools open them.
+            _loop_readable || true
+
+            echo -e "[fsvol] clone (filesystem volumes)\n"
+            rm -f "$fs_img"
+            $ptlfs -c -s "$fs_dev" -O "$fs_img" -L $logfile -F
+            _check_return_code
+
+            echo -e "[fsvol] clone --no-fs-volumes (raw)\n"
+            rm -f "$fs_rawimg"
+            $ptlfs -c --no-fs-volumes -s "$fs_dev" -O "$fs_rawimg" -L $logfile -F
+            _check_return_code
+
+            # The filesystem volume stores only used blocks, so its image must
+            # be smaller than the all-raw one.
+            fssize=$(stat -c %s "$fs_img")
+            rawsize=$(stat -c %s "$fs_rawimg")
+            if [ "$fssize" -ge "$rawsize" ]; then
+                echo -e "\n[fsvol] filesystem image not smaller than the raw one ($fssize >= $rawsize)\n"
+                exit 1
+            fi
+
+            echo -e "[fsvol] check\n"
+            $ptlfs --check-image -s "$fs_img" -L $logfile
+            _check_return_code
+
+            echo -e "[fsvol] restore to a same-size target\n"
+            dd if=/dev/zero of="$fs_out" bs=512 count=$((128*1024)) status=none
+            $ptlfs -r -s "$fs_img" -O "$fs_out" -L $logfile -F
+            _check_return_code
+            if ! cmp -s "$fs_dev" "$fs_out"; then
+                echo -e "\n[fsvol] whole-disk round-trip differs\n"
+                exit 1
+            fi
+
+            echo -e "[fsvol] restore to a larger target\n"
+            truncate -s $((144*1024*512)) "$fs_big"
+            $ptlfs -r -s "$fs_img" -O "$fs_big" -L $logfile -F
+            _check_return_code
+            if [ "$(dd if=$fs_big bs=512 skip=$((144*1024-1)) count=1 status=none | head -c 8)" != "EFI PART" ]; then
+                echo -e "\n[fsvol] no backup GPT at the end of the larger target\n"
+                exit 1
+            fi
+            if ! cmp -s <(dd if=$fs_dev bs=512 skip=2048 count=40960 status=none) \
+                        <(dd if=$fs_big bs=512 skip=2048 count=40960 status=none); then
+                echo -e "\n[fsvol] partition 1 differs on the larger target\n"
+                exit 1
+            fi
+
+            $SUDO losetup -d "$fs_dev"
+            fs_dev=""
+        fi
+    else
+        echo -e "\nlosetup/mkfs.ext4 or privileges unavailable; skipping phase 3\n"
+    fi
 else
     echo -e "\nsfdisk not found; skipping partition-table tests\n"
 fi

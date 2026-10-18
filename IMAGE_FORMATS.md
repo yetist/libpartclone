@@ -117,14 +117,16 @@ written one after the other.
 
 # Format 0003 — whole-disk images
 
-> **Status: phases 1 and 2 implemented.** This section describes an image
+> **Status: phases 1 to 3 implemented.** This section describes an image
 > format and the backup/restore strategy for backing up an *entire disk*
 > (partition table plus every partition) with `partclone` / `libpartclone`.
-> Phase 1 (the container reader/writer and raw-only volumes) and phase 2
+> Phase 1 (the container reader/writer and raw-only volumes), phase 2
 > (MBR/GPT parsing, the partition table blob and manifest, per-partition raw
 > volumes, gaps, and table restore - verbatim or regenerated through libfdisk)
-> are implemented and exposed through the new `partclone.disk` tool.
-> Filesystem volumes and device windows (phase 3) are still design only.
+> and phase 3 (filesystem volumes built through the kernel partition devices,
+> reusing the per-filesystem backends) are implemented and exposed through the
+> new `partclone.disk` tool.  Device windows - reading a partition of a disk
+> image file without a kernel partition device - are still design only.
 > Formats 0001 and 0002 are unchanged and remain the formats produced by the
 > per-filesystem tools.
 
@@ -502,8 +504,8 @@ the planned follow-up (decision 7):
     of the `ptc_fs_backend` interface and, for libraries that only open by path,
     either a small shim or a loop device.
 
-v1 uses kernel partition devices (decision 7); device windows are the natural
-follow-up.
+v1 uses kernel partition devices (decision 7) and is implemented; device
+windows are the natural follow-up.
 
 ## Restore procedure
 
@@ -522,11 +524,16 @@ follow-up.
       b. read the child format 0002 image;
       c. seek the target to disk_offset;
       d. restore the child's present blocks (reusing the existing restore
-         loop, with opt.offset set to disk_offset);
-      e. run the filesystem's post_clone_fixup hook.
+         loop, with opt.offset set to disk_offset).
 6.  If the target is larger, optionally zero the trailing area.
 7.  Flush and re-read the partition table (BLKRRPART / partprobe).
 ```
+
+The per-filesystem `post_clone_fixup` hook is not run for a filesystem volume
+in v1: the existing hooks (HFS+) work on absolute target offsets and are not
+offset aware, so they cannot address a volume that lives inside a disk.  A
+disk-aware version is left to the phase that adds filesystem growth
+(decision 4).
 
 Restoring a child at an arbitrary disk offset is already expressible: the
 restore loop starts by seeking `opt.offset` bytes and then writes blocks
@@ -574,8 +581,8 @@ partclone.info /backup/sda.img                            # list the volumes
 ```
 
 Options below are the eventual surface; `--sparse`, `--no-zero-skipped`,
-`--check-image`, `--gaps` and `--partition-table` exist today, the rest are
-planned:
+`--check-image`, `--gaps`, `--partition-table` and `--no-fs-volumes` exist
+today, the rest are planned:
 
 | Option | Meaning
 |--------|--------
@@ -584,6 +591,7 @@ planned:
 | `--[no-]zero-skipped`              | Zero blocks that are not in the bitmap (default on for disk restore)
 | `--gaps=none|metadata|sparse|full` | Gap policy (default `metadata`, see decision 2)
 | `--partition-table=auto|raw|regenerate` | How to write the table on restore (default `auto`)
+| `--no-fs-volumes`                  | Store every partition as a raw volume instead of a filesystem volume
 | `--partitions=LIST`                | Restrict an operation to selected partitions
 | `--grow`                           | Grow the last partition entry (not the filesystem) on a larger target
 | `--sector-size=N`                  | Override the logical sector size
@@ -683,8 +691,16 @@ at the last few hundred bytes and validating the magic.
      - when built with the optional libfdisk dependency and the target size
      differs from the source - regenerates it from the manifest
      (`--partition-table=auto|raw|regenerate`).
-  3. Add filesystem volumes through kernel partition devices, reusing the
-     per-filesystem backends and `opt.offset`.
+  3. **Done.** Filesystem volumes through kernel partition devices, reusing the
+     per-filesystem backends.  For every partition whose kernel partition
+     device (`/dev/sda1`, `/dev/nvme0n1p1`, `/dev/loop0p1`, ...) exposes a
+     filesystem that libblkid recognises, `partclone.disk` builds the super
+     block and the used-block bitmap with the matching backend and emits a
+     `PTC_VOL_FILESYSTEM` volume; the block data is still read from the disk at
+     the partition offset.  Unsupported or reserved partitions, gaps and a
+     source without partition devices (a disk image file) fall back to raw
+     volumes, and `--no-fs-volumes` forces that fallback.  Restore reuses the
+     ordinary 0002 child restore at the volume offset.
   4. Add `--grow` (partition entry only), the GObject API and a
      `partclone.info` view of the volumes.  A per-filesystem `resize_fs` hook is
      a later phase (decision 4).

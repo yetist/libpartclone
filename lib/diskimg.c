@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2007~ Thomas Tsai <thomas at nchc org tw>
  *
- * Phases 1 and 2 of the format 0003 work described in IMAGE_FORMATS.md:
+ * Phases 1 to 3 of the format 0003 work described in IMAGE_FORMATS.md:
  *
  *   - the container reader/writer (512-byte disk header + 256-byte volume
  *     descriptors, both CRC32 protected);
@@ -12,6 +12,14 @@
  *     regenerated from the manifest with libfdisk;
  *   - per-region raw volumes: one volume per partition plus, depending on the
  *     --gaps policy, raw volumes for the gaps in between.
+ *
+ * Phase 3 adds filesystem volumes: when a partition's kernel partition device
+ * exposes a filesystem that libblkid recognises, the matching per-filesystem
+ * backend builds the super block and the used-block bitmap, and only the used
+ * blocks are stored (the block data itself still comes from the disk at the
+ * partition offset).  Unsupported or reserved partitions, gaps and a source
+ * without partition devices (a disk image file) are stored as raw volumes, as
+ * in phases 1 and 2.
  *
  * A disk without a (recognizable) partition table is still stored as a single
  * raw volume covering the whole device, as in phase 1.  The child image of a
@@ -34,6 +42,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <features.h>
+#include <limits.h>
 #include <locale.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -70,13 +79,22 @@ extern unsigned long long block_id;
 #include "engine.h"
 #include "diskimg.h"
 #include "checksum.h"
+#include "ptc-fs-backend.h"
+#include "fs_common.h"
 
 /// cmd_opt structure defined in partclone.h, instantiated in engine.c
 extern cmd_opt opt;
 
+/// fs_cmd_opt is defined in engine.c; the backend modules read it.
+extern fs_cmd_opt fs_opt;
+
 static ptc_progress_func disk_progress_cb;
 static gpointer disk_progress_data;
 static int disk_done;
+
+/// Progress interface selected by ptc_disk_engine_run() and passed to
+/// backend->read_bitmap() while building a filesystem volume.
+static int disk_pui = 0;
 
 /**
  * disk_progress_thread - periodic progress updates.
@@ -745,85 +763,82 @@ static int disk_find_part(const ptc_disk_table *tbl, uint32_t index)
 }
 
 /**
- * disk_clone_region - store one disk region as a raw child volume.
+ * disk_partition_path - kernel partition device of a source block device.
  *
- * Regions come from ptc_table_regions() (partitions and gaps) or, for a disk
- * without a partition table, a single region covering the whole device.
+ * Linux exposes every partition as its own device node whose name is the disk
+ * name followed by the partition number, with a "p" separator when the disk
+ * name ends in a digit (/dev/sda1, /dev/nvme0n1p1, /dev/loop0p1,
+ * /dev/mapper/vg-lv1).  The candidate is only returned when it actually
+ * exists, so a regular file (a disk image) simply yields %NULL and its
+ * partitions are stored raw.
+ *
+ * Returns: (nullable) (transfer full): the partition device path, or %NULL.
  */
-static void disk_clone_region(int *dfr, int *dfw, const ptc_disk_table *tbl,
-                              const ptc_region *region, unsigned int sector_size,
-                              int target_stdout)
+static char *disk_partition_path(const char *source, uint32_t part_index)
 {
-    file_system_info fs_info;
-    image_options img_opt;
+    struct stat st;
+    char resolved[PATH_MAX];
+    const char *base = source;
+    char *cand;
+    size_t len;
+    int sep;
+
+    if (source == NULL || part_index == 0)
+        return NULL;
+
+    /* Resolve a symlink such as /dev/disk/by-id/... to the real device. */
+    if (realpath(source, resolved) != NULL)
+        base = resolved;
+
+    if (strncmp(base, "/dev/", 5) != 0)
+        return NULL;
+
+    len = strlen(base);
+    if (len == 0)
+        return NULL;
+
+    sep = (base[len - 1] >= '0' && base[len - 1] <= '9');
+
+    cand = g_strdup_printf("%s%s%u", base, sep ? "p" : "", part_index);
+    if (stat(cand, &st) == 0)
+        return cand;
+    g_free(cand);
+
+    /* Fall back to the other separator convention before giving up. */
+    cand = g_strdup_printf("%s%s%u", base, sep ? "" : "p", part_index);
+    if (stat(cand, &st) == 0)
+        return cand;
+    g_free(cand);
+
+    return NULL;
+}
+
+/**
+ * disk_emit_volume - write one volume descriptor and its child image.
+ *
+ * Shared by the raw and the filesystem paths of disk_clone_region(): the child
+ * is always an ordinary format 0002 image whose blocks are read from the
+ * source disk starting at region->offset.
+ */
+static void disk_emit_volume(int *dfr, int *dfw, const ptc_region *region,
+                             const ptc_part_entry *pe,
+                             const file_system_info *fs_info,
+                             const image_options *img_opt,
+                             unsigned long *bitmap, uint16_t kind,
+                             uint16_t vol_flags, unsigned int block_size,
+                             int target_stdout)
+{
     image_volume_desc_v3 desc;
-    unsigned long *bitmap;
-    unsigned long long totalblock, payload;
-    unsigned int block_size = sector_size;
-    unsigned int buffer_capacity;
-    uint16_t kind, vol_flags = 0;
-    const ptc_part_entry *pe = NULL;
+    unsigned long long payload;
     pthread_t prog_thread;
     void *p_result;
-    int flag, start, sparse;
+    int flag, start;
     unsigned long long stop;
 
-    init_fs_info(&fs_info);
-    init_image_options(&img_opt);
-
-    if (region->is_part) {
-        int pi = disk_find_part(tbl, region->part_index);
-        if (pi >= 0)
-            pe = &tbl->parts[pi];
-        sparse = opt.sparse;
-    } else {
-        /* Decision 2: metadata and sparse gaps use a zero-detecting bitmap,
-         * full gaps are stored raw. */
-        sparse = opt.gaps == PTC_GAPS_METADATA || opt.gaps == PTC_GAPS_SPARSE;
-    }
-    kind = sparse ? PTC_VOL_RAW_SPARSE : PTC_VOL_RAW_FULL;
-
-    totalblock = (region->length + block_size - 1) / block_size;
-
-    strncpy(fs_info.fs, raw_MAGIC, FS_MAGIC_SIZE);
-    fs_info.device_size = region->length;
-    fs_info.totalblock = totalblock;
-    fs_info.block_size = block_size;
-
-    img_opt.image_version = 0x0002;
-    img_opt.bitmap_mode = BM_BIT;
-    img_opt.checksum_mode = opt.checksum_mode;
-    img_opt.checksum_size = get_checksum_size(opt.checksum_mode, opt.debug);
-    img_opt.blocks_per_checksum = opt.blocks_per_checksum;
-    img_opt.reseed_checksum = opt.reseed_checksum;
-
-    buffer_capacity = opt.buffer_size > block_size ? opt.buffer_size / block_size : 1;
-    if (img_opt.checksum_mode != CSM_NONE && img_opt.blocks_per_checksum == 0)
-        img_opt.blocks_per_checksum = buffer_capacity;
-
-    bitmap = pc_alloc_bitmap(totalblock);
-    if (bitmap == NULL)
-        log_mesg(0, 1, 1, opt.debug, "%s, %i, not enough memory\n", __func__, __LINE__);
-
-    if (sparse) {
-        log_mesg(1, 0, 0, opt.debug, "Scanning region at %llu for zero blocks...\n",
-                 region->offset);
-        disk_scan_bitmap(dfr, region->offset, bitmap, &fs_info, &opt);
-    } else {
-        pc_init_bitmap(bitmap, 0xFF, totalblock);
-    }
-    update_used_blocks_count(&fs_info, bitmap);
-    check_mem_size(fs_info, img_opt, opt);
-
-    if (sparse)
-        vol_flags |= PTC_VOL_SPARSE;
-    if (pe != NULL && (pe->flags & PTC_PART_BOOTABLE))
-        vol_flags |= PTC_VOL_BOOTABLE;
-
-    payload = disk_payload_length(&fs_info, &img_opt, &opt);
+    payload = disk_payload_length(fs_info, img_opt, &opt);
 
     ptc_disk_init_desc(&desc, kind, vol_flags, region->offset, region->length,
-                       payload, block_size, raw_MAGIC);
+                       payload, block_size, fs_info->fs);
     desc.part_number = region->is_part ? region->part_index : 0;
     if (pe != NULL) {
         memcpy(desc.part_type, pe->type, sizeof(desc.part_type));
@@ -835,7 +850,7 @@ static void disk_clone_region(int *dfr, int *dfw, const ptc_disk_table *tbl,
     log_mesg(0, 0, 1, opt.debug,
              "Volume: offset %llu length %llu (%s%s), %llu blocks\n",
              region->offset, region->length, ptc_disk_vol_kind_str(kind),
-             region->is_part ? ", partition" : ", gap", totalblock);
+             region->is_part ? ", partition" : ", gap", fs_info->totalblock);
     if (pe != NULL)
         log_mesg(0, 0, 0, opt.debug, "Partition %u: flags %s, name \"%s\"\n",
                  pe->index, ptc_table_part_flag_str(pe->flags), pe->name);
@@ -848,9 +863,9 @@ static void disk_clone_region(int *dfr, int *dfw, const ptc_disk_table *tbl,
     ptc_disk_write_desc(dfw, &desc, &opt);
 
     start = 0;
-    stop = fs_info.usedblocks;
+    stop = fs_info->usedblocks;
     flag = opt.no_block_detail ? NO_BLOCK_DETAIL : IO;
-    progress_init(&prog, start, stop, fs_info.totalblock, flag, fs_info.block_size);
+    progress_init(&prog, start, stop, fs_info->totalblock, flag, fs_info->block_size);
     prog.prog_second = opt.prog_second;
     prog.binary_prefix = opt.binary_prefix;
     if (opt.prog_second)
@@ -858,19 +873,149 @@ static void disk_clone_region(int *dfr, int *dfw, const ptc_disk_table *tbl,
     copied = 0;
     block_id = 0;
     disk_done = 0;
-    json_status_init(opt.json_path, &fs_info, &opt);
+    json_status_init(opt.json_path, fs_info, &opt);
     if (pthread_create(&prog_thread, NULL, disk_progress_thread, NULL))
         log_mesg(0, 1, 1, opt.debug, "%s, %i, thread create error\n", __func__, __LINE__);
 
     log_mesg(1, 0, 0, opt.debug, "start backup data...\n");
-    disk_write_child(dfr, dfw, region->offset, &fs_info, &img_opt, bitmap, &opt);
+    disk_write_child(dfr, dfw, region->offset, fs_info, img_opt, bitmap, &opt);
 
     disk_done = 1;
     pthread_join(prog_thread, &p_result);
     update_pui(&prog, copied, block_id, 1);
     json_status_finish(&prog, copied, block_id);
+}
+
+/**
+ * disk_clone_region - store one disk region as a child volume.
+ *
+ * A partition whose kernel partition device exposes a recognised filesystem is
+ * stored as a filesystem volume (phase 3): the per-filesystem backend builds
+ * the super block and the used-block bitmap, exactly like partclone.<fs>.  The
+ * block data itself is still read from the source disk at the region offset.
+ * Everything else - an unsupported or reserved partition, a gap, and a disk
+ * without a partition table - is stored as a raw volume, as in phase 2.
+ *
+ * Regions come from ptc_table_regions() (partitions and gaps) or, for a disk
+ * without a partition table, a single region covering the whole device.
+ */
+static void disk_clone_region(int *dfr, int *dfw, const ptc_disk_table *tbl,
+                              const ptc_region *region, unsigned int sector_size,
+                              int target_stdout)
+{
+    file_system_info fs_info;
+    image_options img_opt;
+    unsigned long *bitmap;
+    unsigned int block_size;
+    unsigned int buffer_capacity;
+    uint16_t kind = PTC_VOL_RAW_FULL, vol_flags = 0;
+    const ptc_part_entry *pe = NULL;
+    const ptc_fs_backend *backend = NULL;
+    char *part_path = NULL;
+    int sparse = 0;
+
+    init_fs_info(&fs_info);
+    init_image_options(&img_opt);
+
+    img_opt.image_version = 0x0002;
+    img_opt.bitmap_mode = BM_BIT;
+    img_opt.checksum_mode = opt.checksum_mode;
+    img_opt.checksum_size = get_checksum_size(opt.checksum_mode, opt.debug);
+    img_opt.blocks_per_checksum = opt.blocks_per_checksum;
+    img_opt.reseed_checksum = opt.reseed_checksum;
+
+    if (region->is_part) {
+        int pi = disk_find_part(tbl, region->part_index);
+        if (pi >= 0)
+            pe = &tbl->parts[pi];
+
+        /* Phase 3: use the kernel partition device to build a filesystem
+         * volume when one is recognised. */
+        if (!opt.no_fs_volumes && pe != NULL &&
+            !(pe->flags & (PTC_PART_CONTAINER | PTC_PART_RESERVED))) {
+            part_path = disk_partition_path(opt.source, region->part_index);
+            if (part_path != NULL)
+                backend = ptc_fs_backend_detect(part_path);
+        }
+    }
+
+    if (backend != NULL) {
+        /* -------- filesystem volume -------- */
+        log_mesg(0, 0, 1, opt.debug, "Reading filesystem of %s (%s)...\n",
+                 part_path, backend->name);
+
+        backend->read_super_blocks(part_path, &fs_info);
+        if (fs_info.totalblock == 0 || fs_info.block_size == 0)
+            log_mesg(0, 1, 1, opt.debug, "cannot read the super block of %s.\n", part_path);
+
+        /* The child image covers the whole partition, not just the filesystem
+         * extent (see IMAGE_FORMATS.md "Child volume image"). */
+        fs_info.device_size = region->length;
+
+        block_size = fs_info.block_size;
+        buffer_capacity = opt.buffer_size > block_size ? opt.buffer_size / block_size : 1;
+        if (img_opt.checksum_mode != CSM_NONE && img_opt.blocks_per_checksum == 0)
+            img_opt.blocks_per_checksum = buffer_capacity;
+
+        check_mem_size(fs_info, img_opt, opt);
+
+        bitmap = pc_alloc_bitmap(fs_info.totalblock);
+        if (bitmap == NULL)
+            log_mesg(0, 1, 1, opt.debug, "%s, %i, not enough memory\n", __func__, __LINE__);
+
+        log_mesg(0, 0, 1, opt.debug, "Calculating bitmap of %s...\n", part_path);
+        backend->read_bitmap(part_path, fs_info, bitmap, disk_pui);
+        update_used_blocks_count(&fs_info, bitmap);
+
+        kind = PTC_VOL_FILESYSTEM;
+        if (pe->flags & PTC_PART_BOOTABLE)
+            vol_flags |= PTC_VOL_BOOTABLE;
+    } else {
+        /* -------- raw volume (phase 1 / phase 2 behaviour) -------- */
+        if (region->is_part)
+            sparse = opt.sparse;
+        else
+            /* Decision 2: metadata and sparse gaps use a zero-detecting
+             * bitmap, full gaps are stored raw. */
+            sparse = opt.gaps == PTC_GAPS_METADATA || opt.gaps == PTC_GAPS_SPARSE;
+        kind = sparse ? PTC_VOL_RAW_SPARSE : PTC_VOL_RAW_FULL;
+
+        block_size = sector_size;
+        strncpy(fs_info.fs, raw_MAGIC, FS_MAGIC_SIZE);
+        fs_info.device_size = region->length;
+        fs_info.totalblock = (region->length + block_size - 1) / block_size;
+        fs_info.block_size = block_size;
+
+        buffer_capacity = opt.buffer_size > block_size ? opt.buffer_size / block_size : 1;
+        if (img_opt.checksum_mode != CSM_NONE && img_opt.blocks_per_checksum == 0)
+            img_opt.blocks_per_checksum = buffer_capacity;
+
+        bitmap = pc_alloc_bitmap(fs_info.totalblock);
+        if (bitmap == NULL)
+            log_mesg(0, 1, 1, opt.debug, "%s, %i, not enough memory\n", __func__, __LINE__);
+
+        if (sparse) {
+            log_mesg(1, 0, 0, opt.debug, "Scanning region at %llu for zero blocks...\n",
+                     region->offset);
+            disk_scan_bitmap(dfr, region->offset, bitmap, &fs_info, &opt);
+        } else {
+            pc_init_bitmap(bitmap, 0xFF, fs_info.totalblock);
+        }
+        update_used_blocks_count(&fs_info, bitmap);
+        check_mem_size(fs_info, img_opt, opt);
+
+        if (sparse)
+            vol_flags |= PTC_VOL_SPARSE;
+        if (pe != NULL && (pe->flags & PTC_PART_BOOTABLE))
+            vol_flags |= PTC_VOL_BOOTABLE;
+    }
+
+    disk_emit_volume(dfr, dfw, region, pe, &fs_info, &img_opt, bitmap, kind,
+                     vol_flags, block_size, target_stdout);
 
     free(bitmap);
+    if (part_path != NULL)
+        free(part_path);
 }
 
 static int disk_clone(int *dfr, int *dfw, int target_stdout)
@@ -1113,6 +1258,13 @@ int ptc_disk_engine_run(ptc_progress_func progress, gpointer user_data)
         opt.ncurses = 0;
         pui = TEXT;
     }
+    disk_pui = pui;
+
+    /* The filesystem backend modules read fs_opt (see engine.c); fill it in
+     * before any backend is invoked for a filesystem volume. */
+    memset(&fs_opt, 0, sizeof(fs_cmd_opt));
+    fs_opt.debug = debug;
+    fs_opt.ignore_fschk = opt.ignore_fschk;
 
     print_partclone_info(opt);
 

@@ -84,6 +84,7 @@ int log_y_line = 0;
 #define OPT_DISK_NO_ZERO_SKIPPED 1009
 #define OPT_DISK_GAPS 1010
 #define OPT_DISK_PTABLE 1011
+#define OPT_DISK_NO_FS_VOLUMES 1012
 //
 //enum {
 //	OPT_OFFSET_DOMAIN = 1000
@@ -280,6 +281,7 @@ void usage(void) {
 		"         --no-zero-skipped  Do not zero blocks absent from the bitmap on disk restore\n"
 		"         --gaps=POLICY      Store gaps: none|metadata|sparse|full (default metadata)\n"
 		"         --partition-table=M  Restore table: auto|raw|regenerate (default auto)\n"
+		"         --no-fs-volumes    Store every partition as a raw volume\n"
 		"    -v,  --version          Display partclone version\n"
 		"    -h,  --help             Display this help\n"
 		, get_exec_name(), VERSION, get_exec_name(), DEFAULT_BUFFER_SIZE);
@@ -386,6 +388,7 @@ void ptc_opt_init(cmd_opt *opt) {
 	opt->prog_second = 0;
 	opt->gaps = PTC_GAPS_METADATA;
 	opt->ptable = PTC_PT_AUTO;
+	opt->no_fs_volumes = 0;
 }
 
 void ptc_parse_options(int argc, char **argv, cmd_opt* opt, ptc_cli_mode mode) {
@@ -416,6 +419,7 @@ void ptc_parse_options(int argc, char **argv, cmd_opt* opt, ptc_cli_mode mode) {
 		{ "no-zero-skipped",	no_argument,		NULL,   OPT_DISK_NO_ZERO_SKIPPED },
 		{ "gaps",		required_argument,	NULL,   OPT_DISK_GAPS },
 		{ "partition-table",	required_argument,	NULL,   OPT_DISK_PTABLE },
+		{ "no-fs-volumes",	no_argument,		NULL,   OPT_DISK_NO_FS_VOLUMES },
 // all modes are accepted at runtime; the default mode is selected by the caller
 		{ "clone",		no_argument,		NULL,   'c' },
 		{ "compresscmd",	required_argument,	NULL,	'x' },
@@ -530,6 +534,9 @@ void ptc_parse_options(int argc, char **argv, cmd_opt* opt, ptc_cli_mode mode) {
 					fprintf(stderr, "Unknown --partition-table value '%s'.\n", optarg);
 					usage();
 				}
+				break;
+			case OPT_DISK_NO_FS_VOLUMES:
+				opt->no_fs_volumes = 1;
 				break;
 			case 'n':
 				memcpy(opt->note, optarg, NOTE_SIZE);
