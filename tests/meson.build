@@ -16,6 +16,11 @@ ptc_image_probe = executable('ptc-image-probe',
 
 tests = { 'dd' : 'dd.test', 'disk' : 'disk.test' }
 
+if build_gtk4
+  # ptc-gtk4 --self-test; skipped at run time when no display is available.
+  tests += {'gtk4' : 'gtk4.test'}
+endif
+
 if get_option('fs-test')
   if fs_build.get('extfs', false)
     tests += {'ext2' : 'ext2.test', 'ext3' : 'ext3.test', 'ext4' : 'ext4.test'}

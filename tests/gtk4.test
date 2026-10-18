@@ -1,0 +1,31 @@
+#!/bin/bash
+#
+# Headless self-test of the GTK4 front end (ptc-gtk4 --self-test).
+#
+# ptc-gtk4 drives the public libpartclone GObject API.  --self-test runs a
+# classic clone/check round-trip followed by a whole-disk (format 0003)
+# clone/check round-trip, then exits.  The GUI needs a display, so when no
+# display is available the test re-runs it under Xvfb.  It is skipped when
+# the front end was not built or no display can be provided.
+set -e
+
+. "$(dirname "$0")"/_common
+
+ptl="$ptldir/ptc-gtk4"
+if [ ! -x "$ptl" ]; then
+	echo "skip: $ptl was not built (GTK4 front end disabled)"
+	exit 77
+fi
+
+run=("$ptl" --self-test)
+if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
+	if command -v xvfb-run >/dev/null 2>&1; then
+		run=(xvfb-run -a "${run[@]}")
+	else
+		echo "skip: no DISPLAY/WAYLAND_DISPLAY and no xvfb-run"
+		exit 77
+	fi
+fi
+
+set -x
+"${run[@]}"

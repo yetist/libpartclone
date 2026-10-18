@@ -29,6 +29,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <glib/gstdio.h>
 #include <glib/gi18n.h>
@@ -99,11 +100,35 @@ static gchar *opt_backend = NULL;
 static gchar *opt_mode = NULL;
 static gchar **opt_remaining = NULL;
 
-static const char *const self_test_source    = "/tmp/ptc-gtk4-selftest.src";
-static const char *const self_test_image     = "/tmp/ptc-gtk4-selftest.pcl";
-static const char *const self_test_disk_src  = "/tmp/ptc-gtk4-selftest.disk.src";
-static const char *const self_test_disk_img  = "/tmp/ptc-gtk4-selftest.disk.pcl";
-static const char *const self_test_log       = "/tmp/ptc-gtk4-selftest.log";
+static char *self_test_source    = NULL;
+static char *self_test_image     = NULL;
+static char *self_test_disk_src  = NULL;
+static char *self_test_disk_img  = NULL;
+static char *self_test_log       = NULL;
+
+/* Give every run its own files so parallel invocations cannot collide. */
+static void
+self_test_init_paths(void)
+{
+    const char *tmp = g_get_tmp_dir();
+    long pid = (long) getpid();
+
+    self_test_source   = g_strdup_printf("%s/ptc-gtk4-selftest-%ld.src", tmp, pid);
+    self_test_image    = g_strdup_printf("%s/ptc-gtk4-selftest-%ld.pcl", tmp, pid);
+    self_test_disk_src = g_strdup_printf("%s/ptc-gtk4-selftest-%ld.disk.src", tmp, pid);
+    self_test_disk_img = g_strdup_printf("%s/ptc-gtk4-selftest-%ld.disk.pcl", tmp, pid);
+    self_test_log      = g_strdup_printf("%s/ptc-gtk4-selftest-%ld.log", tmp, pid);
+}
+
+static void
+self_test_free_paths(void)
+{
+    g_free(self_test_source);
+    g_free(self_test_image);
+    g_free(self_test_disk_src);
+    g_free(self_test_disk_img);
+    g_free(self_test_log);
+}
 
 /* Keyboard accelerators. */
 static const char *const accel_quit[]    = { "<Control>q", NULL };
@@ -1193,6 +1218,7 @@ self_test_start(PtcGtkApp *self)
     GError *error = NULL;
     guint i, raw_index = 0;
 
+    self_test_init_paths();
     g_remove(self_test_image);
     g_remove(self_test_disk_img);
 
@@ -1705,8 +1731,17 @@ main(int argc, char **argv)
 
     status = g_application_run(G_APPLICATION(gtk_app), argc, argv);
 
-    if (self_test_opt)
+    if (self_test_opt) {
         status = self_test_status;
+        if (self_test_source != NULL) {
+            g_remove(self_test_source);
+            g_remove(self_test_image);
+            g_remove(self_test_disk_src);
+            g_remove(self_test_disk_img);
+            g_remove(self_test_log);
+            self_test_free_paths();
+        }
+    }
 
     g_clear_object(&app.cancellable);
     g_clear_object(&app.client);
