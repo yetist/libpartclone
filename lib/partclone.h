@@ -99,6 +99,17 @@ extern char *EXECNAME;
 extern unsigned long long rescue_write_size;
 #endif
 
+/* Format 0003 gap policy (--gaps) */
+#define PTC_GAPS_NONE     0
+#define PTC_GAPS_METADATA 1
+#define PTC_GAPS_SPARSE   2
+#define PTC_GAPS_FULL     3
+
+/* Format 0003 partition table restore mode (--partition-table) */
+#define PTC_PT_AUTO       0
+#define PTC_PT_RAW        1
+#define PTC_PT_REGENERATE 2
+
 /**
  * option
  * structure smd_opt
@@ -152,6 +163,8 @@ struct cmd_opt
     /* format 0003 (whole-disk) options */
     int sparse;             /// clone raw volumes with a zero-detecting bitmap
     int no_zero_skipped;    /// do not zero blocks absent from a child bitmap
+    int gaps;               /// gap policy (PTC_GAPS_*)
+    int ptable;             /// table restore mode (PTC_PT_*)
 };
 typedef struct cmd_opt cmd_opt;
 

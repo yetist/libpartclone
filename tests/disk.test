@@ -3,10 +3,15 @@ set -e
 
 . "$(dirname "$0")"/_common
 
-# Whole-disk format 0003 test (phase 1: the container and raw-only volumes).
-# partclone.disk stores a whole disk as a single raw volume inside a 0003
-# container.  Both the raw-full and the sparse (zero-detecting) variants are
-# round-tripped and compared byte for byte.
+# Whole-disk format 0003 test.
+#
+# Phase 1: the container and raw-only volumes.  A disk without a partition
+# table is stored as a single raw volume; the raw-full and the sparse
+# (zero-detecting) variants are round-tripped and compared byte for byte.
+#
+# Phase 2: MBR and GPT parsing, the partition table blob and manifest, one raw
+# volume per partition plus gap volumes, and table restore (verbatim, or
+# regenerated through libfdisk for a larger target).
 
 ptlfs="../src/partclone.disk"
 bs=4096
@@ -53,6 +58,122 @@ for mode in full sparse; do
         exit 1
     fi
 done
+
+# ---------------------------------------------------------------------------
+# Phase 2: partition tables
+# ---------------------------------------------------------------------------
+
+_disk_roundtrip() {
+    # $1: source disk, $2: gap policy (may be empty), $3: label
+    local src=$1 gaps=$2 label=$3
+    local img="$$_$label.ptc" out="$$_$label.out" opt=""
+
+    [ -n "$gaps" ] && opt="--gaps=$gaps"
+
+    echo -e "\n[$label] clone\n"
+    rm -f $img $out
+    $ptlfs -c $opt -s $src -O $img -L $logfile -F
+    _check_return_code
+
+    echo -e "[$label] check\n"
+    $ptlfs --check-image -s $img -L $logfile
+    _check_return_code
+
+    echo -e "[$label] restore\n"
+    dd if=/dev/zero of=$out bs=512 count=$((sectors)) status=none
+    $ptlfs -r -s $img -O $out -L $logfile -F
+    _check_return_code
+
+    if ! cmp -s $src $out; then
+        echo -e "\n$label round-trip differs\n"
+        exit 1
+    fi
+
+    rm -f $img $out
+}
+
+if command -v sfdisk >/dev/null 2>&1; then
+    sectors=$((32*1024))          # 16 MiB disk
+    gpt="$$_gpt.raw"
+    mbr="$$_mbr.raw"
+
+    # --- GPT: two partitions, one bootable-ish gap after the primary GPT ---
+    echo -e "\ncreate GPT source disk $gpt\n"
+    rm -f $gpt
+    truncate -s $((sectors*512)) $gpt
+    sfdisk $gpt >/dev/null 2>&1 <<'EOF'
+label: gpt
+start=2048, size=4096, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, name="p1"
+start=8192, size=4096, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, name="p2"
+EOF
+    dd if=/dev/urandom of=$gpt bs=512 seek=2048 count=4096 conv=notrunc status=none
+    dd if=/dev/urandom of=$gpt bs=512 seek=8192 count=4096 conv=notrunc status=none
+
+    _disk_roundtrip $gpt ""       gpt
+    _disk_roundtrip $gpt none     gpt-none
+    _disk_roundtrip $gpt full     gpt-full
+    _disk_roundtrip $gpt sparse   gpt-sparse
+
+    # --- GPT regeneration onto a larger target ---
+    echo -e "\n[gpt-grow] clone and restore onto a larger target\n"
+    gimg="$$_gpt.ptc"
+    big="$$_gpt-big.out"
+    rm -f $gimg $big
+    $ptlfs -c -s $gpt -O $gimg -L $logfile -F
+    _check_return_code
+    truncate -s $(((sectors+16*1024)*512)) $big
+    $ptlfs -r -s $gimg -O $big -L $logfile -F
+    _check_return_code
+
+    # Partition data must be preserved at the same offsets ...
+    if ! cmp -s <(dd if=$gpt bs=512 skip=2048 count=4096 status=none) \
+                <(dd if=$big bs=512 skip=2048 count=4096 status=none); then
+        echo -e "\ngpt-grow: partition 1 data differs\n"
+        exit 1
+    fi
+    # ... and the backup GPT must be at the end of the (larger) target.
+    if [ "$(dd if=$big bs=512 skip=$(((sectors+16*1024)-1)) count=1 status=none | head -c 8)" != "EFI PART" ]; then
+        echo -e "\ngpt-grow: no backup GPT at the end of the larger target\n"
+        exit 1
+    fi
+    rm -f $gimg $big
+
+    # --- MBR with an extended partition and logical partitions ---
+    echo -e "\ncreate MBR source disk $mbr\n"
+    rm -f $mbr
+    truncate -s $((sectors*512)) $mbr
+    sfdisk $mbr >/dev/null 2>&1 <<'EOF'
+label: dos
+unit: sectors
+start=2048, size=4096, type=83, bootable
+start=8192, size=8192, type=5
+start=10240, size=2048, type=83
+start=14336, size=2048, type=83
+EOF
+    for s in 2048 10240 14336; do
+        dd if=/dev/urandom of=$mbr bs=512 seek=$s count=2048 conv=notrunc status=none
+    done
+
+    _disk_roundtrip $mbr ""     mbr
+    _disk_roundtrip $mbr full   mbr-full
+
+    # --- corrupted disk header must be rejected without --force ---
+    echo -e "\n[corrupt] a damaged disk header must be rejected\n"
+    cimg="$$_gpt.ptc"
+    bad="$$_bad.ptc"
+    rm -f $cimg $bad
+    $ptlfs -c -s $gpt -O $cimg -L $logfile -F
+    _check_return_code
+    cp $cimg $bad
+    printf '\xff' | dd of=$bad bs=1 seek=500 conv=notrunc status=none
+    if $ptlfs --check-image -s $bad -L $logfile >/dev/null 2>&1; then
+        echo -e "\ncorrupted disk header was not detected\n"
+        exit 1
+    fi
+    rm -f $cimg $bad $gpt $mbr
+else
+    echo -e "\nsfdisk not found; skipping partition-table tests\n"
+fi
 
 echo -e "\ndisk test ok\n"
 _ptlbreak

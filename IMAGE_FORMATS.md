@@ -117,13 +117,16 @@ written one after the other.
 
 # Format 0003 — whole-disk images
 
-> **Status: phase 1 implemented.** This section describes an image format and
-> the backup/restore strategy for backing up an *entire disk* (partition table
-> plus every partition) with `partclone` / `libpartclone`. Phase 1 (the
-> container reader/writer and raw-only volumes, exposed through the new
-> `partclone.disk` tool) is implemented; the partition table blob, filesystem
-> volumes and gaps are still design only. Formats 0001 and 0002 are unchanged
-> and remain the formats produced by the per-filesystem tools.
+> **Status: phases 1 and 2 implemented.** This section describes an image
+> format and the backup/restore strategy for backing up an *entire disk*
+> (partition table plus every partition) with `partclone` / `libpartclone`.
+> Phase 1 (the container reader/writer and raw-only volumes) and phase 2
+> (MBR/GPT parsing, the partition table blob and manifest, per-partition raw
+> volumes, gaps, and table restore - verbatim or regenerated through libfdisk)
+> are implemented and exposed through the new `partclone.disk` tool.
+> Filesystem volumes and device windows (phase 3) are still design only.
+> Formats 0001 and 0002 are unchanged and remain the formats produced by the
+> per-filesystem tools.
 
 ## Motivation
 
@@ -570,16 +573,17 @@ partclone.disk --check-image -s /backup/sda.img           # check the disk image
 partclone.info /backup/sda.img                            # list the volumes
 ```
 
-Options below are the eventual surface; only `--sparse`, `--no-zero-skipped`
-and `--check-image` exist in phase 1:
+Options below are the eventual surface; `--sparse`, `--no-zero-skipped`,
+`--check-image`, `--gaps` and `--partition-table` exist today, the rest are
+planned:
 
 | Option | Meaning
 |--------|--------
-| `--sparse`                         | Clone raw volumes with a zero-detecting bitmap (`PTC_VOL_RAW_SPARSE`)
+| `--sparse`                         | Clone partition raw volumes with a zero-detecting bitmap (`PTC_VOL_RAW_SPARSE`)
 | `--check-image`                    | Check a whole-disk image (`partclone.disk` check mode)
 | `--[no-]zero-skipped`              | Zero blocks that are not in the bitmap (default on for disk restore)
 | `--gaps=none|metadata|sparse|full` | Gap policy (default `metadata`, see decision 2)
-| `--partition-table=raw|regenerate` | How to write the table on restore
+| `--partition-table=auto|raw|regenerate` | How to write the table on restore (default `auto`)
 | `--partitions=LIST`                | Restrict an operation to selected partitions
 | `--grow`                           | Grow the last partition entry (not the filesystem) on a larger target
 | `--sector-size=N`                  | Override the logical sector size
@@ -669,11 +673,19 @@ at the last few hundred bytes and validating the magic.
      `--sparse` (zero-detecting raw volume) and `--check-image` options.  A
      single raw volume covering the whole device is emitted (no partition table
      yet).
-  2. Add MBR/GPT parsing, the table blob and manifest, and table restore via a
-     partition-table library.
+  2. **Done.** Add MBR/GPT parsing, the table blob and manifest, and table
+     restore via a partition-table library.  Implemented in `lib/disktable.c` /
+     `lib/disktable.h`: `partclone.disk` reads the MBR (primary, extended and
+     logical partitions) or GPT (primary and backup) of the source, writes the
+     blob (raw records + manifest) after the disk header, and emits one
+     `PTC_VOL_RAW_FULL`/`PTC_VOL_RAW_SPARSE` volume per partition plus gap
+     volumes according to `--gaps`.  Restore writes the table back verbatim, or
+     - when built with the optional libfdisk dependency and the target size
+     differs from the source - regenerates it from the manifest
+     (`--partition-table=auto|raw|regenerate`).
   3. Add filesystem volumes through kernel partition devices, reusing the
      per-filesystem backends and `opt.offset`.
-  4. Add gap handling, `--grow` (partition entry only), the GObject API and a
+  4. Add `--grow` (partition entry only), the GObject API and a
      `partclone.info` view of the volumes.  A per-filesystem `resize_fs` hook is
      a later phase (decision 4).
 

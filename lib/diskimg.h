@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 #include "partclone.h"
+#include "disktable.h"
 
 #define PTC_DISK_HEADER_SIZE   512
 #define PTC_VOLUME_DESC_SIZE   256
@@ -39,12 +40,7 @@
 #define PTC_DISK_GAPS_INCLUDED (1u << 2)
 #define PTC_DISK_SPARSE_RAW    (1u << 3)
 
-/// Partition table type
-#define PTC_TABLE_NONE   0
-#define PTC_TABLE_MBR    1
-#define PTC_TABLE_GPT    2
-#define PTC_TABLE_HYBRID 3
-#define PTC_TABLE_OTHER  4
+/// Partition table type: PTC_TABLE_* (see disktable.h)
 
 /// Volume kind
 #define PTC_VOL_NONE       0

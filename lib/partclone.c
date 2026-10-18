@@ -82,6 +82,8 @@ int log_y_line = 0;
 #define OPT_IMAGE_CHECK 1007
 #define OPT_DISK_SPARSE 1008
 #define OPT_DISK_NO_ZERO_SKIPPED 1009
+#define OPT_DISK_GAPS 1010
+#define OPT_DISK_PTABLE 1011
 //
 //enum {
 //	OPT_OFFSET_DOMAIN = 1000
@@ -276,6 +278,8 @@ void usage(void) {
 		"         --check-image      Check a whole-disk image (partclone.disk)\n"
 		"         --sparse           Clone whole-disk raw volumes with a zero-detecting bitmap\n"
 		"         --no-zero-skipped  Do not zero blocks absent from the bitmap on disk restore\n"
+		"         --gaps=POLICY      Store gaps: none|metadata|sparse|full (default metadata)\n"
+		"         --partition-table=M  Restore table: auto|raw|regenerate (default auto)\n"
 		"    -v,  --version          Display partclone version\n"
 		"    -h,  --help             Display this help\n"
 		, get_exec_name(), VERSION, get_exec_name(), DEFAULT_BUFFER_SIZE);
@@ -380,6 +384,8 @@ void ptc_opt_init(cmd_opt *opt) {
 	opt->read_direct_io = 0;
 	opt->binary_prefix = 0;
 	opt->prog_second = 0;
+	opt->gaps = PTC_GAPS_METADATA;
+	opt->ptable = PTC_PT_AUTO;
 }
 
 void ptc_parse_options(int argc, char **argv, cmd_opt* opt, ptc_cli_mode mode) {
@@ -408,6 +414,8 @@ void ptc_parse_options(int argc, char **argv, cmd_opt* opt, ptc_cli_mode mode) {
 		{ "check-image",	no_argument,		NULL,   OPT_IMAGE_CHECK },
 		{ "sparse",		no_argument,		NULL,   OPT_DISK_SPARSE },
 		{ "no-zero-skipped",	no_argument,		NULL,   OPT_DISK_NO_ZERO_SKIPPED },
+		{ "gaps",		required_argument,	NULL,   OPT_DISK_GAPS },
+		{ "partition-table",	required_argument,	NULL,   OPT_DISK_PTABLE },
 // all modes are accepted at runtime; the default mode is selected by the caller
 		{ "clone",		no_argument,		NULL,   'c' },
 		{ "compresscmd",	required_argument,	NULL,	'x' },
@@ -494,6 +502,34 @@ void ptc_parse_options(int argc, char **argv, cmd_opt* opt, ptc_cli_mode mode) {
 				break;
 			case OPT_DISK_NO_ZERO_SKIPPED:
 				opt->no_zero_skipped = 1;
+				break;
+			case OPT_DISK_GAPS:
+				assert(optarg != NULL);
+				if (strcmp(optarg, "none") == 0)
+					opt->gaps = PTC_GAPS_NONE;
+				else if (strcmp(optarg, "metadata") == 0)
+					opt->gaps = PTC_GAPS_METADATA;
+				else if (strcmp(optarg, "sparse") == 0)
+					opt->gaps = PTC_GAPS_SPARSE;
+				else if (strcmp(optarg, "full") == 0)
+					opt->gaps = PTC_GAPS_FULL;
+				else {
+					fprintf(stderr, "Unknown --gaps value '%s'.\n", optarg);
+					usage();
+				}
+				break;
+			case OPT_DISK_PTABLE:
+				assert(optarg != NULL);
+				if (strcmp(optarg, "auto") == 0)
+					opt->ptable = PTC_PT_AUTO;
+				else if (strcmp(optarg, "raw") == 0)
+					opt->ptable = PTC_PT_RAW;
+				else if (strcmp(optarg, "regenerate") == 0)
+					opt->ptable = PTC_PT_REGENERATE;
+				else {
+					fprintf(stderr, "Unknown --partition-table value '%s'.\n", optarg);
+					usage();
+				}
 				break;
 			case 'n':
 				memcpy(opt->note, optarg, NOTE_SIZE);

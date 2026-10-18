@@ -18,6 +18,7 @@ core_sources = files(
   'torrent_helper.c',
   'engine.c',
   'diskimg.c',
+  'disktable.c',
   'ptc-fs-backend.c',
   'ptc-client.c',
 )
@@ -30,7 +31,7 @@ core_deps = [
   gmodule_dep,
   threads_dep,
 ]
-foreach extra : [blkid_dep, xxhash_dep, isal_dep, intl_dep, math_dep, ncurses_dep, tinfo_dep]
+foreach extra : [blkid_dep, fdisk_dep, xxhash_dep, isal_dep, intl_dep, math_dep, ncurses_dep, tinfo_dep]
   if extra.found()
     core_deps += [extra]
   endif

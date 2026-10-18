@@ -62,6 +62,12 @@ gmodule_dep = dependency('gmodule-no-export-2.0')
 # ---------------------------------------------------------------------------
 blkid_dep = dependency('blkid', required : false)
 
+# libfdisk (util-linux) is optional: when present, partclone.disk regenerates
+# a GPT partition table from the image manifest, which is required to restore
+# onto a disk of a different size.  Without it, only verbatim table write-back
+# is possible.
+fdisk_dep = dependency('fdisk', required : false)
+
 want_xxhash = get_option('xxhash')
 xxhash_dep  = dependency('libxxhash', required : want_xxhash)
 
@@ -99,6 +105,9 @@ conf.set_quoted('LOCALEDIR', localedir)
 
 if blkid_dep.found()
   conf.set('HAVE_BLKID', 1)
+endif
+if fdisk_dep.found()
+  conf.set('HAVE_FDISK', 1)
 endif
 if xxhash_dep.found()
   conf.set('HAVE_XXHASH', 1)
@@ -273,6 +282,7 @@ summary({
   'backends'  : ', '.join(enabled_fs),
   'prefix'    : prefix,
   'blkid'     : blkid_dep.found(),
+  'fdisk'     : fdisk_dep.found(),
   'xxhash'    : xxhash_dep.found(),
   'isal'      : isal_dep.found(),
   'ncursesw'  : want_ncurses and ncurses_dep.found(),

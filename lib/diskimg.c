@@ -3,16 +3,20 @@
  *
  * Copyright (c) 2007~ Thomas Tsai <thomas at nchc org tw>
  *
- * Phase 1 of the format 0003 work described in IMAGE_FORMATS.md:
+ * Phases 1 and 2 of the format 0003 work described in IMAGE_FORMATS.md:
  *
  *   - the container reader/writer (512-byte disk header + 256-byte volume
  *     descriptors, both CRC32 protected);
- *   - raw-only volumes: a whole disk is stored as a single raw volume covering
- *     the entire device, without a partition table yet.
+ *   - the partition table blob (raw records + device-neutral manifest), read
+ *     from the source through disktable.c and written back either verbatim or
+ *     regenerated from the manifest with libfdisk;
+ *   - per-region raw volumes: one volume per partition plus, depending on the
+ *     --gaps policy, raw volumes for the gaps in between.
  *
- * This is enough to give whole-disk raw backup/restore in the 0003 container.
- * The child image of a volume is an ordinary format 0002 image, produced and
- * consumed with the same helpers as partclone.<fs>.
+ * A disk without a (recognizable) partition table is still stored as a single
+ * raw volume covering the whole device, as in phase 1.  The child image of a
+ * volume is an ordinary format 0002 image, produced and consumed with the same
+ * helpers as partclone.<fs>.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -84,12 +88,22 @@ static void *disk_progress_thread(void *arg)
 {
     (void)arg;
     while (!disk_done) {
+        int fresh = opt.fresh > 0 ? opt.fresh : 1;
+        int waited = 0;
+
         if (!opt.quiet)
             update_pui(&prog, copied, block_id, disk_done);
         json_status_update(&prog, copied, block_id, JSON_STATE_RUNNING);
         if (disk_progress_cb != NULL)
             disk_progress_cb(copied, prog.total, disk_progress_data);
-        sleep(opt.fresh);
+
+        /* Sleep in short slices so that finishing a volume does not block the
+         * engine for a whole --UI-fresh interval (there is one thread per
+         * volume). */
+        while (!disk_done && waited < fresh * 10) {
+            usleep(100000);
+            waited++;
+        }
     }
     pthread_exit("exit");
 }
@@ -270,20 +284,8 @@ static unsigned int disk_get_sector_size(int *fd)
 }
 
 /**
- * disk_skip_stream - discard @count bytes from a stream.
+ * disk_block_is_zero - true when every byte in the block is zero.
  */
-static void disk_skip_stream(int *fd, unsigned long long count, cmd_opt *opt)
-{
-    char buf[65536];
-
-    while (count > 0) {
-        unsigned long long n = count > sizeof(buf) ? sizeof(buf) : count;
-        if (read_all(fd, buf, n, opt) != (int)n)
-            log_mesg(0, 1, 1, opt->debug, "unexpected end of image while skipping data.\n");
-        count -= n;
-    }
-}
-
 static int disk_block_is_zero(const char *buf, unsigned int size)
 {
     unsigned int i;
@@ -299,7 +301,7 @@ static int disk_block_is_zero(const char *buf, unsigned int size)
  * A block is marked present (and therefore stored) when it contains at least
  * one non-zero byte.
  */
-static void disk_scan_bitmap(int *dfr, unsigned long *bitmap,
+static void disk_scan_bitmap(int *dfr, uint64_t src_base, unsigned long *bitmap,
                              const file_system_info *fs_info, cmd_opt *opt)
 {
     const unsigned int block_size = fs_info->block_size;
@@ -313,7 +315,7 @@ static void disk_scan_bitmap(int *dfr, unsigned long *bitmap,
     if (buffer == NULL)
         log_mesg(0, 1, 1, opt->debug, "%s, %i, not enough memory\n", __func__, __LINE__);
 
-    if (lseek(*dfr, 0, SEEK_SET) == (off_t)-1)
+    if (lseek(*dfr, (off_t)src_base, SEEK_SET) == (off_t)-1)
         log_mesg(0, 1, 1, opt->debug, "source seek ERROR:%s\n", strerror(errno));
 
     while (block < blocks_total) {
@@ -367,7 +369,7 @@ static unsigned long long disk_payload_length(const file_system_info *fs_info,
  * the device, interleave one checksum per strip, and write everything to the
  * image.
  */
-static void disk_write_child(int *dfr, int *dfw,
+static void disk_write_child(int *dfr, int *dfw, uint64_t src_base,
                              const file_system_info *fs_info,
                              const image_options *img_opt,
                              unsigned long *bitmap,
@@ -394,7 +396,7 @@ static void disk_write_child(int *dfr, int *dfw,
     write_image_desc(dfw, *fs_info, *img_opt, opt);
     write_image_bitmap(dfw, *fs_info, *img_opt, bitmap, opt);
 
-    if (lseek(*dfr, 0, SEEK_SET) == (off_t)-1)
+    if (lseek(*dfr, (off_t)src_base, SEEK_SET) == (off_t)-1)
         log_mesg(0, 1, 1, opt->debug, "source seek ERROR:%s\n", strerror(errno));
 
     blocks_in_cs = 0;
@@ -426,7 +428,7 @@ static void disk_write_child(int *dfr, int *dfw,
             break;
 
         offset = (off_t)(block_id * block_size);
-        if (lseek(*dfr, offset, SEEK_SET) == (off_t)-1)
+        if (lseek(*dfr, (off_t)src_base + offset, SEEK_SET) == (off_t)-1)
             log_mesg(0, 1, 1, opt->debug, "source seek ERROR:%s\n", strerror(errno));
 
         /* The last block may be only partially present on the source device;
@@ -732,38 +734,59 @@ static void disk_restore_child(int *dfr, int *dfw,
 /* Operations                                                                */
 /* ------------------------------------------------------------------------- */
 
-static int disk_clone(int *dfr, int *dfw, int target_stdout)
+static int disk_find_part(const ptc_disk_table *tbl, uint32_t index)
+{
+    uint32_t i;
+
+    for (i = 0; i < tbl->n_parts; i++)
+        if (tbl->parts[i].index == index)
+            return (int)i;
+    return -1;
+}
+
+/**
+ * disk_clone_region - store one disk region as a raw child volume.
+ *
+ * Regions come from ptc_table_regions() (partitions and gaps) or, for a disk
+ * without a partition table, a single region covering the whole device.
+ */
+static void disk_clone_region(int *dfr, int *dfw, const ptc_disk_table *tbl,
+                              const ptc_region *region, unsigned int sector_size,
+                              int target_stdout)
 {
     file_system_info fs_info;
     image_options img_opt;
-    image_disk_head_v3 head;
     image_volume_desc_v3 desc;
-    unsigned long *bitmap = NULL;
-    unsigned long long device_size, totalblock, payload;
-    unsigned int sector_size, block_size, buffer_capacity;
-    uint16_t kind, vol_flags;
-    uint32_t head_flags;
+    unsigned long *bitmap;
+    unsigned long long totalblock, payload;
+    unsigned int block_size = sector_size;
+    unsigned int buffer_capacity;
+    uint16_t kind, vol_flags = 0;
+    const ptc_part_entry *pe = NULL;
     pthread_t prog_thread;
     void *p_result;
-    int flag, start;
+    int flag, start, sparse;
     unsigned long long stop;
 
     init_fs_info(&fs_info);
     init_image_options(&img_opt);
 
-    device_size = opt.device_size ? opt.device_size : get_partition_size(dfr);
-    if (device_size == 0)
-        log_mesg(0, 1, 1, opt.debug,
-                 "Cannot determine the size of '%s'. Use -S/--device-size.\n", opt.source);
+    if (region->is_part) {
+        int pi = disk_find_part(tbl, region->part_index);
+        if (pi >= 0)
+            pe = &tbl->parts[pi];
+        sparse = opt.sparse;
+    } else {
+        /* Decision 2: metadata and sparse gaps use a zero-detecting bitmap,
+         * full gaps are stored raw. */
+        sparse = opt.gaps == PTC_GAPS_METADATA || opt.gaps == PTC_GAPS_SPARSE;
+    }
+    kind = sparse ? PTC_VOL_RAW_SPARSE : PTC_VOL_RAW_FULL;
 
-    sector_size = disk_get_sector_size(dfr);
-    if (sector_size < PART_SECTOR_SIZE)
-        sector_size = PART_SECTOR_SIZE;
-    block_size = sector_size;
-    totalblock = (device_size + block_size - 1) / block_size;
+    totalblock = (region->length + block_size - 1) / block_size;
 
     strncpy(fs_info.fs, raw_MAGIC, FS_MAGIC_SIZE);
-    fs_info.device_size = device_size;
+    fs_info.device_size = region->length;
     fs_info.totalblock = totalblock;
     fs_info.block_size = block_size;
 
@@ -782,36 +805,46 @@ static int disk_clone(int *dfr, int *dfw, int target_stdout)
     if (bitmap == NULL)
         log_mesg(0, 1, 1, opt.debug, "%s, %i, not enough memory\n", __func__, __LINE__);
 
-    if (opt.sparse) {
-        log_mesg(0, 0, 1, opt.debug, "Scanning %s for zero blocks...\n", opt.source);
-        disk_scan_bitmap(dfr, bitmap, &fs_info, &opt);
-        kind = PTC_VOL_RAW_SPARSE;
+    if (sparse) {
+        log_mesg(1, 0, 0, opt.debug, "Scanning region at %llu for zero blocks...\n",
+                 region->offset);
+        disk_scan_bitmap(dfr, region->offset, bitmap, &fs_info, &opt);
     } else {
         pc_init_bitmap(bitmap, 0xFF, totalblock);
-        kind = PTC_VOL_RAW_FULL;
     }
     update_used_blocks_count(&fs_info, bitmap);
     check_mem_size(fs_info, img_opt, opt);
 
-    vol_flags = (kind == PTC_VOL_RAW_SPARSE) ? PTC_VOL_SPARSE : 0;
-    head_flags = (kind == PTC_VOL_RAW_SPARSE) ? PTC_DISK_SPARSE_RAW : 0;
+    if (sparse)
+        vol_flags |= PTC_VOL_SPARSE;
+    if (pe != NULL && (pe->flags & PTC_PART_BOOTABLE))
+        vol_flags |= PTC_VOL_BOOTABLE;
 
     payload = disk_payload_length(&fs_info, &img_opt, &opt);
 
-    ptc_disk_init_head(&head, &fs_info, 1, head_flags, PTC_TABLE_NONE, 0, &opt);
-    ptc_disk_init_desc(&desc, kind, vol_flags, 0, device_size, payload, block_size,
-                       raw_MAGIC);
+    ptc_disk_init_desc(&desc, kind, vol_flags, region->offset, region->length,
+                       payload, block_size, raw_MAGIC);
+    desc.part_number = region->is_part ? region->part_index : 0;
+    if (pe != NULL) {
+        memcpy(desc.part_type, pe->type, sizeof(desc.part_type));
+        memcpy(desc.part_guid, pe->guid, sizeof(desc.part_guid));
+        if (pe->name[0] != '\0')
+            strncpy(desc.label, pe->name, sizeof(desc.label) - 1);
+    }
 
     log_mesg(0, 0, 1, opt.debug,
-             "Disk image: %s, size %llu bytes, sector %u, volume %s, %llu blocks\n",
-             opt.target, device_size, block_size, ptc_disk_vol_kind_str(kind), totalblock);
+             "Volume: offset %llu length %llu (%s%s), %llu blocks\n",
+             region->offset, region->length, ptc_disk_vol_kind_str(kind),
+             region->is_part ? ", partition" : ", gap", totalblock);
+    if (pe != NULL)
+        log_mesg(0, 0, 0, opt.debug, "Partition %u: flags %s, name \"%s\"\n",
+                 pe->index, ptc_table_part_flag_str(pe->flags), pe->name);
 
     if (!target_stdout && opt.check) {
-        unsigned long long needed = PTC_DISK_HEADER_SIZE + PTC_VOLUME_DESC_SIZE + payload;
+        unsigned long long needed = PTC_VOLUME_DESC_SIZE + payload;
         check_free_space(opt.target, needed);
     }
 
-    ptc_disk_write_head(dfw, &head, &opt);
     ptc_disk_write_desc(dfw, &desc, &opt);
 
     start = 0;
@@ -830,7 +863,7 @@ static int disk_clone(int *dfr, int *dfw, int target_stdout)
         log_mesg(0, 1, 1, opt.debug, "%s, %i, thread create error\n", __func__, __LINE__);
 
     log_mesg(1, 0, 0, opt.debug, "start backup data...\n");
-    disk_write_child(dfr, dfw, &fs_info, &img_opt, bitmap, &opt);
+    disk_write_child(dfr, dfw, region->offset, &fs_info, &img_opt, bitmap, &opt);
 
     disk_done = 1;
     pthread_join(prog_thread, &p_result);
@@ -838,6 +871,84 @@ static int disk_clone(int *dfr, int *dfw, int target_stdout)
     json_status_finish(&prog, copied, block_id);
 
     free(bitmap);
+}
+
+static int disk_clone(int *dfr, int *dfw, int target_stdout)
+{
+    ptc_disk_table tbl;
+    ptc_region *regions = NULL;
+    uint32_t n_regions = 0, i;
+    file_system_info fs_info;
+    image_disk_head_v3 head;
+    unsigned long long device_size, table_size;
+    unsigned int sector_size;
+    uint32_t head_flags = 0;
+    int gaps_included = 0;
+
+    init_fs_info(&fs_info);
+
+    device_size = opt.device_size ? opt.device_size : get_partition_size(dfr);
+    if (device_size == 0)
+        log_mesg(0, 1, 1, opt.debug,
+                 "Cannot determine the size of '%s'. Use -S/--device-size.\n", opt.source);
+
+    sector_size = disk_get_sector_size(dfr);
+    if (sector_size < PART_SECTOR_SIZE)
+        sector_size = PART_SECTOR_SIZE;
+
+    if (ptc_table_probe(dfr, device_size, sector_size, &tbl, &opt) != 0)
+        log_mesg(0, 1, 1, opt.debug, "unable to read the partition table of %s.\n", opt.source);
+
+    if (tbl.type != PTC_TABLE_NONE) {
+        if (ptc_table_regions(&tbl, device_size, PTC_DEFAULT_GAP_THRESHOLD,
+                              opt.gaps, &regions, &n_regions, &opt) != 0)
+            log_mesg(0, 1, 1, opt.debug, "unable to build the disk layout of %s.\n",
+                     opt.source);
+    } else {
+        regions = malloc(sizeof(*regions));
+        if (regions == NULL)
+            log_mesg(0, 1, 1, opt.debug, "%s, %i, not enough memory\n", __func__, __LINE__);
+        regions[0].offset = 0;
+        regions[0].length = device_size;
+        regions[0].is_part = 1;
+        regions[0].part_index = 0;
+        n_regions = 1;
+    }
+
+    table_size = (tbl.type == PTC_TABLE_NONE) ? 0 : ptc_table_blob_size(&tbl);
+
+    for (i = 0; i < n_regions; i++)
+        if (!regions[i].is_part)
+            gaps_included = 1;
+
+    if (opt.sparse)
+        head_flags |= PTC_DISK_SPARSE_RAW;
+    if (table_size > 0)
+        head_flags |= PTC_DISK_TABLE_PRESENT;
+    if (gaps_included)
+        head_flags |= PTC_DISK_GAPS_INCLUDED;
+
+    strncpy(fs_info.fs, raw_MAGIC, FS_MAGIC_SIZE);
+    fs_info.device_size = device_size;
+    fs_info.totalblock = (device_size + sector_size - 1) / sector_size;
+    fs_info.block_size = sector_size;
+
+    ptc_disk_init_head(&head, &fs_info, n_regions, head_flags, tbl.type,
+                       (uint32_t)table_size, &opt);
+
+    log_mesg(0, 0, 1, opt.debug,
+             "Disk image: %s, size %llu bytes, sector %u, table %s, %u volume(s)\n",
+             opt.target, device_size, sector_size, ptc_table_type_str(tbl.type), n_regions);
+
+    ptc_disk_write_head(dfw, &head, &opt);
+    if (table_size > 0)
+        ptc_table_write_blob(dfw, &tbl, &opt);
+
+    for (i = 0; i < n_regions; i++)
+        disk_clone_region(dfr, dfw, &tbl, &regions[i], sector_size, target_stdout);
+
+    free(regions);
+    ptc_table_free(&tbl);
     return 0;
 }
 
@@ -845,7 +956,10 @@ static int disk_restore(int *dfr, int *dfw, int chkimg, int target_stdout)
 {
     image_disk_head_v3 head;
     image_volume_desc_v3 desc;
+    ptc_disk_table tbl;
+    unsigned long long target_size = 0;
     unsigned long i;
+    int have_table = 0;
 
     if (ptc_disk_load_head(dfr, &head, &opt) != 0)
         log_mesg(0, 1, 1, opt.debug, "not a valid format 0003 disk image.\n");
@@ -855,20 +969,69 @@ static int disk_restore(int *dfr, int *dfw, int chkimg, int target_stdout)
              opt.source, head.disk_size, head.sector_size, head.volume_count,
              head.table_type, head.table_size);
 
-    /* Phase 1 does not restore a partition table; just skip its blob. */
-    if (head.table_size > 0)
-        disk_skip_stream(dfr, head.table_size, &opt);
+    if (head.table_size > 0) {
+        if (ptc_table_read_blob(dfr, &tbl, head.table_size, &opt) != 0)
+            log_mesg(0, 1, 1, opt.debug, "unable to read the partition table blob.\n");
+        tbl.disk_size = head.disk_size;
+        if (head.sector_size != 0)
+            tbl.sector_size = head.sector_size;
+        have_table = 1;
+    } else {
+        ptc_table_init(&tbl);
+    }
 
     if (!chkimg && !target_stdout && opt.check)
         check_size(dfw, head.disk_size);
+
+    if (have_table && !chkimg && !target_stdout) {
+        struct stat st;
+        int want_regen = 0;
+
+        target_size = get_partition_size(dfw);
+
+        /* A regular-file target is grown to the source size; a block device
+         * keeps its own size, which is what triggers regeneration below. */
+        if (fstat(*dfw, &st) == 0 && S_ISREG(st.st_mode) &&
+            (unsigned long long)st.st_size < head.disk_size) {
+            if (ftruncate(*dfw, (off_t)head.disk_size) == 0)
+                target_size = head.disk_size;
+        }
+
+        if (opt.ptable == PTC_PT_REGENERATE)
+            want_regen = 1;
+        else if (opt.ptable == PTC_PT_AUTO && tbl.type == PTC_TABLE_GPT &&
+                 target_size != 0 && target_size != head.disk_size)
+            want_regen = 1;
+
+        if (want_regen) {
+            if (ptc_table_regenerate(&tbl, opt.target, target_size, &opt) != 0) {
+                if (!opt.force)
+                    log_mesg(0, 1, 1, opt.debug,
+                             "cannot regenerate the partition table; "
+                             "use --partition-table=raw or -F\n");
+                log_mesg(0, 0, 1, opt.debug, "writing the partition table verbatim\n");
+                ptc_table_write_raw(&tbl, dfw, &opt);
+            }
+        } else {
+            if (tbl.type == PTC_TABLE_GPT && target_size != 0 &&
+                target_size != head.disk_size)
+                log_mesg(1, 0, 0, opt.debug,
+                         "warning: writing a GPT verbatim to a differently-sized "
+                         "target; use --partition-table=regenerate\n");
+            ptc_table_write_raw(&tbl, dfw, &opt);
+        }
+    } else if (have_table && chkimg) {
+        log_mesg(1, 0, 0, opt.debug, "partition table: %s, %u entr(ies), %llu bytes\n",
+                 ptc_table_type_str(tbl.type), tbl.n_parts, ptc_table_blob_size(&tbl));
+    }
 
     for (i = 0; i < head.volume_count; i++) {
         ptc_disk_load_desc(dfr, &desc, &opt);
 
         log_mesg(0, 0, 0, opt.debug,
-                 "Volume %lu/%u: kind=%s offset=%llu length=%llu payload=%llu\n",
+                 "Volume %lu/%u: kind=%s part=%u offset=%llu length=%llu payload=%llu\n",
                  i + 1, head.volume_count, ptc_disk_vol_kind_str(desc.kind),
-                 desc.disk_offset, desc.disk_length, desc.payload_length);
+                 desc.part_number, desc.disk_offset, desc.disk_length, desc.payload_length);
 
         switch (desc.kind) {
         case PTC_VOL_RAW_FULL:
@@ -884,10 +1047,23 @@ static int disk_restore(int *dfr, int *dfw, int chkimg, int target_stdout)
                 log_mesg(0, 1, 1, opt.debug, "target seek ERROR:%s\n", strerror(errno));
             break;
 
+        case PTC_VOL_NONE:
+            break;
+
         default:
             log_mesg(0, 1, 1, opt.debug, "unknown volume kind %u\n", desc.kind);
         }
     }
+
+    /* Ask the kernel to re-read the partition table of a block device target. */
+#ifdef BLKRRPART
+    if (!chkimg && !target_stdout && have_table) {
+        struct stat st;
+        if (fstat(*dfw, &st) == 0 && S_ISBLK(st.st_mode) &&
+            ioctl(*dfw, BLKRRPART) == 0)
+            log_mesg(1, 0, 0, opt.debug, "re-read the partition table of %s\n", opt.target);
+    }
+#endif
 
     /* A regular-file target must cover the whole disk even when the trailing
      * blocks are not stored (sparse volumes). */
@@ -901,6 +1077,9 @@ static int disk_restore(int *dfr, int *dfw, int chkimg, int target_stdout)
                 log_mesg(1, 0, 0, opt.debug, "ftruncate:%llu\n", head.disk_size);
         }
     }
+
+    if (have_table)
+        ptc_table_free(&tbl);
 
     return 0;
 }
