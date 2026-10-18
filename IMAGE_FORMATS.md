@@ -439,8 +439,9 @@ also be enormous, gap handling is a policy:
 | `sparse`   | Every gap, using a zero-detecting bitmap
 | `full`     | Every gap, stored as raw
 
-The default is `metadata`.  `sparse` is the safest choice for full fidelity;
-`none` is fastest but discards boot loaders that live outside a partition.
+The adopted default is `metadata` (decision 2 below).  `sparse` is the safest
+choice for full fidelity; `none` is fastest but discards boot loaders that live
+outside a partition.
 
 "Free space" that is not stored is described by `PTC_VOL_ZERO` volumes so the
 region map still covers the disk, or simply omitted.
@@ -482,7 +483,8 @@ partitions.
 ### Reading partitions during backup
 
 Building the super block and bitmap of a partition requires reading that
-partition's bytes.  Two strategies exist and should both be supported over time:
+partition's bytes.  Two strategies exist; v1 uses the first and the second is
+the planned follow-up (decision 7):
 
   - **Kernel partition devices (v1).**  On Linux each partition is available as
     `/dev/sdaN` (or an equivalent device-mapper node), so the existing backends,
@@ -495,7 +497,8 @@ partition's bytes.  Two strategies exist and should both be supported over time:
     of the `ptc_fs_backend` interface and, for libraries that only open by path,
     either a small shim or a loop device.
 
-v1 should use kernel partition devices; device windows are the natural follow-up.
+v1 uses kernel partition devices (decision 7); device windows are the natural
+follow-up.
 
 ## Restore procedure
 
@@ -505,9 +508,9 @@ v1 should use kernel partition devices; device windows are the natural follow-up
     (allow a larger target; allow a smaller one only with --force).
 3.  Check sector sizes and warn/handle a mismatch.
 4.  Recreate the partition table:
-      - if the table is regenerable and a partition-table library is available,
-        rebuild it from the manifest so the secondary GPT and all CRCs are
-        placed correctly for the actual target size;
+      - when libfdisk is available, rebuild it from the manifest so the
+        secondary GPT and all CRCs are placed correctly for the actual target
+        size (required for a target of a different size);
       - otherwise write the raw records back verbatim (same-size target only).
 5.  For every volume, in stream order:
       a. read the descriptor;
@@ -528,14 +531,13 @@ each volume.
 
 ### Skipped blocks and gaps
 
-Blocks absent from a child bitmap are *not* written by the existing restore
-loop, i.e. whatever is already on the target is left in place.  On a freshly
+Blocks absent from a child bitmap are not written by the existing restore loop,
+i.e. whatever is already on the target is left in place.  On a freshly
 partitioned disk those areas read as zero, which is the usual case.  For a
-defined result on a reused disk, the implementation should offer a policy:
+defined result on a reused disk, disk restore follows decision 3:
 
-  - `--zero-skipped` (default on for whole-disk restore): write zeros for blocks
-    absent from the bitmap within each volume;
-  - otherwise: seek over them, like today.
+  - write zeros for blocks absent from the bitmap within each volume (default);
+  - `--no-zero-skipped`: seek over them, like the single-partition restore.
 
 Gap volumes are ordinary raw volumes, so their content (mostly zeros) is written
 by the same code.
@@ -544,17 +546,16 @@ by the same code.
 
   - **Same size:** write the table verbatim and restore every volume in place.
   - **Larger (GPT):** keep partition offsets; place the backup GPT at the end of
-    the target instead of at the end of the source; optionally grow the last
-    partition and its filesystem (`--grow`).
-  - **Larger (MBR):** keep offsets; optionally enlarge the last primary
-    partition's size field, rewriting the extended partition if present.
+    the target instead of at the end of the source.
+  - **Larger (MBR):** keep offsets unchanged.
   - **Smaller:** refuse unless `--force`, and then only if every partition still
     fits.
 
-Growing a filesystem is filesystem-specific.  It should be exposed as an
-optional per-filesystem hook (`resize_fs`) invoked after `post_clone_fixup`,
-symmetric with the existing hook mechanism.  When no hook exists, the partition
-table may still be restored unchanged.
+`--grow` additionally extends the last partition entry to fill a larger target
+(GPT last usable LBA, or the last primary/extended MBR entry).  As stated in
+decision 4 below, v1 does **not** resize the filesystem itself; it stays
+consistent and smaller than its partition, and partclone prints the recommended
+growth command.
 
 ## CLI surface (proposal)
 
@@ -571,17 +572,16 @@ Options:
 
 | Option | Meaning
 |--------|--------
-| `--gaps=none|metadata|sparse|full` | Gap policy (default `metadata`)
+| `--gaps=none|metadata|sparse|full` | Gap policy (default `metadata`, see decision 2)
 | `--partition-table=raw|regenerate` | How to write the table on restore
 | `--partitions=LIST`                | Restrict an operation to selected partitions
-| `--grow` / `--resize-fs`           | Grow the last partition / its filesystem on a larger target
-| `--zero-skipped`                   | Zero blocks that are not in the bitmap
+| `--grow`                           | Grow the last partition entry (not the filesystem) on a larger target
+| `--[no-]zero-skipped`              | Zero blocks that are not in the bitmap (default on for disk restore)
 | `--sector-size=N`                  | Override the logical sector size
 | `-S, --device-size=N`              | As today, override the recorded disk size
 
-`partclone.imager` keeps its current meaning (raw device image).  Whether
-`partclone.disk` should instead be folded into `partclone.imager` by detecting a
-whole disk is an open question.
+`partclone.imager` keeps its current meaning (raw device image) and is not
+changed; whole-disk images are handled by `partclone.disk` (decision 5).
 
 ## libpartclone API (proposal)
 
@@ -664,19 +664,62 @@ at the last few hundred bytes and validating the magic.
      partition-table library.
   3. Add filesystem volumes through kernel partition devices, reusing the
      per-filesystem backends and `opt.offset`.
-  4. Add gap handling, `--grow` / `resize_fs`, the CLI front end and the GObject
-     API, plus documentation and tests.
+  4. Add gap handling, `--grow` (partition entry only), the CLI front end, the
+     GObject API, documentation and tests.  A per-filesystem `resize_fs` hook is
+     a later phase (decision 4).
 
-## Open questions
+## Resolved design decisions
 
-  - Is a partition-table library (libfdisk) acceptable as a dependency for
-    table regeneration, or should 0003 stay dependency-free and write raw
-    sectors only?
-  - Should the default gap policy be `metadata` or `sparse`?
-  - Should absent blocks be zeroed on restore by default, or only on request?
-  - Which filesystems get a `resize_fs` hook, and how is an unsupported one
-    reported?
-  - Is a new `partclone.disk` program preferred, or should `partclone.imager`
-    auto-detect whole disks?
-  - How should the format interact with external compression/encryption, which
-    today happens through pipes around partclone?
+The following choices are adopted for format 0003 and its implementation.
+
+  1. **Partition table library — libfdisk, optional.**  libfdisk (from the same
+     util-linux source as the already used libblkid) is adopted as an optional
+     build dependency.  When it is present, restore rebuilds the table from the
+     manifest so the secondary GPT and all CRCs land correctly for the actual
+     target size; this is required to restore onto a target of a different
+     size.  When it is absent, only verbatim raw-sector write-back is possible
+     and a different-size target is refused.  Rationale: correct table math
+     without hand-rolling GPT placement, while keeping minimal builds possible.
+
+  2. **Default gap policy — `metadata`.**  `--gaps` defaults to `metadata`: gaps
+     up to a 1 MiB threshold are stored as sparse raw volumes, which keeps the
+     common boot-loader locations (post-MBR gap, BIOS boot area) without
+     scanning or storing arbitrarily large free space.  `--gaps=sparse` is the
+     full-fidelity choice and `--gaps=none` the fastest one.  Rationale: the
+     useful gap data is almost always small.
+
+  3. **Absent blocks — zeroed by default for disk restore.**  A disk restore
+     writes zeros for blocks absent from a child bitmap so that a reused target
+     has a defined result; `--no-zero-skipped` restores the current seek
+     behaviour.  Single-partition 0002 restore is unchanged and continues to
+     seek unless `--zero-skipped` is given.  Rationale: a whole-disk image is
+     meant to reproduce the disk, not to leave stale blocks behind.
+
+  4. **Filesystem growth — out of scope in v1.**  `--grow` extends the *last
+     partition entry* to fill a larger target but does not resize the
+     filesystem, which stays consistent and simply occupies less than its
+     partition.  After a size-changing restore, partclone prints the
+     filesystem's recommended growth command (for example `resize2fs`,
+     `xfs_growfs`, `btrfs filesystem resize`, `resize.f2fs`).  A per-filesystem
+     `resize_fs` hook, symmetric with `post_clone_fixup`, is reserved for a
+     later phase.  Rationale: in-library filesystem growth is filesystem
+     specific and risky, while partition growth is safe.
+
+  5. **A new `partclone.disk` program; `partclone.imager` is unchanged.**
+     Whole-disk images are produced and consumed by a dedicated front end and a
+     new library mode.  `partclone.imager` keeps its raw-device meaning and
+     does not auto-detect whole disks, so existing behaviour and images are
+     preserved.  `partclone.info` learns to list the volumes of a 0003 image.
+     Rationale: no silent change of meaning for an existing tool.
+
+  6. **Compression and encryption stay external.**  They remain outside the
+     format and are applied through pipes around partclone, exactly as today
+     (`--compresscmd`, or gzip/zstd/xz on the command line).  The container
+     stays strictly sequential so this keeps working.  Rationale: reuse a solved
+     problem and keep the format minimal.
+
+  7. **Partition access — kernel partition devices for v1.**  Backup reads each
+     filesystem partition through its kernel partition device, leaving the
+     existing backends unchanged.  Offset-aware device windows that also work
+     on disk image files are planned as a follow-up.  Rationale: smallest
+     possible change to reach a working implementation.
