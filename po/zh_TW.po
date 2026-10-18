@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Partclone 0.2.51\n"
 "Report-Msgid-Bugs-To: thomas@clonezilla.org\n"
-"POT-Creation-Date: 2026-10-17 15:43+0800\n"
+"POT-Creation-Date: 2026-10-18 19:02+0800\n"
 "PO-Revision-Date: 2007-11-01 11:35+0800\n"
 "Last-Translator: Yu-Chin Tsai <thomas@nchc.org.tw>\n"
 "Language-Team: Chinese (traditional) <zh-l10n@linux.org.tw>\n"
@@ -16,37 +16,37 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: lib/progress.c:246
-#, fuzzy, c-format
+#: lib/progress.c:245
+#, c-format
 msgid "Elapsed: %s, Remaining: %s, Completed: %6.2f%%"
 msgstr "經過：%s, 剩餘： %s, 完成：%6.2f%%"
 
-#: lib/progress.c:249
-#, fuzzy, c-format
+#: lib/progress.c:248
+#, c-format
 msgid ", %6.2f%s/%s,"
 msgstr ", %6.2f%s/%s,"
 
-#: lib/progress.c:252
-#, fuzzy, c-format
+#: lib/progress.c:251
+#, c-format
 msgid "Current block: %10Lu, Total block: %10Lu, Complete: %6.2f%%%s"
 msgstr "目前區塊: %10Lu, 全部區塊: %10Lu, 完成: %6.2f%%%s"
 
-#: lib/progress.c:261
-#, fuzzy, c-format
+#: lib/progress.c:260
+#, c-format
 msgid "Elapsed: %s, Remaining: %s, Completed: 100.00%%"
 msgstr "經過：%s, 剩餘： %s, 完成：100.00%%"
 
-#: lib/progress.c:263
-#, fuzzy, c-format
+#: lib/progress.c:262
+#, c-format
 msgid ", Rate: %6.2f%s/%s,"
 msgstr ", 速率：%6.2f%s/%s,"
 
-#: lib/progress.c:266
-#, fuzzy, c-format
+#: lib/progress.c:265
+#, c-format
 msgid "Current block: %10Lu, Total block: %10Lu, Complete: 100.00%%"
 msgstr "目前區塊: %10Lu, 全部區塊: %10Lu, 完成: 100.00%%"
 
-#: lib/progress.c:270
+#: lib/progress.c:269
 #, c-format
 msgid ""
 "\n"
@@ -55,385 +55,625 @@ msgstr ""
 "\n"
 "全部時間：%s, "
 
-#: lib/progress.c:272
-#, fuzzy, c-format
+#: lib/progress.c:271
+#, c-format
 msgid "Ave. Rate: %6.2f%s/%s, "
 msgstr "平均速率：%6.2f%s/%s, "
 
-#: lib/progress.c:273
+#: lib/progress.c:272
 #, c-format
 msgid "%s"
 msgstr "%s"
 
-#: lib/progress.c:302
+#: lib/progress.c:301
 #, c-format
 msgid "Elapsed: %s Remaining: %s "
 msgstr "經過：%s  剩餘： %s "
 
-#: lib/progress.c:304
-#, fuzzy, c-format
+#: lib/progress.c:303
+#, c-format
 msgid "Rate: %6.2f%s/%s"
 msgstr "速率：%6.2f%s/%s"
 
-#: lib/progress.c:306
-#, fuzzy, c-format
+#: lib/progress.c:305
+#, c-format
 msgid "Current Block: %llu  Total Block: %llu "
 msgstr "目前區塊: %llu 全部區塊 %llu "
 
-#: lib/progress.c:309 lib/progress.c:342
+#: lib/progress.c:308 lib/progress.c:341
 msgid "Data Block Process:"
 msgstr "資料區塊處理中:"
 
-#: lib/progress.c:311 lib/progress.c:344
+#: lib/progress.c:310 lib/progress.c:343
 msgid "Calculating Bitmap Process:"
 msgstr "計算 Bitmap:"
 
-#: lib/progress.c:315 lib/progress.c:326
+#: lib/progress.c:314 lib/progress.c:325
 #, c-format
 msgid "ncurses update error\n"
 msgstr "incursesw 更新錯誤\n"
 
-#: lib/progress.c:322 lib/progress.c:352
+#: lib/progress.c:321 lib/progress.c:351
 msgid "Total Block Process:"
-msgstr ""
+msgstr "總區塊處理:"
 
-#: lib/progress.c:337
+#: lib/progress.c:336
 #, c-format
 msgid "Total Time: %s Remaining: %s "
 msgstr "全部時間：%s 剩餘時間: %s "
 
-#: lib/progress.c:339
-#, fuzzy, c-format
+#: lib/progress.c:338
+#, c-format
 msgid "Ave. Rate: %6.2f%s/%s"
 msgstr "平均速率：%6.2f%s/%s"
 
-#: lib/partclone.c:2137
+#: lib/partclone.c:2215
 #, c-format
 msgid "Partclone v%s http://partclone.org\n"
-msgstr ""
+msgstr "Partclone v%s http://partclone.org\n"
 
-#: lib/partclone.c:2139
+#: lib/partclone.c:2217
 #, c-format
 msgid "Starting to check image (%s)\n"
 msgstr "開始檢查映像檔 (%s)\n"
 
-#: lib/partclone.c:2142
-#, fuzzy, c-format
+#: lib/partclone.c:2220
+#, c-format
 msgid "Starting to clone device (%s) to compressed image (%s)\n"
-msgstr "開始備份 裝置 (%s) 到 映像檔 (%s)\n"
+msgstr "開始備份 裝置 (%s) 到 壓縮映像檔 (%s)\n"
 
-#: lib/partclone.c:2144
+#: lib/partclone.c:2222
 #, c-format
 msgid "Starting to clone device (%s) to image (%s)\n"
 msgstr "開始備份 裝置 (%s) 到 映像檔 (%s)\n"
 
-#: lib/partclone.c:2147
-#, fuzzy, c-format
+#: lib/partclone.c:2225
+#, c-format
 msgid "Starting to restore image (%s) to block files (%s)\n"
-msgstr "開始還原 映像檔 (%s) 到 裝置 (%s)\n"
+msgstr "開始還原 映像檔 (%s) 到 區塊檔案 (%s)\n"
 
-#: lib/partclone.c:2149
+#: lib/partclone.c:2227
 #, c-format
 msgid "Starting to restore image (%s) to device (%s)\n"
 msgstr "開始還原 映像檔 (%s) 到 裝置 (%s)\n"
 
-#: lib/partclone.c:2151
+#: lib/partclone.c:2229
 #, c-format
 msgid "Starting to back up device (%s) to device (%s)\n"
 msgstr "開始備份 裝置 (%s) 到 裝置 (%s)\n"
 
-#: lib/partclone.c:2153
+#: lib/partclone.c:2231
 #, c-format
 msgid "Starting to map device (%s) to domain log (%s)\n"
 msgstr "開始輸出 裝置 (%s)區塊 到 資料檔 (%s)\n"
 
-#: lib/partclone.c:2156
-#, fuzzy, c-format
+#: lib/partclone.c:2234
+#, c-format
 msgid "Starting to dd image (%s) to block files (%s)\n"
-msgstr "開始還原 映像檔 (%s) 到 裝置 (%s)\n"
+msgstr "開始 dd 映像檔 (%s) 到 區塊檔案 (%s)\n"
 
-#: lib/partclone.c:2158
-#, fuzzy, c-format
+#: lib/partclone.c:2236
+#, c-format
 msgid "Starting to clone/restore (%s) to (%s) with dd mode\n"
-msgstr "開始備份 裝置 (%s) 到 映像檔 (%s)\n"
+msgstr "開始以 dd 模式複製/還原 (%s) 到 (%s)\n"
 
-#: lib/partclone.c:2160
-#, fuzzy, c-format
+#: lib/partclone.c:2238
+#, c-format
 msgid "Showing info of image (%s)\n"
-msgstr "開始檢查映像檔 (%s)\n"
+msgstr "顯示映像檔 (%s) 的資訊\n"
 
-#: lib/partclone.c:2162
+#: lib/partclone.c:2240
 msgid "Unknown mode\n"
-msgstr ""
+msgstr "未知模式\n"
 
-#: lib/partclone.c:2182
+#: lib/partclone.c:2260
 #, c-format
 msgid "File system:  %s\n"
 msgstr "檔案系統: %s\n"
 
-#: lib/partclone.c:2185
-#, fuzzy, c-format
+#: lib/partclone.c:2263
+#, c-format
 msgid "Device size:  %s = %llu Blocks\n"
-msgstr "裝置大小: %s = %llu Blocks\n"
+msgstr "裝置大小:  %s = %llu Blocks\n"
 
-#: lib/partclone.c:2188
-#, fuzzy, c-format
+#: lib/partclone.c:2266
+#, c-format
 msgid "Space in use: %s = %llu Blocks\n"
-msgstr "裝置使用到空間: %s = %llu Blocks\n"
+msgstr "已使用空間: %s = %llu Blocks\n"
 
-#: lib/partclone.c:2191
-#, fuzzy, c-format
+#: lib/partclone.c:2269
+#, c-format
 msgid "Free Space:   %s = %llu Blocks\n"
-msgstr "剩餘空間: %s = %llu Blocks\n"
+msgstr "剩餘空間:   %s = %llu Blocks\n"
 
-#: lib/partclone.c:2193
+#: lib/partclone.c:2271
 #, c-format
 msgid "Block size:   %i Byte\n"
 msgstr "區塊大小: %i Byte\n"
 
-#: lib/partclone.c:2194
-#, fuzzy, c-format
+#: lib/partclone.c:2272
+#, c-format
 msgid "Used Blocks in Super-Block:   %llu Blocks\n"
-msgstr "裝置使用空間(super block):   %lld Blocks\n"
+msgstr "超級區塊中已使用的區塊:   %llu Blocks\n"
 
-#: lib/partclone.c:2207
+#: lib/partclone.c:2285
 #, c-format
 msgid "image format:    %04d\n"
-msgstr ""
+msgstr "映像檔格式:    %04d\n"
 
-#: lib/partclone.c:2211 lib/partclone.c:2218
+#: lib/partclone.c:2289 lib/partclone.c:2296
 #, c-format
 msgid "created on a:    %s\n"
-msgstr ""
+msgstr "建立於:    %s\n"
 
-#: lib/partclone.c:2213 lib/partclone.c:2221
+#: lib/partclone.c:2291 lib/partclone.c:2299
 #, c-format
 msgid "with partclone:  %s\n"
-msgstr ""
+msgstr "使用 partclone:  %s\n"
 
-#: lib/partclone.c:2217
+#: lib/partclone.c:2295
 #, c-format
 msgid "%u bits platform"
-msgstr ""
+msgstr "%u 位元平台"
 
-#: lib/partclone.c:2220
-#, fuzzy, c-format
+#: lib/partclone.c:2298
+#, c-format
 msgid "v%s"
 msgstr "v%s"
 
-#: lib/partclone.c:2224
+#: lib/partclone.c:2302
 #, c-format
 msgid "bitmap mode:     %s\n"
-msgstr ""
+msgstr "bitmap 模式:     %s\n"
 
-#: lib/partclone.c:2226
+#: lib/partclone.c:2304
 #, c-format
 msgid "checksum algo:   %s\n"
 msgstr "校驗和演算法: %s\n"
 
-#: lib/partclone.c:2230 lib/partclone.c:2239
-#, fuzzy, c-format
+#: lib/partclone.c:2308 lib/partclone.c:2317
+#, c-format
 msgid "checksum size:   %s\n"
-msgstr "校驗和大小: %s\n"
+msgstr "校驗和大小:   %s\n"
 
-#: lib/partclone.c:2232 lib/partclone.c:2242
+#: lib/partclone.c:2310 lib/partclone.c:2320
 #, c-format
 msgid "blocks/checksum: %s\n"
-msgstr ""
+msgstr "區塊/校驗和: %s\n"
 
-#: lib/partclone.c:2234 lib/partclone.c:2244
+#: lib/partclone.c:2312 lib/partclone.c:2322
 #, c-format
 msgid "reseed checksum: %s\n"
 msgstr "重新設定校驗和: %s\n"
 
-#: lib/partclone.c:2244
+#: lib/partclone.c:2322
 msgid "yes"
 msgstr "是"
 
-#: lib/partclone.c:2244
+#: lib/partclone.c:2322
 msgid "no"
 msgstr "否"
 
-#: lib/partclone.c:2257
+#: lib/partclone.c:2335
 #, c-format
 msgid "Partclone successfully checked the image (%s)\n"
 msgstr "檢查映像檔 (%s) 完成\n"
 
-#: lib/partclone.c:2259
+#: lib/partclone.c:2337
 #, c-format
 msgid "Partclone successfully cloned the device (%s) to the image (%s)\n"
 msgstr "備份 裝置 (%s) 到 映像檔 (%s) 完成\n"
 
-#: lib/partclone.c:2261
+#: lib/partclone.c:2339
 #, c-format
 msgid "Partclone successfully restored the image (%s) to the device (%s)\n"
 msgstr "還原 映像檔 (%s) 到 裝置 (%s) 完成\n"
 
-#: lib/partclone.c:2263
+#: lib/partclone.c:2341
 #, c-format
 msgid "Partclone successfully cloned the device (%s) to the device (%s)\n"
 msgstr "備份 裝置 (%s) 到 裝置 (%s) 完成\n"
 
-#: lib/partclone.c:2265
+#: lib/partclone.c:2343
 #, c-format
 msgid "Partclone successfully mapped the device (%s) to the domain log (%s)\n"
 msgstr "輸出裝置 (%s) 區塊資訊 到 資料檔 (%s) 完成\n"
 
-#: src/ptc-gtk4.c:183
+#: lib/engine.c:128
+msgid ""
+"*************************************************************************\n"
+"* WARNING: The disk has bad sectors. This means physical damage on the  *\n"
+"* disk surface caused by deterioration, manufacturing faults, or        *\n"
+"* another reason. The reliability of the disk may remain stable or      *\n"
+"* degrade quickly. Use the --rescue option to efficiently save as much  *\n"
+"* data as possible!                                                     *\n"
+"*************************************************************************\n"
+msgstr ""
+"*************************************************************************\n"
+"* 警告：磁碟有壞軌。這是由於磁碟表面劣化、製造瑕疵或其他原因                                         *\n"
+"* 所造成的實體損壞。磁碟的可靠性可能保持穩定，或迅速下降。                                          *\n"
+"* 請使用 --rescue 選項，以盡可能有效率地救回最多的資料！                                      *\n"
+"*************************************************************************\n"
+
+#: lib/engine.c:159
+msgid "No filesystem backend selected for this operation.\n"
+msgstr "此操作未選擇檔案系統後端。\n"
+
+#: lib/engine.c:191
+msgid ""
+"You are not logged as root. You may have \"access denied\" errors when "
+"working.\n"
+msgstr "您不是以 root 身分登入。工作時可能會出現「存取被拒」的錯誤。\n"
+
+#: lib/engine.c:211 lib/engine.c:218
+msgid "Error exit\n"
+msgstr "錯誤結束\n"
+
+#: lib/engine.c:244
+msgid "Reading Super Block\n"
+msgstr "讀取超級區塊\n"
+
+#: lib/engine.c:264 lib/engine.c:315 lib/engine.c:358 lib/engine.c:406
+#: lib/engine.c:510 lib/engine.c:731 lib/engine.c:737 lib/engine.c:994
+#: lib/engine.c:1000 lib/engine.c:1170
+#, c-format
+msgid "%s, %i, not enough memory\n"
+msgstr "%s, %i, 記憶體不足\n"
+
+#: lib/engine.c:271
+msgid "Calculating bitmap... Please wait... \n"
+msgstr "正在計算 bitmap... 請稍候... \n"
+
+#: lib/engine.c:295 lib/engine.c:338 lib/engine.c:378 lib/engine.c:438
+msgid "done!\n"
+msgstr "完成！\n"
+
+#: lib/engine.c:322
+msgid "Calculating bitmap... Please wait...\n"
+msgstr "正在計算 bitmap... 請稍候...\n"
+
+#: lib/engine.c:365 lib/engine.c:413
+msgid "Calculating bitmap... Please wait... "
+msgstr "正在計算 bitmap... 請稍候... "
+
+#: lib/engine.c:386
+#, c-format
+msgid "%s, %i, stdout is not supported\n"
+msgstr "%s, %i, 不支援 stdout\n"
+
+#: lib/engine.c:473
+#, c-format
+msgid "%s, %i, thread create error\n"
+msgstr "%s, %i, 執行緒建立錯誤\n"
+
+#: lib/engine.c:500 lib/engine.c:986 lib/engine.c:1162
+#, c-format
+msgid "%s, %i, memory for read posix_memalign error\n"
+msgstr "%s, %i, 讀取用記憶體 posix_memalign 錯誤\n"
+
+#: lib/engine.c:515 lib/engine.c:560 lib/engine.c:1054
+#, c-format
+msgid "source seek ERROR:%s\n"
+msgstr "來源 seek 錯誤:%s\n"
+
+#: lib/engine.c:582
+#, c-format
+msgid "read error: %s\n"
+msgstr "讀取錯誤: %s\n"
+
+#: lib/engine.c:629 lib/engine.c:659
+#, c-format
+msgid "image write ERROR:%s\n"
+msgstr "映像檔寫入錯誤:%s\n"
+
+#: lib/engine.c:641
+#, c-format
+msgid "read(%i) and write(%i) different\n"
+msgstr "讀取(%i) 與寫入(%i) 不同\n"
+
+#: lib/engine.c:685
+#, c-format
+msgid "source seek ERROR: %s\n"
+msgstr "來源 seek 錯誤: %s\n"
+
+#: lib/engine.c:691
+msgid "ERROR: source image too short\n"
+msgstr "錯誤: 來源映像檔太短\n"
+
+#: lib/engine.c:749 lib/engine.c:880 lib/engine.c:956 lib/engine.c:959
+#: lib/engine.c:1013 lib/engine.c:1039
+#, c-format
+msgid "target seek ERROR:%s\n"
+msgstr "目標 seek 錯誤:%s\n"
+
+#: lib/engine.c:779
+msgid "blocks_read ERROR: impossible size of blocks_read\n"
+msgstr "blocks_read 錯誤: blocks_read 的大小不可能\n"
+
+#: lib/engine.c:797
+#, c-format
+msgid "read ERROR:%s\n"
+msgstr "讀取錯誤:%s\n"
+
+#: lib/engine.c:834 lib/engine.c:860
+#, c-format
+msgid ""
+"checksum error, block_id=%llu...\n"
+" "
+msgstr "校驗和錯誤, block_id=%llu...\n "
+
+#: lib/engine.c:931
+#, c-format
+msgid "write block %llu ERROR:%s\n"
+msgstr "寫入區塊 %llu 錯誤:%s\n"
+
+#: lib/engine.c:933
+#, c-format
+msgid "skip write block %llu error:%s\n"
+msgstr "略過寫入區塊 %llu 錯誤:%s\n"
+
+#: lib/engine.c:969 lib/engine.c:1111 lib/engine.c:1274
+#, c-format
+msgid "ftruncate ERROR:%s\n"
+msgstr "ftruncate 錯誤:%s\n"
+
+#: lib/engine.c:1011
+#, c-format
+msgid "source seek ERROR:%d\n"
+msgstr "來源 seek 錯誤:%d\n"
+
+#: lib/engine.c:1066 lib/engine.c:1226
+#, c-format
+msgid "source read ERROR %s\n"
+msgstr "來源讀取錯誤 %s\n"
+
+#: lib/engine.c:1073 lib/engine.c:1244
+#, c-format
+msgid "skip write block %lli error:%s\n"
+msgstr "略過寫入區塊 %lli 錯誤:%s\n"
+
+#: lib/engine.c:1075 lib/engine.c:1246
+#, c-format
+msgid "write block %lli ERROR:%s\n"
+msgstr "寫入區塊 %lli 錯誤:%s\n"
+
+#: lib/engine.c:1087 lib/engine.c:1089 lib/engine.c:1258 lib/engine.c:1260
+msgid "read and write different\n"
+msgstr "讀取與寫入不同\n"
+
+#: lib/engine.c:1099 lib/engine.c:1102
+#, c-format
+msgid "write empty ERROR:%s\n"
+msgstr "寫入空白資料錯誤:%s\n"
+
+#: lib/engine.c:1286
+#, c-format
+msgid "%s, %i, thread join error\n"
+msgstr "%s, %i, 執行緒 join 錯誤\n"
+
+#: lib/engine.c:1304
+#, c-format
+msgid "%s: post_clone_fixup reported a non-fatal error\n"
+msgstr "%s: post_clone_fixup 回報非致命錯誤\n"
+
+#: lib/engine.c:1320
+msgid "Operation cancelled.\n"
+msgstr "操作已取消。\n"
+
+#: lib/engine.c:1322
+#, c-format
+msgid "Cloned successfully.\n"
+msgstr "複製成功。\n"
+
+#: lib/engine.c:1324
+#, c-format
+msgid "Checked successfully.\n"
+msgstr "檢查成功。\n"
+
+#: lib/engine.c:1358
+#, c-format
+msgid "Unknown filesystem backend: %s\n"
+msgstr "未知檔案系統後端: %s\n"
+
+#: lib/diskimg.c:437
+#, c-format
+msgid "image format:    %s\n"
+msgstr "映像檔格式:    %s\n"
+
+#: lib/diskimg.c:438
+#, c-format
+msgid "created on a:    %u bits platform\n"
+msgstr "建立於:    %u 位元平台\n"
+
+#: lib/diskimg.c:439
+#, c-format
+msgid "with partclone:  v%.14s\n"
+msgstr "使用 partclone:  v%.14s\n"
+
+#: lib/diskimg.c:442
+#, c-format
+msgid "Disk size:       %s = %llu Bytes\n"
+msgstr "磁碟大小:       %s = %llu Bytes\n"
+
+#: lib/diskimg.c:444
+#, c-format
+msgid "Sector size:     %u Byte\n"
+msgstr "磁區大小:     %u Byte\n"
+
+#: lib/diskimg.c:447
+#, c-format
+msgid "Partition table: %s, %u entr(ies)\n"
+msgstr "分割表: %s, %u 個項目\n"
+
+#: lib/diskimg.c:450
+#, c-format
+msgid "Partition table: %s\n"
+msgstr "分割表: %s\n"
+
+#: lib/diskimg.c:450
+msgid "none"
+msgstr "無"
+
+#: lib/diskimg.c:453
+#, c-format
+msgid "Volumes:         %u\n"
+msgstr "磁碟區:         %u\n"
+
+#: src/ptc-gtk4.c:181
 msgid "Clone"
 msgstr "複製"
 
-#: src/ptc-gtk4.c:184
+#: src/ptc-gtk4.c:182
 msgid "Restore"
 msgstr "還原"
 
-#: src/ptc-gtk4.c:185
+#: src/ptc-gtk4.c:183
 msgid "Check image"
 msgstr "檢查映像檔"
 
-#: src/ptc-gtk4.c:186
+#: src/ptc-gtk4.c:184
 msgid "Device to device (dd)"
 msgstr "裝置對裝置 (dd)"
 
-#: src/ptc-gtk4.c:187
+#: src/ptc-gtk4.c:185
 msgid "Domain log"
 msgstr "網域日誌"
 
-#: src/ptc-gtk4.c:279 src/ptc-gtk4.c:425
+#: src/ptc-gtk4.c:277 src/ptc-gtk4.c:423
 msgid "Running..."
 msgstr "正在執行…"
 
-#: src/ptc-gtk4.c:318
+#: src/ptc-gtk4.c:316
 msgid "Finished"
 msgstr "已完成"
 
-#: src/ptc-gtk4.c:319
+#: src/ptc-gtk4.c:317
 msgid "--- finished ---"
 msgstr "--- 完成 ---"
 
-#: src/ptc-gtk4.c:321
+#: src/ptc-gtk4.c:319
 msgid "Failed"
 msgstr "失敗"
 
-#: src/ptc-gtk4.c:322
+#: src/ptc-gtk4.c:320
 #, c-format
 msgid "--- error: %s ---"
 msgstr "--- 錯誤：%s ---"
 
-#: src/ptc-gtk4.c:323
+#: src/ptc-gtk4.c:321
 msgid "unknown error"
 msgstr "未知錯誤"
 
-#: src/ptc-gtk4.c:334
+#: src/ptc-gtk4.c:332
 msgid "self-test: verifying the image"
 msgstr "自我測試：正在檢查映像檔"
 
-#: src/ptc-gtk4.c:378
+#: src/ptc-gtk4.c:376
 msgid "Please choose a source device or image."
 msgstr "請選擇來源裝置或映像檔。"
 
-#: src/ptc-gtk4.c:382
+#: src/ptc-gtk4.c:380
 msgid "Please choose a target."
 msgstr "請選擇目標。"
 
-#: src/ptc-gtk4.c:386
+#: src/ptc-gtk4.c:384
 msgid "Please choose a log file."
 msgstr "請選擇日誌檔。"
 
-#: src/ptc-gtk4.c:394
+#: src/ptc-gtk4.c:392
 msgid "Cannot open the log file for writing."
 msgstr "無法開啟日誌檔進行寫入。"
 
-#: src/ptc-gtk4.c:416
+#: src/ptc-gtk4.c:414
 #, c-format
 msgid "=== %s ==="
 msgstr "=== %s ==="
 
-#: src/ptc-gtk4.c:417
+#: src/ptc-gtk4.c:415
 #, c-format
 msgid "source : %s"
 msgstr "來源 : %s"
 
-#: src/ptc-gtk4.c:419
+#: src/ptc-gtk4.c:417
 #, c-format
 msgid "target : %s"
 msgstr "目標 : %s"
 
-#: src/ptc-gtk4.c:420
+#: src/ptc-gtk4.c:418
 #, c-format
 msgid "backend: %s"
 msgstr "後端: %s"
 
-#: src/ptc-gtk4.c:421 src/ptc-gtk4.c:839
+#: src/ptc-gtk4.c:419 src/ptc-gtk4.c:837
 msgid "auto (detect)"
 msgstr "自動（偵測）"
 
-#: src/ptc-gtk4.c:424
+#: src/ptc-gtk4.c:422
 msgid "starting"
 msgstr "正在啟動"
 
-#: src/ptc-gtk4.c:478
+#: src/ptc-gtk4.c:476
 msgid "GTK4 front end for the libpartclone partition cloning library."
 msgstr "libpartclone 分割區複製函式庫的 GTK4 前端。"
 
-#: src/ptc-gtk4.c:516
+#: src/ptc-gtk4.c:514
 msgid "An operation is still running."
 msgstr "仍有操作正在執行。"
 
-#: src/ptc-gtk4.c:518
+#: src/ptc-gtk4.c:516
 msgid "Quitting now will abort the operation."
 msgstr "現在結束將中止該操作。"
 
-#: src/ptc-gtk4.c:520
+#: src/ptc-gtk4.c:518
 msgid "Cancel"
 msgstr "取消"
 
-#: src/ptc-gtk4.c:520
+#: src/ptc-gtk4.c:518
 msgid "Quit"
 msgstr "結束"
 
-#: src/ptc-gtk4.c:589
+#: src/ptc-gtk4.c:587
 msgid "Select source device or image"
 msgstr "選擇來源裝置或映像檔"
 
-#: src/ptc-gtk4.c:624
+#: src/ptc-gtk4.c:622
 msgid "Select target device or image"
 msgstr "選擇目標裝置或映像檔"
 
-#: src/ptc-gtk4.c:659
+#: src/ptc-gtk4.c:657
 msgid "Select log file"
 msgstr "選擇日誌檔"
 
-#: src/ptc-gtk4.c:702
+#: src/ptc-gtk4.c:700
 #, c-format
 msgid "self-test: cloning %s"
 msgstr "自我測試：正在複製 %s"
 
-#: src/ptc-gtk4.c:766
+#: src/ptc-gtk4.c:764
 msgid "_Run"
 msgstr "_執行"
 
-#: src/ptc-gtk4.c:767
+#: src/ptc-gtk4.c:765
 msgid "_Clear log"
 msgstr "_清除日誌"
 
-#: src/ptc-gtk4.c:768
+#: src/ptc-gtk4.c:766
 msgid "_About"
 msgstr "_關於"
 
-#: src/ptc-gtk4.c:769
+#: src/ptc-gtk4.c:767
 msgid "_Quit"
 msgstr "_結束"
 
-#: src/ptc-gtk4.c:777
+#: src/ptc-gtk4.c:775
 msgid "Main menu"
 msgstr "主選單"
 
-#: src/ptc-gtk4.c:798
+#: src/ptc-gtk4.c:796
 msgid "partclone"
-msgstr ""
+msgstr "partclone"
 
-#: src/ptc-gtk4.c:809
+#: src/ptc-gtk4.c:807
 #, c-format
 msgid ""
 "libpartclone %s\n"
@@ -442,159 +682,159 @@ msgstr ""
 "libpartclone %s\n"
 "後端: %s"
 
-#: src/ptc-gtk4.c:826
+#: src/ptc-gtk4.c:824
 msgid "Mode"
 msgstr "模式"
 
-#: src/ptc-gtk4.c:830
+#: src/ptc-gtk4.c:828
 msgid ""
 "Operation to perform. The available target fields change with the selected "
 "mode."
 msgstr "要執行的操作。可用的目標欄位會隨所選模式而改變。"
 
-#: src/ptc-gtk4.c:843
+#: src/ptc-gtk4.c:841
 msgid "Backend"
 msgstr "後端"
 
-#: src/ptc-gtk4.c:847
+#: src/ptc-gtk4.c:845
 msgid "Filesystem backend. Use \"auto (detect)\" to let partclone pick one."
 msgstr "檔案系統後端。使用「自動（偵測）」讓 partclone 自行選擇。"
 
-#: src/ptc-gtk4.c:853
+#: src/ptc-gtk4.c:851
 msgid "Source"
 msgstr "來源"
 
-#: src/ptc-gtk4.c:857
+#: src/ptc-gtk4.c:855
 msgid "Device or image the data is read from."
 msgstr "從中讀取資料的裝置或映像檔。"
 
-#: src/ptc-gtk4.c:859 src/ptc-gtk4.c:872 src/ptc-gtk4.c:886
+#: src/ptc-gtk4.c:857 src/ptc-gtk4.c:870 src/ptc-gtk4.c:884
 msgid "Browse..."
 msgstr "瀏覽…"
 
-#: src/ptc-gtk4.c:865
+#: src/ptc-gtk4.c:863
 msgid "Target"
 msgstr "目標"
 
-#: src/ptc-gtk4.c:870
+#: src/ptc-gtk4.c:868
 msgid "Device or image the data is written to."
 msgstr "寫入資料的裝置或映像檔。"
 
-#: src/ptc-gtk4.c:879
+#: src/ptc-gtk4.c:877
 msgid "Log file"
 msgstr "日誌檔"
 
-#: src/ptc-gtk4.c:884
+#: src/ptc-gtk4.c:882
 msgid "The engine writes its detailed report to this file."
 msgstr "引擎會將詳細報告寫入此檔案。"
 
-#: src/ptc-gtk4.c:893
+#: src/ptc-gtk4.c:891
 msgid "Skip target size check (-C)"
 msgstr "略過目標大小檢查 (-C)"
 
-#: src/ptc-gtk4.c:896
+#: src/ptc-gtk4.c:894
 msgid "Do not check that the target is large enough before writing."
 msgstr "寫入前不檢查目標是否夠大。"
 
-#: src/ptc-gtk4.c:898
+#: src/ptc-gtk4.c:896
 msgid "Force (-F)"
 msgstr "強制 (-F)"
 
-#: src/ptc-gtk4.c:901
+#: src/ptc-gtk4.c:899
 msgid ""
 "Keep the process alive on recoverable errors and report them in the log "
 "instead of aborting."
 msgstr "遇到可復原的錯誤時保持行程執行，並記錄到日誌而非中止。"
 
-#: src/ptc-gtk4.c:904
+#: src/ptc-gtk4.c:902
 msgid "Quiet engine output"
 msgstr "靜默引擎輸出"
 
-#: src/ptc-gtk4.c:907
+#: src/ptc-gtk4.c:905
 msgid "Suppress the progress messages the engine would print on stdout."
 msgstr "抑制引擎原本會列印到標準輸出的進度訊息。"
 
-#: src/ptc-gtk4.c:909
+#: src/ptc-gtk4.c:907
 msgid "Overwrite target (-O)"
 msgstr "覆寫目標 (-O)"
 
-#: src/ptc-gtk4.c:911
+#: src/ptc-gtk4.c:909
 msgid ""
 "Replace the target if it already exists (required to update an existing "
 "image)."
 msgstr "若目標已存在則取代（更新既有映像檔時需要）。"
 
-#: src/ptc-gtk4.c:921
+#: src/ptc-gtk4.c:919
 msgid "Run"
 msgstr "執行"
 
-#: src/ptc-gtk4.c:924
+#: src/ptc-gtk4.c:922
 msgid "Start the operation (F5)."
 msgstr "開始操作 (F5)。"
 
-#: src/ptc-gtk4.c:926
+#: src/ptc-gtk4.c:924
 msgid "Clear log"
 msgstr "清除日誌"
 
-#: src/ptc-gtk4.c:927
+#: src/ptc-gtk4.c:925
 msgid "Clear the log view (Ctrl+L)."
 msgstr "清除日誌檢視 (Ctrl+L)。"
 
-#: src/ptc-gtk4.c:936
+#: src/ptc-gtk4.c:934
 msgid "idle"
 msgstr "閒置"
 
-#: src/ptc-gtk4.c:939
+#: src/ptc-gtk4.c:937
 msgid "Ready"
 msgstr "就緒"
 
-#: src/ptc-gtk4.c:979
+#: src/ptc-gtk4.c:977
 #, c-format
 msgid "libpartclone %s ready."
-msgstr ""
+msgstr "libpartclone %s 就緒。"
 
-#: src/ptc-gtk4.c:995
+#: src/ptc-gtk4.c:993
 #, c-format
 msgid "[!] Unknown backend: %s"
 msgstr "[!] 未知後端：%s"
 
-#: src/ptc-gtk4.c:1003
+#: src/ptc-gtk4.c:1001
 #, c-format
 msgid "[!] Unknown mode: %s"
 msgstr "[!] 未知模式：%s"
 
-#: src/ptc-gtk4.c:1017
+#: src/ptc-gtk4.c:1015
 msgid "Clone a temporary file, verify it, then quit (headless test)"
 msgstr "複製一個暫存檔並檢查，然後結束（無介面測試）"
 
-#: src/ptc-gtk4.c:1020
+#: src/ptc-gtk4.c:1018
 msgid "Source device or image"
 msgstr "來源裝置或映像檔"
 
-#: src/ptc-gtk4.c:1020 src/ptc-gtk4.c:1022
+#: src/ptc-gtk4.c:1018 src/ptc-gtk4.c:1020
 msgid "PATH"
 msgstr "路徑"
 
-#: src/ptc-gtk4.c:1022
+#: src/ptc-gtk4.c:1020
 msgid "Target device or image"
 msgstr "目標裝置或映像檔"
 
-#: src/ptc-gtk4.c:1024
+#: src/ptc-gtk4.c:1022
 msgid "Backend name (default: autodetect)"
 msgstr "後端名稱（預設：自動偵測）"
 
-#: src/ptc-gtk4.c:1024
+#: src/ptc-gtk4.c:1022
 msgid "NAME"
 msgstr "名稱"
 
-#: src/ptc-gtk4.c:1026
+#: src/ptc-gtk4.c:1024
 msgid "Operation: clone, restore, check, dd or domain"
 msgstr "操作：clone、restore、check、dd 或 domain"
 
-#: src/ptc-gtk4.c:1026
+#: src/ptc-gtk4.c:1024
 msgid "MODE"
 msgstr "模式"
 
-#: src/ptc-gtk4.c:1028
+#: src/ptc-gtk4.c:1026
 msgid "SOURCE"
 msgstr "來源"

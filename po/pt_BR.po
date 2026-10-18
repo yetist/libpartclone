@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Partclone 0.3.44\n"
 "Report-Msgid-Bugs-To: thomas@clonezilla.org\n"
-"POT-Creation-Date: 2026-10-17 15:43+0800\n"
+"POT-Creation-Date: 2026-10-18 19:02+0800\n"
 "PO-Revision-Date: 2026-02-17 23:28-0300\n"
 "Last-Translator: Rafael Fontenelle <rafaelff@gnome.org>\n"
 "Language-Team: Brazilian Portuguese\n"
@@ -19,37 +19,37 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "X-Generator: Gtranslator 49.0\n"
 
-#: lib/progress.c:246
+#: lib/progress.c:245
 #, c-format
 msgid "Elapsed: %s, Remaining: %s, Completed: %6.2f%%"
 msgstr "Passado: %s, Restante: %s, Concluído: %6.2f%%"
 
-#: lib/progress.c:249
+#: lib/progress.c:248
 #, c-format
 msgid ", %6.2f%s/%s,"
 msgstr ", %6.2f%s/%s,"
 
-#: lib/progress.c:252
+#: lib/progress.c:251
 #, c-format
 msgid "Current block: %10Lu, Total block: %10Lu, Complete: %6.2f%%%s"
 msgstr "Bloco atual: %10Lu, Blocos totais: %10Lu, Concluído: %6.2f%%%s"
 
-#: lib/progress.c:261
+#: lib/progress.c:260
 #, c-format
 msgid "Elapsed: %s, Remaining: %s, Completed: 100.00%%"
 msgstr "Passado: %s, Restante: %s, Concluído: 100.00%%"
 
-#: lib/progress.c:263
+#: lib/progress.c:262
 #, c-format
 msgid ", Rate: %6.2f%s/%s,"
 msgstr ", Taxa: %6.2f%s/%s,"
 
-#: lib/progress.c:266
+#: lib/progress.c:265
 #, c-format
 msgid "Current block: %10Lu, Total block: %10Lu, Complete: 100.00%%"
 msgstr "Bloco atual: %10Lu, Blocos totais: %10Lu, Concluído: 100.00%%s"
 
-#: lib/progress.c:270
+#: lib/progress.c:269
 #, c-format
 msgid ""
 "\n"
@@ -58,552 +58,781 @@ msgstr ""
 "\n"
 "Tempo total: %s, "
 
-#: lib/progress.c:272
+#: lib/progress.c:271
 #, c-format
 msgid "Ave. Rate: %6.2f%s/%s, "
 msgstr "Taxa média: %6.2f%s/%s, "
 
-#: lib/progress.c:273
+#: lib/progress.c:272
 #, c-format
 msgid "%s"
 msgstr "%s"
 
-#: lib/progress.c:302
+#: lib/progress.c:301
 #, c-format
 msgid "Elapsed: %s Remaining: %s "
 msgstr "Passado: %s Restante: %s "
 
-#: lib/progress.c:304
+#: lib/progress.c:303
 #, c-format
 msgid "Rate: %6.2f%s/%s"
 msgstr "Taxa: %6.2f%s/%s"
 
-#: lib/progress.c:306
+#: lib/progress.c:305
 #, c-format
 msgid "Current Block: %llu  Total Block: %llu "
 msgstr "Bloco atual: %llu   Blocos totais: %llu "
 
-#: lib/progress.c:309 lib/progress.c:342
+#: lib/progress.c:308 lib/progress.c:341
 msgid "Data Block Process:"
 msgstr "Processo de bloco de dados:"
 
-#: lib/progress.c:311 lib/progress.c:344
+#: lib/progress.c:310 lib/progress.c:343
 msgid "Calculating Bitmap Process:"
 msgstr "Processo de cálculo de bitmap:"
 
-#: lib/progress.c:315 lib/progress.c:326
+#: lib/progress.c:314 lib/progress.c:325
 #, c-format
 msgid "ncurses update error\n"
 msgstr "Erro de atualização de ncurses\n"
 
-#: lib/progress.c:322 lib/progress.c:352
+#: lib/progress.c:321 lib/progress.c:351
 msgid "Total Block Process:"
 msgstr "Processo de blocos totais:"
 
-#: lib/progress.c:337
+#: lib/progress.c:336
 #, c-format
 msgid "Total Time: %s Remaining: %s "
 msgstr "Tempo total: %s Restante: %s "
 
-#: lib/progress.c:339
+#: lib/progress.c:338
 #, c-format
 msgid "Ave. Rate: %6.2f%s/%s"
 msgstr "Taxa média: %6.2f%s/%s"
 
-#: lib/partclone.c:2137
+#: lib/partclone.c:2215
 #, c-format
 msgid "Partclone v%s http://partclone.org\n"
 msgstr "Partclone v%s http://partclone.org\n"
 
-#: lib/partclone.c:2139
+#: lib/partclone.c:2217
 #, c-format
 msgid "Starting to check image (%s)\n"
 msgstr "Iniciando a verificação da imagem (%s)\n"
 
-#: lib/partclone.c:2142
+#: lib/partclone.c:2220
 #, c-format
 msgid "Starting to clone device (%s) to compressed image (%s)\n"
 msgstr "Iniciando a clonagem de dispositivo (%s) para imagem compactada (%s)\n"
 
-#: lib/partclone.c:2144
+#: lib/partclone.c:2222
 #, c-format
 msgid "Starting to clone device (%s) to image (%s)\n"
 msgstr "Iniciando a clonagem de dispositivo (%s) para imagem (%s)\n"
 
-#: lib/partclone.c:2147
+#: lib/partclone.c:2225
 #, c-format
 msgid "Starting to restore image (%s) to block files (%s)\n"
-msgstr ""
-"Iniciando a restauração da imagem (%s) para bloquear os arquivos (%s)\n"
+msgstr "Iniciando a restauração da imagem (%s) para bloquear os arquivos (%s)\n"
 
-#: lib/partclone.c:2149
+#: lib/partclone.c:2227
 #, c-format
 msgid "Starting to restore image (%s) to device (%s)\n"
 msgstr "Iniciando a restauração da imagem (%s) para dispositivo (%s)\n"
 
-#: lib/partclone.c:2151
+#: lib/partclone.c:2229
 #, c-format
 msgid "Starting to back up device (%s) to device (%s)\n"
 msgstr "Iniciando a backup de dispositivo (%s) para dispositivo (%s)\n"
 
-#: lib/partclone.c:2153
+#: lib/partclone.c:2231
 #, c-format
 msgid "Starting to map device (%s) to domain log (%s)\n"
-msgstr ""
-"Iniciando a mapeamento de dispositivo (%s) para registro de domínio (%s)\n"
+msgstr "Iniciando a mapeamento de dispositivo (%s) para registro de domínio (%s)\n"
 
-#: lib/partclone.c:2156
+#: lib/partclone.c:2234
 #, c-format
 msgid "Starting to dd image (%s) to block files (%s)\n"
 msgstr "Iniciando adicionar imagem (%s) para bloquear arquivos (%s)\n"
 
-#: lib/partclone.c:2158
+#: lib/partclone.c:2236
 #, c-format
 msgid "Starting to clone/restore (%s) to (%s) with dd mode\n"
 msgstr "Iniciando a clonagem/restauração (%s) para (%s) com modo dd\n"
 
-#: lib/partclone.c:2160
+#: lib/partclone.c:2238
 #, c-format
 msgid "Showing info of image (%s)\n"
 msgstr "Mostrando info sobre a imagem (%s)\n"
 
-#: lib/partclone.c:2162
+#: lib/partclone.c:2240
 msgid "Unknown mode\n"
 msgstr "Modo desconhecido\n"
 
-#: lib/partclone.c:2182
+#: lib/partclone.c:2260
 #, c-format
 msgid "File system:  %s\n"
 msgstr "Sistema de arquivos: %s\n"
 
-#: lib/partclone.c:2185
+#: lib/partclone.c:2263
 #, c-format
 msgid "Device size:  %s = %llu Blocks\n"
 msgstr "Tam. dispos.:  %s = %llu blocos\n"
 
-#: lib/partclone.c:2188
+#: lib/partclone.c:2266
 #, c-format
 msgid "Space in use: %s = %llu Blocks\n"
 msgstr "Espaço em uso: %s = %llu blocos\n"
 
-#: lib/partclone.c:2191
+#: lib/partclone.c:2269
 #, c-format
 msgid "Free Space:   %s = %llu Blocks\n"
 msgstr "Espaço livre:  %s = %llu blocos\n"
 
-#: lib/partclone.c:2193
+#: lib/partclone.c:2271
 #, c-format
 msgid "Block size:   %i Byte\n"
 msgstr "Tam. bloco:    %i Byte\n"
 
-#: lib/partclone.c:2194
+#: lib/partclone.c:2272
 #, c-format
 msgid "Used Blocks in Super-Block:   %llu Blocks\n"
 msgstr "Blocos usados em super block:   %llu blocos\n"
 
-#: lib/partclone.c:2207
+#: lib/partclone.c:2285
 #, c-format
 msgid "image format:    %04d\n"
 msgstr "formato img.:    %04d\n"
 
-#: lib/partclone.c:2211 lib/partclone.c:2218
+#: lib/partclone.c:2289 lib/partclone.c:2296
 #, c-format
 msgid "created on a:    %s\n"
 msgstr "criada em um:    %s\n"
 
-#: lib/partclone.c:2213 lib/partclone.c:2221
+#: lib/partclone.c:2291 lib/partclone.c:2299
 #, c-format
 msgid "with partclone:  %s\n"
 msgstr "com partclone:   %s\n"
 
-#: lib/partclone.c:2217
-#, fuzzy, c-format
+#: lib/partclone.c:2295
+#, c-format
 msgid "%u bits platform"
-msgstr "plataforma de %d bits"
+msgstr "plataforma de %u bits"
 
-#: lib/partclone.c:2220
+#: lib/partclone.c:2298
 #, c-format
 msgid "v%s"
 msgstr "v%s"
 
-#: lib/partclone.c:2224
+#: lib/partclone.c:2302
 #, c-format
 msgid "bitmap mode:     %s\n"
 msgstr "modo bitmap:     %s\n"
 
-#: lib/partclone.c:2226
+#: lib/partclone.c:2304
 #, c-format
 msgid "checksum algo:   %s\n"
 msgstr "algo. checksum:  %s\n"
 
-#: lib/partclone.c:2230 lib/partclone.c:2239
+#: lib/partclone.c:2308 lib/partclone.c:2317
 #, c-format
 msgid "checksum size:   %s\n"
 msgstr "tam. checksum:   %s\n"
 
-#: lib/partclone.c:2232 lib/partclone.c:2242
+#: lib/partclone.c:2310 lib/partclone.c:2320
 #, c-format
 msgid "blocks/checksum: %s\n"
 msgstr "blocos/checksum: %s\n"
 
-#: lib/partclone.c:2234 lib/partclone.c:2244
+#: lib/partclone.c:2312 lib/partclone.c:2322
 #, c-format
 msgid "reseed checksum: %s\n"
 msgstr "ressemear checksum: %s\n"
 
-#: lib/partclone.c:2244
+#: lib/partclone.c:2322
 msgid "yes"
 msgstr "sim"
 
-#: lib/partclone.c:2244
+#: lib/partclone.c:2322
 msgid "no"
 msgstr "não"
 
-#: lib/partclone.c:2257
+#: lib/partclone.c:2335
 #, c-format
 msgid "Partclone successfully checked the image (%s)\n"
 msgstr "Partclone verificou com sucesso a imagem (%s)\n"
 
-#: lib/partclone.c:2259
+#: lib/partclone.c:2337
 #, c-format
 msgid "Partclone successfully cloned the device (%s) to the image (%s)\n"
 msgstr "Partclone clonou com sucesso o dispositivo (%s) para a imagem (%s)\n"
 
-#: lib/partclone.c:2261
+#: lib/partclone.c:2339
 #, c-format
 msgid "Partclone successfully restored the image (%s) to the device (%s)\n"
-msgstr ""
-"Partclone restaurou com sucesso a imagem (%s) para o dispositivo (%s)\n"
+msgstr "Partclone restaurou com sucesso a imagem (%s) para o dispositivo (%s)\n"
 
-#: lib/partclone.c:2263
+#: lib/partclone.c:2341
 #, c-format
 msgid "Partclone successfully cloned the device (%s) to the device (%s)\n"
-msgstr ""
-"Partclone clonou com sucesso o dispositivo (%s) para o dispositivo (%s)\n"
+msgstr "Partclone clonou com sucesso o dispositivo (%s) para o dispositivo (%s)\n"
 
-#: lib/partclone.c:2265
+#: lib/partclone.c:2343
 #, c-format
 msgid "Partclone successfully mapped the device (%s) to the domain log (%s)\n"
 msgstr ""
 "Partclone mapeou com sucesso o dispositivo (%s) para o registro de domínio "
 "(%s)\n"
 
-#: src/ptc-gtk4.c:183
+#: lib/engine.c:128
+msgid ""
+"*************************************************************************\n"
+"* WARNING: The disk has bad sectors. This means physical damage on the  *\n"
+"* disk surface caused by deterioration, manufacturing faults, or        *\n"
+"* another reason. The reliability of the disk may remain stable or      *\n"
+"* degrade quickly. Use the --rescue option to efficiently save as much  *\n"
+"* data as possible!                                                     *\n"
+"*************************************************************************\n"
+msgstr "*************************************************************************\n* AVISO: O disco tem setores defeituosos. Isso significa dano físico    *\n* na superfície do disco causado por deterioração, falhas de fabricação *\n* ou outro motivo. A confiabilidade do disco pode permanecer estável    *\n* ou degradar rapidamente. Use a opção --rescue para salvar o máximo    *\n* de dados possível!                                                    *\n*************************************************************************\n"
+
+#: lib/engine.c:159
+msgid "No filesystem backend selected for this operation.\n"
+msgstr "Nenhum backend de sistema de arquivos selecionado para esta operação.\n"
+
+#: lib/engine.c:191
+msgid ""
+"You are not logged as root. You may have \"access denied\" errors when "
+"working.\n"
+msgstr "Você não está conectado como root. Você pode ter erros de \"acesso negado\" ao trabalhar.\n"
+
+#: lib/engine.c:211 lib/engine.c:218
+msgid "Error exit\n"
+msgstr "Saída de erro\n"
+
+#: lib/engine.c:244
+msgid "Reading Super Block\n"
+msgstr "Lendo super bloco\n"
+
+#: lib/engine.c:264 lib/engine.c:315 lib/engine.c:358 lib/engine.c:406
+#: lib/engine.c:510 lib/engine.c:731 lib/engine.c:737 lib/engine.c:994
+#: lib/engine.c:1000 lib/engine.c:1170
+#, c-format
+msgid "%s, %i, not enough memory\n"
+msgstr "%s, %i, memória insuficiente\n"
+
+#: lib/engine.c:271
+msgid "Calculating bitmap... Please wait... \n"
+msgstr "Calculando bitmap... Aguarde... \n"
+
+#: lib/engine.c:295 lib/engine.c:338 lib/engine.c:378 lib/engine.c:438
+msgid "done!\n"
+msgstr "concluído!\n"
+
+#: lib/engine.c:322
+msgid "Calculating bitmap... Please wait...\n"
+msgstr "Calculando bitmap... Aguarde...\n"
+
+#: lib/engine.c:365 lib/engine.c:413
+msgid "Calculating bitmap... Please wait... "
+msgstr "Calculando bitmap... Aguarde... "
+
+#: lib/engine.c:386
+#, c-format
+msgid "%s, %i, stdout is not supported\n"
+msgstr "%s, %i, stdout não é suportado\n"
+
+#: lib/engine.c:473
+#, c-format
+msgid "%s, %i, thread create error\n"
+msgstr "%s, %i, erro ao criar thread\n"
+
+#: lib/engine.c:500 lib/engine.c:986 lib/engine.c:1162
+#, c-format
+msgid "%s, %i, memory for read posix_memalign error\n"
+msgstr "%s, %i, erro de posix_memalign para memória de leitura\n"
+
+#: lib/engine.c:515 lib/engine.c:560 lib/engine.c:1054
+#, c-format
+msgid "source seek ERROR:%s\n"
+msgstr "ERRO de seek na origem:%s\n"
+
+#: lib/engine.c:582
+#, c-format
+msgid "read error: %s\n"
+msgstr "erro de leitura: %s\n"
+
+#: lib/engine.c:629 lib/engine.c:659
+#, c-format
+msgid "image write ERROR:%s\n"
+msgstr "ERRO de escrita da imagem:%s\n"
+
+#: lib/engine.c:641
+#, c-format
+msgid "read(%i) and write(%i) different\n"
+msgstr "read(%i) e write(%i) diferentes\n"
+
+#: lib/engine.c:685
+#, c-format
+msgid "source seek ERROR: %s\n"
+msgstr "ERRO de seek na origem: %s\n"
+
+#: lib/engine.c:691
+msgid "ERROR: source image too short\n"
+msgstr "ERRO: imagem de origem muito curta\n"
+
+#: lib/engine.c:749 lib/engine.c:880 lib/engine.c:956 lib/engine.c:959
+#: lib/engine.c:1013 lib/engine.c:1039
+#, c-format
+msgid "target seek ERROR:%s\n"
+msgstr "ERRO de seek no destino:%s\n"
+
+#: lib/engine.c:779
+msgid "blocks_read ERROR: impossible size of blocks_read\n"
+msgstr "ERRO em blocks_read: tamanho impossível de blocks_read\n"
+
+#: lib/engine.c:797
+#, c-format
+msgid "read ERROR:%s\n"
+msgstr "ERRO de leitura:%s\n"
+
+#: lib/engine.c:834 lib/engine.c:860
+#, c-format
+msgid ""
+"checksum error, block_id=%llu...\n"
+" "
+msgstr "erro de checksum, block_id=%llu...\n "
+
+#: lib/engine.c:931
+#, c-format
+msgid "write block %llu ERROR:%s\n"
+msgstr "ERRO ao escrever bloco %llu:%s\n"
+
+#: lib/engine.c:933
+#, c-format
+msgid "skip write block %llu error:%s\n"
+msgstr "erro ao ignorar a escrita do bloco %llu:%s\n"
+
+#: lib/engine.c:969 lib/engine.c:1111 lib/engine.c:1274
+#, c-format
+msgid "ftruncate ERROR:%s\n"
+msgstr "ERRO de ftruncate:%s\n"
+
+#: lib/engine.c:1011
+#, c-format
+msgid "source seek ERROR:%d\n"
+msgstr "ERRO de seek na origem:%d\n"
+
+#: lib/engine.c:1066 lib/engine.c:1226
+#, c-format
+msgid "source read ERROR %s\n"
+msgstr "ERRO de leitura na origem %s\n"
+
+#: lib/engine.c:1073 lib/engine.c:1244
+#, c-format
+msgid "skip write block %lli error:%s\n"
+msgstr "erro ao ignorar a escrita do bloco %lli:%s\n"
+
+#: lib/engine.c:1075 lib/engine.c:1246
+#, c-format
+msgid "write block %lli ERROR:%s\n"
+msgstr "ERRO ao escrever bloco %lli:%s\n"
+
+#: lib/engine.c:1087 lib/engine.c:1089 lib/engine.c:1258 lib/engine.c:1260
+msgid "read and write different\n"
+msgstr "leitura e escrita diferentes\n"
+
+#: lib/engine.c:1099 lib/engine.c:1102
+#, c-format
+msgid "write empty ERROR:%s\n"
+msgstr "ERRO de escrita vazia:%s\n"
+
+#: lib/engine.c:1286
+#, c-format
+msgid "%s, %i, thread join error\n"
+msgstr "%s, %i, erro de junção de thread\n"
+
+#: lib/engine.c:1304
+#, c-format
+msgid "%s: post_clone_fixup reported a non-fatal error\n"
+msgstr "%s: post_clone_fixup relatou um erro não fatal\n"
+
+#: lib/engine.c:1320
+msgid "Operation cancelled.\n"
+msgstr "Operação cancelada.\n"
+
+#: lib/engine.c:1322
+#, c-format
+msgid "Cloned successfully.\n"
+msgstr "Clonado com sucesso.\n"
+
+#: lib/engine.c:1324
+#, c-format
+msgid "Checked successfully.\n"
+msgstr "Verificado com sucesso.\n"
+
+#: lib/engine.c:1358
+#, c-format
+msgid "Unknown filesystem backend: %s\n"
+msgstr "Backend de sistema de arquivos desconhecido: %s\n"
+
+#: lib/diskimg.c:437
+#, c-format
+msgid "image format:    %s\n"
+msgstr "formato img.:    %s\n"
+
+#: lib/diskimg.c:438
+#, c-format
+msgid "created on a:    %u bits platform\n"
+msgstr "criada em um:    plataforma de %u bits\n"
+
+#: lib/diskimg.c:439
+#, c-format
+msgid "with partclone:  v%.14s\n"
+msgstr "com partclone:   v%.14s\n"
+
+#: lib/diskimg.c:442
+#, c-format
+msgid "Disk size:       %s = %llu Bytes\n"
+msgstr "Tam. disco:     %s = %llu Bytes\n"
+
+#: lib/diskimg.c:444
+#, c-format
+msgid "Sector size:     %u Byte\n"
+msgstr "Tam. setor:     %u Byte\n"
+
+#: lib/diskimg.c:447
+#, c-format
+msgid "Partition table: %s, %u entr(ies)\n"
+msgstr "Tabela de partições: %s, %u entrada(s)\n"
+
+#: lib/diskimg.c:450
+#, c-format
+msgid "Partition table: %s\n"
+msgstr "Tabela de partições: %s\n"
+
+#: lib/diskimg.c:450
+msgid "none"
+msgstr "nenhum"
+
+#: lib/diskimg.c:453
+#, c-format
+msgid "Volumes:         %u\n"
+msgstr "Volumes:         %u\n"
+
+#: src/ptc-gtk4.c:181
 msgid "Clone"
-msgstr ""
+msgstr "Clonar"
+
+#: src/ptc-gtk4.c:182
+msgid "Restore"
+msgstr "Restaurar"
+
+#: src/ptc-gtk4.c:183
+msgid "Check image"
+msgstr "Verificar imagem"
 
 #: src/ptc-gtk4.c:184
-msgid "Restore"
-msgstr ""
+msgid "Device to device (dd)"
+msgstr "Dispositivo para dispositivo (dd)"
 
 #: src/ptc-gtk4.c:185
-msgid "Check image"
-msgstr ""
-
-#: src/ptc-gtk4.c:186
-msgid "Device to device (dd)"
-msgstr ""
-
-#: src/ptc-gtk4.c:187
 msgid "Domain log"
-msgstr ""
+msgstr "Registro de domínio"
 
-#: src/ptc-gtk4.c:279 src/ptc-gtk4.c:425
+#: src/ptc-gtk4.c:277 src/ptc-gtk4.c:423
 msgid "Running..."
-msgstr ""
+msgstr "Executando..."
 
-#: src/ptc-gtk4.c:318
+#: src/ptc-gtk4.c:316
 msgid "Finished"
-msgstr ""
+msgstr "Concluído"
+
+#: src/ptc-gtk4.c:317
+msgid "--- finished ---"
+msgstr "--- concluído ---"
 
 #: src/ptc-gtk4.c:319
-msgid "--- finished ---"
-msgstr ""
-
-#: src/ptc-gtk4.c:321
 msgid "Failed"
-msgstr ""
+msgstr "Falhou"
 
-#: src/ptc-gtk4.c:322
+#: src/ptc-gtk4.c:320
 #, c-format
 msgid "--- error: %s ---"
-msgstr ""
+msgstr "--- erro: %s ---"
 
-#: src/ptc-gtk4.c:323
-#, fuzzy
+#: src/ptc-gtk4.c:321
 msgid "unknown error"
-msgstr "Modo desconhecido\n"
+msgstr "erro desconhecido"
 
-#: src/ptc-gtk4.c:334
+#: src/ptc-gtk4.c:332
 msgid "self-test: verifying the image"
-msgstr ""
+msgstr "autoteste: verificando a imagem"
 
-#: src/ptc-gtk4.c:378
+#: src/ptc-gtk4.c:376
 msgid "Please choose a source device or image."
-msgstr ""
+msgstr "Escolha um dispositivo ou imagem de origem."
 
-#: src/ptc-gtk4.c:382
+#: src/ptc-gtk4.c:380
 msgid "Please choose a target."
-msgstr ""
+msgstr "Escolha um destino."
 
-#: src/ptc-gtk4.c:386
+#: src/ptc-gtk4.c:384
 msgid "Please choose a log file."
-msgstr ""
+msgstr "Escolha um arquivo de log."
 
-#: src/ptc-gtk4.c:394
+#: src/ptc-gtk4.c:392
 msgid "Cannot open the log file for writing."
-msgstr ""
+msgstr "Não foi possível abrir o arquivo de log para escrita."
 
-#: src/ptc-gtk4.c:416
+#: src/ptc-gtk4.c:414
 #, c-format
 msgid "=== %s ==="
-msgstr ""
+msgstr "=== %s ==="
+
+#: src/ptc-gtk4.c:415
+#, c-format
+msgid "source : %s"
+msgstr "origem : %s"
 
 #: src/ptc-gtk4.c:417
 #, c-format
-msgid "source : %s"
-msgstr ""
-
-#: src/ptc-gtk4.c:419
-#, c-format
 msgid "target : %s"
-msgstr ""
+msgstr "destino : %s"
 
-#: src/ptc-gtk4.c:420
+#: src/ptc-gtk4.c:418
 #, c-format
 msgid "backend: %s"
-msgstr ""
+msgstr "backend: %s"
 
-#: src/ptc-gtk4.c:421 src/ptc-gtk4.c:839
+#: src/ptc-gtk4.c:419 src/ptc-gtk4.c:837
 msgid "auto (detect)"
-msgstr ""
+msgstr "automático (detectar)"
 
-#: src/ptc-gtk4.c:424
+#: src/ptc-gtk4.c:422
 msgid "starting"
-msgstr ""
+msgstr "iniciando"
 
-#: src/ptc-gtk4.c:478
+#: src/ptc-gtk4.c:476
 msgid "GTK4 front end for the libpartclone partition cloning library."
-msgstr ""
+msgstr "Interface GTK4 para a biblioteca de clonagem de partições libpartclone."
+
+#: src/ptc-gtk4.c:514
+msgid "An operation is still running."
+msgstr "Uma operação ainda está em execução."
 
 #: src/ptc-gtk4.c:516
-msgid "An operation is still running."
-msgstr ""
+msgid "Quitting now will abort the operation."
+msgstr "Sair agora abortará a operação."
 
 #: src/ptc-gtk4.c:518
-msgid "Quitting now will abort the operation."
-msgstr ""
-
-#: src/ptc-gtk4.c:520
 msgid "Cancel"
-msgstr ""
+msgstr "Cancelar"
 
-#: src/ptc-gtk4.c:520
+#: src/ptc-gtk4.c:518
 msgid "Quit"
-msgstr ""
+msgstr "Sair"
 
-#: src/ptc-gtk4.c:589
+#: src/ptc-gtk4.c:587
 msgid "Select source device or image"
-msgstr ""
+msgstr "Selecionar dispositivo ou imagem de origem"
 
-#: src/ptc-gtk4.c:624
+#: src/ptc-gtk4.c:622
 msgid "Select target device or image"
-msgstr ""
+msgstr "Selecionar dispositivo ou imagem de destino"
 
-#: src/ptc-gtk4.c:659
+#: src/ptc-gtk4.c:657
 msgid "Select log file"
-msgstr ""
+msgstr "Selecionar arquivo de log"
 
-#: src/ptc-gtk4.c:702
+#: src/ptc-gtk4.c:700
 #, c-format
 msgid "self-test: cloning %s"
-msgstr ""
+msgstr "autoteste: clonando %s"
+
+#: src/ptc-gtk4.c:764
+msgid "_Run"
+msgstr "_Executar"
+
+#: src/ptc-gtk4.c:765
+msgid "_Clear log"
+msgstr "_Limpar log"
 
 #: src/ptc-gtk4.c:766
-msgid "_Run"
-msgstr ""
+msgid "_About"
+msgstr "_Sobre"
 
 #: src/ptc-gtk4.c:767
-msgid "_Clear log"
-msgstr ""
-
-#: src/ptc-gtk4.c:768
-msgid "_About"
-msgstr ""
-
-#: src/ptc-gtk4.c:769
 msgid "_Quit"
-msgstr ""
+msgstr "_Sair"
 
-#: src/ptc-gtk4.c:777
+#: src/ptc-gtk4.c:775
 msgid "Main menu"
-msgstr ""
+msgstr "Menu principal"
 
-#: src/ptc-gtk4.c:798
-#, fuzzy
+#: src/ptc-gtk4.c:796
 msgid "partclone"
-msgstr "com partclone:   %s\n"
+msgstr "partclone"
 
-#: src/ptc-gtk4.c:809
+#: src/ptc-gtk4.c:807
 #, c-format
 msgid ""
 "libpartclone %s\n"
 "backends: %s"
-msgstr ""
+msgstr "libpartclone %s\nbackends: %s"
 
-#: src/ptc-gtk4.c:826
+#: src/ptc-gtk4.c:824
 msgid "Mode"
-msgstr ""
+msgstr "Modo"
 
-#: src/ptc-gtk4.c:830
+#: src/ptc-gtk4.c:828
 msgid ""
 "Operation to perform. The available target fields change with the selected "
 "mode."
-msgstr ""
+msgstr "Operação a executar. Os campos de destino disponíveis mudam com o modo selecionado."
 
-#: src/ptc-gtk4.c:843
+#: src/ptc-gtk4.c:841
 msgid "Backend"
-msgstr ""
+msgstr "Backend"
 
-#: src/ptc-gtk4.c:847
+#: src/ptc-gtk4.c:845
 msgid "Filesystem backend. Use \"auto (detect)\" to let partclone pick one."
-msgstr ""
+msgstr "Backend de sistema de arquivos. Use \"automático (detectar)\" para deixar o partclone escolher um."
 
-#: src/ptc-gtk4.c:853
+#: src/ptc-gtk4.c:851
 msgid "Source"
-msgstr ""
+msgstr "Origem"
 
-#: src/ptc-gtk4.c:857
+#: src/ptc-gtk4.c:855
 msgid "Device or image the data is read from."
-msgstr ""
+msgstr "Dispositivo ou imagem de onde os dados são lidos."
 
-#: src/ptc-gtk4.c:859 src/ptc-gtk4.c:872 src/ptc-gtk4.c:886
+#: src/ptc-gtk4.c:857 src/ptc-gtk4.c:870 src/ptc-gtk4.c:884
 msgid "Browse..."
-msgstr ""
+msgstr "Procurar..."
 
-#: src/ptc-gtk4.c:865
+#: src/ptc-gtk4.c:863
 msgid "Target"
-msgstr ""
+msgstr "Destino"
 
-#: src/ptc-gtk4.c:870
+#: src/ptc-gtk4.c:868
 msgid "Device or image the data is written to."
-msgstr ""
+msgstr "Dispositivo ou imagem para onde os dados são gravados."
 
-#: src/ptc-gtk4.c:879
+#: src/ptc-gtk4.c:877
 msgid "Log file"
-msgstr ""
+msgstr "Arquivo de log"
 
-#: src/ptc-gtk4.c:884
+#: src/ptc-gtk4.c:882
 msgid "The engine writes its detailed report to this file."
-msgstr ""
+msgstr "O motor escreve seu relatório detalhado neste arquivo."
 
-#: src/ptc-gtk4.c:893
+#: src/ptc-gtk4.c:891
 msgid "Skip target size check (-C)"
-msgstr ""
+msgstr "Ignorar verificação de tamanho do destino (-C)"
+
+#: src/ptc-gtk4.c:894
+msgid "Do not check that the target is large enough before writing."
+msgstr "Não verificar se o destino é grande o suficiente antes de gravar."
 
 #: src/ptc-gtk4.c:896
-msgid "Do not check that the target is large enough before writing."
-msgstr ""
-
-#: src/ptc-gtk4.c:898
 msgid "Force (-F)"
-msgstr ""
+msgstr "Forçar (-F)"
 
-#: src/ptc-gtk4.c:901
+#: src/ptc-gtk4.c:899
 msgid ""
 "Keep the process alive on recoverable errors and report them in the log "
 "instead of aborting."
-msgstr ""
+msgstr "Manter o processo ativo em erros recuperáveis e relatá-los no log em vez de abortar."
 
-#: src/ptc-gtk4.c:904
+#: src/ptc-gtk4.c:902
 msgid "Quiet engine output"
-msgstr ""
+msgstr "Saída silenciosa do motor"
+
+#: src/ptc-gtk4.c:905
+msgid "Suppress the progress messages the engine would print on stdout."
+msgstr "Suprimir as mensagens de progresso que o motor imprimiria em stdout."
 
 #: src/ptc-gtk4.c:907
-msgid "Suppress the progress messages the engine would print on stdout."
-msgstr ""
+msgid "Overwrite target (-O)"
+msgstr "Sobrescrever destino (-O)"
 
 #: src/ptc-gtk4.c:909
-msgid "Overwrite target (-O)"
-msgstr ""
-
-#: src/ptc-gtk4.c:911
 msgid ""
 "Replace the target if it already exists (required to update an existing "
 "image)."
-msgstr ""
+msgstr "Substituir o destino se ele já existir (necessário para atualizar uma imagem existente)."
 
-#: src/ptc-gtk4.c:921
+#: src/ptc-gtk4.c:919
 msgid "Run"
-msgstr ""
+msgstr "Executar"
+
+#: src/ptc-gtk4.c:922
+msgid "Start the operation (F5)."
+msgstr "Iniciar a operação (F5)."
 
 #: src/ptc-gtk4.c:924
-msgid "Start the operation (F5)."
-msgstr ""
-
-#: src/ptc-gtk4.c:926
 msgid "Clear log"
-msgstr ""
+msgstr "Limpar log"
 
-#: src/ptc-gtk4.c:927
+#: src/ptc-gtk4.c:925
 msgid "Clear the log view (Ctrl+L)."
-msgstr ""
+msgstr "Limpar a visualização do log (Ctrl+L)."
 
-#: src/ptc-gtk4.c:936
+#: src/ptc-gtk4.c:934
 msgid "idle"
-msgstr ""
+msgstr "ocioso"
 
-#: src/ptc-gtk4.c:939
+#: src/ptc-gtk4.c:937
 msgid "Ready"
-msgstr ""
+msgstr "Pronto"
 
-#: src/ptc-gtk4.c:979
-#, fuzzy, c-format
+#: src/ptc-gtk4.c:977
+#, c-format
 msgid "libpartclone %s ready."
-msgstr "com partclone:   %s\n"
+msgstr "libpartclone %s pronto."
 
-#: src/ptc-gtk4.c:995
+#: src/ptc-gtk4.c:993
 #, c-format
 msgid "[!] Unknown backend: %s"
-msgstr ""
+msgstr "[!] Backend desconhecido: %s"
 
-#: src/ptc-gtk4.c:1003
-#, fuzzy, c-format
+#: src/ptc-gtk4.c:1001
+#, c-format
 msgid "[!] Unknown mode: %s"
-msgstr "Modo desconhecido\n"
+msgstr "[!] Modo desconhecido: %s"
 
-#: src/ptc-gtk4.c:1017
+#: src/ptc-gtk4.c:1015
 msgid "Clone a temporary file, verify it, then quit (headless test)"
-msgstr ""
+msgstr "Clonar um arquivo temporário, verificá-lo e sair (teste sem interface)"
+
+#: src/ptc-gtk4.c:1018
+msgid "Source device or image"
+msgstr "Dispositivo ou imagem de origem"
+
+#: src/ptc-gtk4.c:1018 src/ptc-gtk4.c:1020
+msgid "PATH"
+msgstr "CAMINHO"
 
 #: src/ptc-gtk4.c:1020
-msgid "Source device or image"
-msgstr ""
-
-#: src/ptc-gtk4.c:1020 src/ptc-gtk4.c:1022
-msgid "PATH"
-msgstr ""
+msgid "Target device or image"
+msgstr "Dispositivo ou imagem de destino"
 
 #: src/ptc-gtk4.c:1022
-msgid "Target device or image"
-msgstr ""
-
-#: src/ptc-gtk4.c:1024
 msgid "Backend name (default: autodetect)"
-msgstr ""
+msgstr "Nome do backend (padrão: autodetectar)"
+
+#: src/ptc-gtk4.c:1022
+msgid "NAME"
+msgstr "NOME"
 
 #: src/ptc-gtk4.c:1024
-msgid "NAME"
-msgstr ""
-
-#: src/ptc-gtk4.c:1026
 msgid "Operation: clone, restore, check, dd or domain"
-msgstr ""
+msgstr "Operação: clone, restore, check, dd ou domain"
+
+#: src/ptc-gtk4.c:1024
+msgid "MODE"
+msgstr "MODO"
 
 #: src/ptc-gtk4.c:1026
-msgid "MODE"
-msgstr ""
-
-#: src/ptc-gtk4.c:1028
 msgid "SOURCE"
-msgstr ""
+msgstr "ORIGEM"
