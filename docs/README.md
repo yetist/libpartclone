@@ -27,12 +27,12 @@ git checkout -b docs-typo-normanly
 Change files:
 ```
 cd docs/
-fgrep -i  normanly *.xml
-vi partclone.xml
-vi partclone.chkimg.xml
-vi partclone.dd.xml
-vi partclone.imager.xml
-vi partclone.restore.xml
+fgrep -i  normanly *.scd
+vi partclone.scd
+vi partclone.chkimg.scd
+vi partclone.dd.scd
+vi partclone.restore.scd
+vi partclone.info.scd
 ```
 
 Create first commit, referencing the issue:
@@ -40,24 +40,27 @@ Create first commit, referencing the issue:
 ```
 git diff
 git status
-git add partclone.xml partclone.chkimg.xml partclone.dd.xml partclone.imager.xml partclone.restore.xml 
+git add partclone.scd partclone.chkimg.scd partclone.dd.scd partclone.restore.scd partclone.info.scd
 git commit
 git push --set-upstream origin docs-typo-normanly
 ```
 
-Derive `.8` files.
-You may have to install `libxslt-tools`, `docbook` and `docbook-xsl-stylesheets`.
-(TODO: What minimum version is required?)
-(TODO: Is `xmltoman` or `doxygen2man` needed?)
-The file `docs/meson.build` configures a specific stylesheet to be used in the conversion that
-may not be on your installation. Try a close match before manually installing the exact
-version of the `partclone` developers, e.g.:
+The manual pages are written in the scdoc format and rendered to roff with
+`scdoc(1)`. See `scdoc(5)` for the syntax. Install the `scdoc` package (for
+example `scdoc` on Debian/Ubuntu, Fedora or Arch) and preview your changes
+with:
 ```
-xsltproc --nonet /usr/share/xml/docbook/stylesheet/nwalsh/1.79.2/manpages/docbook.xsl partclone.xml
-for I in chkimg dd imager restore ; do xsltproc --nonet /usr/share/xml/docbook/stylesheet/nwalsh/1.79.2/manpages/docbook.xsl partclone.$I.xml ; done
+scdoc < partclone.scd | man -l -
 ```
 
-Check there are no style changes or other changes than intended:
+You may also derive `.8` files by hand, e.g.:
+```
+for I in partclone partclone.chkimg partclone.dd partclone.restore partclone.info ; do
+    scdoc < $I.scd > $I.8
+done
+```
+
+Check there are no unexpected changes than intended:
 ```
 git diff
 ```
@@ -65,10 +68,9 @@ git diff
 Create second commit:
 ```
 git status
-git add partclone.restore.8 partclone.imager.8 partclone.dd.8 partclone.chkimg.8 partclone.8
+git add partclone.8 partclone.chkimg.8 partclone.dd.8 partclone.restore.8 partclone.info.8
 git commit
 git push
 ```
 
-Visit your fork on github. There is a button to make a pull request. If too much time passed the button may no longer be on the main page of your fork but you
-may find such a button when switching to the branch.
+Visit your fork on github. There is a button to make a pull request. If too much time passed the button may no longer be on the main page of your fork but you may find such a button when switching to the branch.

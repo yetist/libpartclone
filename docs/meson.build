@@ -2,10 +2,9 @@
 ## Manual pages
 ##
 ## Most .8 pages are pre-generated and shipped, so they are installed directly.
-## The "corporeal" pages (partclone.8, partclone.chkimg.8, ...) are generated
-## from the DocBook XML sources with xsltproc, exactly like the old Makefile.am
-## did.  Generation is best effort: when xsltproc is unavailable those pages are
-## simply not built.
+## The "corporeal" pages (partclone.8, partclone.chkimg.8, ...) are written in
+## the scdoc format (.scd) and rendered to roff with scdoc(1).  Generation is
+## best effort: when scdoc is unavailable those pages are simply not built.
 ## ---------------------------------------------------------------------------
 man_mans = ['partclone.imager.8']
 
@@ -99,7 +98,7 @@ endif
 
 install_man(man_mans)
 
-## Pages generated from DocBook XML sources.
+## Pages generated from scdoc sources.
 corporeal = [
   'partclone',
   'partclone.chkimg',
@@ -114,19 +113,20 @@ if fs_build.get('vmfs', false)
   corporeal += ['partclone.fstype']
 endif
 
-xsltproc = find_program('xsltproc', required : false)
-man_stylesheet = 'http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl'
+scdoc = find_program('scdoc', required : false)
 
-if xsltproc.found()
+if scdoc.found()
   foreach page : corporeal
     custom_target(page + '.8',
-      input : page + '.xml',
+      input : page + '.scd',
       output : page + '.8',
-      command : [xsltproc, '--nonet', '--output', '@OUTPUT@', man_stylesheet, '@INPUT@'],
+      command : [scdoc],
+      feed : true,
+      capture : true,
       install : true,
       install_dir : get_option('mandir') / 'man8',
     )
   endforeach
 else
-  warning('xsltproc not found: the partclone.8 family of manual pages will not be installed')
+  warning('scdoc not found: the partclone.8 family of manual pages will not be installed')
 endif

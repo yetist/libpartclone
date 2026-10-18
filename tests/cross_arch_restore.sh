@@ -5,7 +5,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 # 1. Install dependencies for minimal build
 apt-get update
-apt-get install -y build-essential meson ninja-build gettext pkg-config e2fslibs-dev uuid-dev libblkid-dev libxxhash-dev bc libssl-dev zlib1g-dev libzstd-dev e2fsprogs xsltproc docbook-xsl
+apt-get install -y build-essential meson ninja-build gettext pkg-config e2fslibs-dev uuid-dev libblkid-dev libxxhash-dev bc libssl-dev zlib1g-dev libzstd-dev e2fsprogs scdoc
 
 # 2. Compile partclone
 cd /workspace
