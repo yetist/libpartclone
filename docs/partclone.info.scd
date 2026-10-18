@@ -68,7 +68,7 @@ You can get support at http://partclone.org
 # SEE ALSO
 
 *partclone*(8), *partclone.chkimg*(8), *partclone.restore*(8),
-*partclone.dd*(8)
+*partclone.dd*(8), *partclone.disk*(8)
 
 # AUTHOR
 

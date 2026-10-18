@@ -9,10 +9,10 @@ partclone - the utility for clone and restore a partition.
 *partclone*.[fstype] [*-c* | *--clone*] [*-r* | *--restore*]
 \[*-b* | *--dev-to-dev*] [*-s* | *--source*] _source_
 \[[*-o* | *--output*] [*-O* | *--overwrite*]] _target_ [*-dX* | *--debug=X*]
-\[*--restore_raw_file*] [*-z* | *--buffer_size*] [*-N* | *--ncurses*]
+\[*-W* | *--restore_raw_file*] [*-z* | *--buffer_size*] [*-N* | *--ncurses*]
 \[*-q* | *--quiet*] [*-f* | *--UI-fresh*] [*-F* | *--force*]
-\[*-I* | *--ignore_fschk*] [*-i* | *--ignore_crc*] [*-C* | *--nocheck*]
-\[*-R* | *--rescue*] [*-L* | *--logfile*] _logfile_ [*-X* | *--compresscmd*]
+\[*-I* | *--ignore_fschk*] [*-i* | *--ignore_crc*] [*-C* | *--no_check*]
+\[*-R* | *--rescue*] [*-L* | *--logfile*] _logfile_ [*-x* | *--compresscmd*]
 \[*-D* | *--domain*] [*--offset_domain*] [*-aX* | *--checksum-mode=X*]
 \[*-kX* | *--blocks-per-checksum=X*] [*-K* | *--no-reseed*]
 \[*-w* | *--skip_write_error*] [*-E* | *--offset=X*] [*-T* | *--btfiles*]
@@ -82,7 +82,7 @@ starting with two dashes (-). A summary of options is included below.
 *-O* _FILE_, *--overwrite* _FILE_
 	Overwrite FILE, overwriting if exists.
 
-*-W* _FILE_, *--restore_raw_file* _FILE_
+*-W*, *--restore_raw_file*
 	Create special raw file for loop device.
 
 *-c*, *--clone*
@@ -236,7 +236,7 @@ You can get support at http://partclone.org
 # SEE ALSO
 
 *partclone.chkimg*(8), *partclone.restore*(8), *partclone.dd*(8),
-*partclone.info*(8)
+*partclone.info*(8), *partclone.disk*(8)
 
 # AUTHOR
 

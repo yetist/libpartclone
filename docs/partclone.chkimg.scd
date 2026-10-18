@@ -48,9 +48,6 @@ starting with two dashes (-). A summary of options is included below.
 *-N*, *--ncurses*
 	Using Ncurses Text User Interface.
 
-*-X*, *--dialog*
-	Output message as Dialog Format.
-
 *--ignore_crc*
 	Ignore crc check error.
 
@@ -110,7 +107,7 @@ You can get support at http://partclone.org
 # SEE ALSO
 
 *partclone*(8), *partclone.restore*(8), *partclone.dd*(8),
-*partclone.info*(8)
+*partclone.info*(8), *partclone.disk*(8)
 
 # AUTHOR
 

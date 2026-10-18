@@ -31,6 +31,7 @@ fgrep -i  normanly *.scd
 vi partclone.scd
 vi partclone.chkimg.scd
 vi partclone.dd.scd
+vi partclone.disk.scd
 vi partclone.restore.scd
 vi partclone.info.scd
 ```
@@ -40,7 +41,7 @@ Create first commit, referencing the issue:
 ```
 git diff
 git status
-git add partclone.scd partclone.chkimg.scd partclone.dd.scd partclone.restore.scd partclone.info.scd
+git add partclone.scd partclone.chkimg.scd partclone.dd.scd partclone.disk.scd partclone.restore.scd partclone.info.scd
 git commit
 git push --set-upstream origin docs-typo-normanly
 ```
@@ -55,7 +56,7 @@ scdoc < partclone.scd | man -l -
 
 You may also derive `.8` files by hand, e.g.:
 ```
-for I in partclone partclone.chkimg partclone.dd partclone.restore partclone.info ; do
+for I in partclone partclone.chkimg partclone.dd partclone.disk partclone.restore partclone.info ; do
     scdoc < $I.scd > $I.8
 done
 ```
@@ -68,7 +69,7 @@ git diff
 Create second commit:
 ```
 git status
-git add partclone.8 partclone.chkimg.8 partclone.dd.8 partclone.restore.8 partclone.info.8
+git add partclone.8 partclone.chkimg.8 partclone.dd.8 partclone.disk.8 partclone.restore.8 partclone.info.8
 git commit
 git push
 ```

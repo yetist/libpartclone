@@ -103,6 +103,7 @@ corporeal = [
   'partclone',
   'partclone.chkimg',
   'partclone.dd',
+  'partclone.disk',
   'partclone.info',
   'partclone.restore',
 ]

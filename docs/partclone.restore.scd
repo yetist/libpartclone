@@ -8,9 +8,9 @@ partclone.restore - restore partclone image to device.
 
 *partclone.restore* [*-s* | *--source*] _source_
 \[[*-o* | *--output*] [*-O* | *--overwrite*]] _target_ [*-dX* | *--debug=X*]
-\[*--restore_raw_file*] [*-z* | *--buffer_size*] [*-N* | *--ncurses*]
+\[*-W* | *--restore_raw_file*] [*-z* | *--buffer_size*] [*-N* | *--ncurses*]
 \[*-q* | *--quiet*] [*-f* | *--UI-fresh*] [*-F* | *--force*]
-\[*-I* | *--ignore_fschk*] [*--ignore_crc*] [*-C* | *--nocheck*]
+\[*-I* | *--ignore_fschk*] [*--ignore_crc*] [*-C* | *--no_check*]
 \[*-R* | *--rescue*] [*-L* | *--logfile*] _logfile_
 \[*-w* | *--skip_write_error*] [*--write-direct-io*] [*-E* | *--offset=X*]
 \[*-T* | *--btfiles*] [*-t* | *--btfiles_torrent*]
@@ -55,7 +55,7 @@ starting with two dashes (-). A summary of options is included below.
 *-O* _FILE_, *--overwrite* _FILE_
 	Overwrite FILE, overwriting if exists.
 
-*--restore_raw_file*
+*-W*, *--restore_raw_file*
 	Creating special raw file for loop device.
 
 *-L* _FILE_, *--logfile* _FILE_
@@ -70,9 +70,6 @@ starting with two dashes (-). A summary of options is included below.
 
 *-N*, *--ncurses*
 	Using Ncurses Text User Interface.
-
-*-X*, *--dialog*
-	Output message as Dialog Format.
 
 *-I*, *--ignore_fschk*
 	Ignore filesystem check.
@@ -148,7 +145,7 @@ You can get support at http://partclone.org
 # SEE ALSO
 
 *partclone*(8), *partclone.chkimg*(8), *partclone.dd*(8),
-*partclone.info*(8)
+*partclone.info*(8), *partclone.disk*(8)
 
 # AUTHOR
 

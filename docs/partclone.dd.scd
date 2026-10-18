@@ -8,9 +8,9 @@ partclone.dd - unsupported file system backup utility (like *dd*).
 
 *partclone.dd* [*-s* | *--source*] _source_
 \[[*-o* | *--output*] [*-O* | *--overwrite*]] _target_ [*-dX* | *--debug=X*]
-\[*--restore_raw_file*] [*-z* | *--buffer_size*] [*-N* | *--ncurses*]
+\[*-W* | *--restore_raw_file*] [*-z* | *--buffer_size*] [*-N* | *--ncurses*]
 \[*-q* | *--quiet*] [*-f* | *--UI-fresh*] [*-F* | *--force*]
-\[*-I* | *--ignore_fschk*] [*-i* | *--ignore_crc*] [*-C* | *--nocheck*]
+\[*-I* | *--ignore_fschk*] [*-i* | *--ignore_crc*] [*-C* | *--no_check*]
 \[*-L* | *--logfile*] _logfile_ [*-w* | *--skip_write_error*]
 \[*-E* | *--offset=X*] [*-T* | *--btfiles*] [*-t* | *--btfiles_torrent*]
 \[*-B* | *--no_block_detail*] [*--binary-prefix*] [*--prog-second*]
@@ -55,7 +55,7 @@ starting with two dashes (-). A summary of options is included below.
 *-O* _FILE_, *--overwrite* _FILE_
 	Overwrite FILE, overwriting if exists.
 
-*-W* _FILE_, *--restore_raw_file* _FILE_
+*-W*, *--restore_raw_file*
 	Create special raw file for loop device.
 
 *-L* _FILE_, *--logfile* _FILE_
@@ -169,7 +169,7 @@ You can get support at http://partclone.org
 # SEE ALSO
 
 *partclone*(8), *partclone.chkimg*(8), *partclone.restore*(8),
-*partclone.info*(8)
+*partclone.info*(8), *partclone.disk*(8)
 
 # AUTHOR
 
