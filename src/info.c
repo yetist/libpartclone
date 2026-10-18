@@ -26,6 +26,7 @@
 
 #include "partclone.h"
 #include "checksum.h"
+#include "diskimg.h"
 
 void info_usage(void) {
 	fprintf(stderr, "partclone v%s http://partclone.org\n"
@@ -112,6 +113,8 @@ int main(int argc, char **argv){
 	image_head_v2    img_head;
 	file_system_info fs_info;
 	image_options    img_opt;
+	image_desc_v2    pre;
+	int              r_size;
 
     if (argc == 2){
 	memset(&opt, 0, sizeof(cmd_opt));
@@ -139,8 +142,38 @@ int main(int argc, char **argv){
 	    log_mesg(0, 1, 1, opt.debug, "info: Can't open file(%s)\n", opt.source);
     }
 
+    /**
+     * Peek the image version.  A format 0003 image is a whole-disk container,
+     * whose volumes are listed here; everything else is an ordinary 0001/0002
+     * image, whose header has already been read into @pre.
+     */
+    r_size = read_all(&dfr, (char *)&pre, sizeof(pre), &opt);
+    if (r_size != sizeof(pre))
+	log_mesg(0, 1, 1, opt.debug, "read image header error\n");
+
+    if (memcmp(pre.head.version, PTC_IMAGE_VERSION_0003, IMAGE_VERSION_SIZE) == 0) {
+	image_disk_head_v3 dh;
+	ptc_disk_image dimg;
+
+	memcpy(&dh, &pre, sizeof(pre));
+	if (read_all(&dfr, (char *)&dh + sizeof(pre), sizeof(dh) - sizeof(pre), &opt)
+		!= (int)(sizeof(dh) - sizeof(pre)))
+	    log_mesg(0, 1, 1, opt.debug, "read disk header error\n");
+
+	if (ptc_disk_image_load(&dfr, &dh, &dimg, &opt) != 0)
+	    log_mesg(0, 1, 1, opt.debug, "not a valid format 0003 disk image\n");
+
+	ptc_disk_image_print(&dimg, &opt);
+	ptc_disk_image_free(&dimg);
+
+	close(dfr);
+	close_log();
+	release_checksum();
+	return 0;
+    }
+
     /// get image information from image file
-    load_image_desc(&dfr, &opt, &img_head, &fs_info, &img_opt);
+    load_image_desc_ex(&dfr, &opt, &img_head, &fs_info, &img_opt, &pre);
 
     /// alloc a memory to restore bitmap
     bitmap = pc_alloc_bitmap(fs_info.totalblock);

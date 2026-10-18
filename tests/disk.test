@@ -12,6 +12,12 @@ set -e
 # Phase 2: MBR and GPT parsing, the partition table blob and manifest, one raw
 # volume per partition plus gap volumes, and table restore (verbatim, or
 # regenerated through libfdisk for a larger target).
+#
+# Phase 3: filesystem volumes, through the kernel partition devices of a loop
+# device.
+#
+# Phase 4: --grow (partition entry only), the partclone.info view of the volumes
+# and the libpartclone GObject API (PtcImage / PtcClient disk modes).
 
 ptlfs="../src/partclone.disk"
 bs=4096
@@ -327,6 +333,117 @@ EOF
     else
         echo -e "\nlosetup/mkfs.ext4 or privileges unavailable; skipping phase 3\n"
     fi
+
+    # -----------------------------------------------------------------------
+    # Phase 4: --grow, partclone.info and the GObject API
+    # -----------------------------------------------------------------------
+    echo -e "\nphase 4: --grow, partclone.info and the GObject API\n"
+
+    p4_secs=$((32*1024))
+    p4_src="$$_p4.raw"
+    p4_img="$$_p4.ptc"
+    p4_out="$$_p4.out"
+
+    _p4_size() {
+        # $1: disk, $2: start LBA -> partition size in sectors
+        sfdisk -d "$1" 2>/dev/null | grep "start= *$2," | sed 's/.*size= *\([0-9]*\).*/\1/'
+    }
+
+    rm -f $p4_src $p4_img $p4_out
+    truncate -s $((p4_secs*512)) $p4_src
+    sfdisk $p4_src >/dev/null 2>&1 <<'EOF'
+label: gpt
+start=2048, size=4096, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, name="p1"
+start=8192, size=4096, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, name="p2"
+EOF
+    dd if=/dev/urandom of=$p4_src bs=512 seek=2048 count=4096 conv=notrunc status=none
+
+    $ptlfs -c -s $p4_src -O $p4_img -L $logfile -F
+    _check_return_code
+
+    echo -e "[grow-gpt] restore onto a larger target with --grow\n"
+    truncate -s $(((p4_secs+16*1024)*512)) $p4_out
+    $ptlfs -r --grow -s $p4_img -O $p4_out -L $logfile -F
+    _check_return_code
+
+    p4_src_p2=$(_p4_size $p4_src 8192)
+    p4_out_p2=$(_p4_size $p4_out 8192)
+    p4_last=$((p4_secs+16*1024))
+    # The last partition must now end at the target's last usable LBA ...
+    if [ -z "$p4_out_p2" ] || [ "$p4_out_p2" -le "$p4_src_p2" ]; then
+        echo -e "\n[grow-gpt] last partition did not grow ($p4_src_p2 -> $p4_out_p2)\n"
+        exit 1
+    fi
+    p4_last_lba=$(sfdisk -d $p4_out 2>/dev/null | sed -n 's/^last-lba: *//p')
+    if [ "$((8192 + p4_out_p2 - 1))" != "$p4_last_lba" ]; then
+        echo -e "\n[grow-gpt] last partition does not reach the last usable LBA\n"
+        exit 1
+    fi
+    # ... its data is intact ...
+    if ! cmp -s <(dd if=$p4_src bs=512 skip=2048 count=4096 status=none) \
+                <(dd if=$p4_out bs=512 skip=2048 count=4096 status=none); then
+        echo -e "\n[grow-gpt] partition 1 data differs\n"
+        exit 1
+    fi
+    # ... and the backup GPT sits at the end of the larger target.
+    if [ "$(dd if=$p4_out bs=512 skip=$((p4_last-1)) count=1 status=none | head -c 8)" != "EFI PART" ]; then
+        echo -e "\n[grow-gpt] no backup GPT at the end of the larger target\n"
+        exit 1
+    fi
+
+    echo -e "[grow-mbr] the last primary/extended entry grows\n"
+    p4_mbr="$$_p4mbr.raw"
+    p4_mimg="$$_p4mbr.ptc"
+    p4_mout="$$_p4mbr.out"
+    rm -f $p4_mbr $p4_mimg $p4_mout
+    truncate -s $((p4_secs*512)) $p4_mbr
+    sfdisk $p4_mbr >/dev/null 2>&1 <<'EOF'
+label: dos
+unit: sectors
+start=2048, size=4096, type=83, bootable
+start=8192, size=8192, type=5
+start=10240, size=2048, type=83
+EOF
+    $ptlfs -c -s $p4_mbr -O $p4_mimg -L $logfile -F
+    _check_return_code
+    truncate -s $(((p4_secs+8*1024)*512)) $p4_mout
+    $ptlfs -r --grow -s $p4_mimg -O $p4_mout -L $logfile -F
+    _check_return_code
+    if [ "$(_p4_size $p4_mout 8192)" -le 8192 ]; then
+        echo -e "\n[grow-mbr] the extended entry did not grow\n"
+        exit 1
+    fi
+
+    echo -e "[info] partclone.info lists the 0003 volumes\n"
+    $ptlinfo -s $p4_img -L $logfile > $$_p4info.txt 2>&1
+    _check_return_code
+    grep -q "image format:    0003" $$_p4info.txt
+    grep -q "Partition table: GPT" $$_p4info.txt
+    grep -q "raw-full"  $$_p4info.txt
+    grep -q "raw-sparse" $$_p4info.txt
+    rm -f $$_p4info.txt
+
+    if [ -x ./ptc-image-probe ]; then
+        echo -e "[goapi] PtcImage introspection\n"
+        ./ptc-image-probe info $p4_img > $$_p4go.txt 2>&1
+        _check_return_code
+        grep -q "^version=0003"          $$_p4go.txt
+        grep -q "^is-disk=yes"           $$_p4go.txt
+        grep -q "^partition-table=GPT"   $$_p4go.txt
+        grep -q "^volume 2 kind=3 part=1" $$_p4go.txt
+
+        echo -e "[goapi] PtcClient whole-disk clone\n"
+        p4_goimg="$$_p4go.ptc"
+        rm -f $p4_goimg
+        ./ptc-image-probe clone $p4_src $p4_goimg $logfile >/dev/null 2>&1
+        _check_return_code
+        ./ptc-image-probe info $p4_goimg 2>&1 | grep -q "^is-disk=yes"
+        rm -f $$_p4go.txt $p4_goimg
+    else
+        echo -e "[goapi] ptc-image-probe not built; skipping GObject API test\n"
+    fi
+
+    rm -f $p4_src $p4_img $p4_out $p4_mbr $p4_mimg $p4_mout
 else
     echo -e "\nsfdisk not found; skipping partition-table tests\n"
 fi

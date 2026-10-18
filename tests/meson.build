@@ -7,6 +7,13 @@
 bash = find_program('bash')
 test_workdir = meson.current_build_dir()
 
+# A tiny front end used by disk.test to exercise the public GObject API.
+ptc_image_probe = executable('ptc-image-probe',
+  'ptc-image-probe.c',
+  dependencies : libpartclone_dep,
+  install : false,
+)
+
 tests = { 'dd' : 'dd.test', 'disk' : 'disk.test' }
 
 if get_option('fs-test')

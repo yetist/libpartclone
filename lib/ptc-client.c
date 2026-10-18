@@ -53,6 +53,14 @@ struct _PtcClient {
     gboolean overwrite;
     gboolean check;
     gboolean force;
+
+    /* format 0003 (whole-disk) options */
+    gboolean sparse;
+    gboolean no_zero_skipped;
+    gboolean no_fs_volumes;
+    gboolean grow;
+    char *gaps;
+    char *partition_table;
 };
 
 G_DEFINE_TYPE(PtcClient, ptc_client, G_TYPE_OBJECT)
@@ -70,6 +78,12 @@ enum {
     PROP_OVERWRITE,
     PROP_CHECK,
     PROP_FORCE,
+    PROP_SPARSE,
+    PROP_NO_ZERO_SKIPPED,
+    PROP_NO_FS_VOLUMES,
+    PROP_GROW,
+    PROP_GAPS,
+    PROP_PARTITION_TABLE,
     N_PROPERTIES
 };
 
@@ -77,6 +91,9 @@ static GParamSpec *properties[N_PROPERTIES];
 
 enum {
     SIGNAL_PROGRESS,
+    SIGNAL_VOLUME_STARTED,
+    SIGNAL_VOLUME_PROGRESS,
+    SIGNAL_VOLUME_FINISHED,
     N_SIGNALS
 };
 
@@ -101,6 +118,9 @@ ptc_mode_get_type(void)
             { PTC_MODE_CHKIMG,  "PTC_MODE_CHKIMG",  "chkimg"  },
             { PTC_MODE_DD,      "PTC_MODE_DD",      "dd"      },
             { PTC_MODE_DOMAIN,  "PTC_MODE_DOMAIN",  "domain"  },
+            { PTC_MODE_DISK_CLONE,   "PTC_MODE_DISK_CLONE",   "disk-clone"   },
+            { PTC_MODE_DISK_RESTORE, "PTC_MODE_DISK_RESTORE", "disk-restore" },
+            { PTC_MODE_DISK_CHKIMG,  "PTC_MODE_DISK_CHKIMG",  "disk-chkimg"  },
             { 0, NULL, NULL }
         };
         GType type = g_enum_register_static("PtcMode", values);
@@ -154,6 +174,24 @@ ptc_client_set_property(GObject *object, guint prop_id,
     case PROP_FORCE:
         self->force = g_value_get_boolean(value);
         break;
+    case PROP_SPARSE:
+        self->sparse = g_value_get_boolean(value);
+        break;
+    case PROP_NO_ZERO_SKIPPED:
+        self->no_zero_skipped = g_value_get_boolean(value);
+        break;
+    case PROP_NO_FS_VOLUMES:
+        self->no_fs_volumes = g_value_get_boolean(value);
+        break;
+    case PROP_GROW:
+        self->grow = g_value_get_boolean(value);
+        break;
+    case PROP_GAPS:
+        ptc_client_set_gaps(self, g_value_get_string(value));
+        break;
+    case PROP_PARTITION_TABLE:
+        ptc_client_set_partition_table(self, g_value_get_string(value));
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
         break;
@@ -200,6 +238,24 @@ ptc_client_get_property(GObject *object, guint prop_id,
     case PROP_FORCE:
         g_value_set_boolean(value, self->force);
         break;
+    case PROP_SPARSE:
+        g_value_set_boolean(value, self->sparse);
+        break;
+    case PROP_NO_ZERO_SKIPPED:
+        g_value_set_boolean(value, self->no_zero_skipped);
+        break;
+    case PROP_NO_FS_VOLUMES:
+        g_value_set_boolean(value, self->no_fs_volumes);
+        break;
+    case PROP_GROW:
+        g_value_set_boolean(value, self->grow);
+        break;
+    case PROP_GAPS:
+        g_value_set_string(value, self->gaps);
+        break;
+    case PROP_PARTITION_TABLE:
+        g_value_set_string(value, self->partition_table);
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
         break;
@@ -215,6 +271,8 @@ ptc_client_finalize(GObject *object)
     g_free(self->target);
     g_free(self->backend);
     g_free(self->logfile);
+    g_free(self->gaps);
+    g_free(self->partition_table);
 
     G_OBJECT_CLASS(ptc_client_parent_class)->finalize(object);
 }
@@ -268,6 +326,29 @@ ptc_client_class_init(PtcClientClass *klass)
         g_param_spec_boolean("force", "Force",
                              "Force the operation and ignore metadata errors",
                              FALSE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+    properties[PROP_SPARSE] =
+        g_param_spec_boolean("sparse", "Sparse",
+                             "Store raw volumes with a zero-detecting bitmap",
+                             FALSE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+    properties[PROP_NO_ZERO_SKIPPED] =
+        g_param_spec_boolean("no-zero-skipped", "No zero skipped",
+                             "Do not zero blocks absent from a child bitmap",
+                             FALSE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+    properties[PROP_NO_FS_VOLUMES] =
+        g_param_spec_boolean("no-fs-volumes", "No filesystem volumes",
+                             "Store partitions as raw volumes",
+                             FALSE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+    properties[PROP_GROW] =
+        g_param_spec_boolean("grow", "Grow",
+                             "Grow the last partition entry on a larger target",
+                             FALSE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+    properties[PROP_GAPS] =
+        g_param_spec_string("gaps", "Gaps", "Gap policy (none|metadata|sparse|full)",
+                            "metadata", G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+    properties[PROP_PARTITION_TABLE] =
+        g_param_spec_string("partition-table", "Partition table",
+                            "Table restore mode (auto|raw|regenerate)",
+                            "auto", G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
 
     g_object_class_install_properties(object_class, N_PROPERTIES, properties);
 
@@ -287,6 +368,59 @@ ptc_client_class_init(PtcClientClass *klass)
                      G_SIGNAL_RUN_LAST,
                      0, NULL, NULL, NULL,
                      G_TYPE_NONE, 2, G_TYPE_UINT64, G_TYPE_UINT64);
+
+    /**
+     * PtcClient::volume-started:
+     * @self: the #PtcClient.
+     * @index: 1-based volume number.
+     * @count: total number of volumes.
+     * @offset: byte offset of the volume on the disk.
+     * @length: byte length of the volume on the disk.
+     * @filesystem: filesystem magic of the child image.
+     * @label: filesystem label or partition name.
+     *
+     * Emitted before a whole-disk volume is processed.
+     */
+    signals[SIGNAL_VOLUME_STARTED] =
+        g_signal_new("volume-started",
+                     G_TYPE_FROM_CLASS(klass),
+                     G_SIGNAL_RUN_LAST,
+                     0, NULL, NULL, NULL,
+                     G_TYPE_NONE, 6, G_TYPE_UINT, G_TYPE_UINT,
+                     G_TYPE_UINT64, G_TYPE_UINT64, G_TYPE_STRING, G_TYPE_STRING);
+
+    /**
+     * PtcClient::volume-progress:
+     * @self: the #PtcClient.
+     * @index: 1-based volume number.
+     * @count: total number of volumes.
+     * @copied: number of blocks copied in this volume.
+     * @total: total number of blocks in this volume.
+     *
+     * Emitted periodically while a whole-disk volume is processed.
+     */
+    signals[SIGNAL_VOLUME_PROGRESS] =
+        g_signal_new("volume-progress",
+                     G_TYPE_FROM_CLASS(klass),
+                     G_SIGNAL_RUN_LAST,
+                     0, NULL, NULL, NULL,
+                     G_TYPE_NONE, 4, G_TYPE_UINT, G_TYPE_UINT,
+                     G_TYPE_UINT64, G_TYPE_UINT64);
+
+    /**
+     * PtcClient::volume-finished:
+     * @self: the #PtcClient.
+     * @index: 1-based volume number.
+     * @count: total number of volumes.
+     *
+     * Emitted after a whole-disk volume has been processed.
+     */
+    signals[SIGNAL_VOLUME_FINISHED] =
+        g_signal_new("volume-finished",
+                     G_TYPE_FROM_CLASS(klass),
+                     G_SIGNAL_RUN_LAST,
+                     0, NULL, NULL, NULL,
+                     G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
 }
 
 static void
@@ -303,6 +437,12 @@ ptc_client_init(PtcClient *self)
     self->overwrite = FALSE;
     self->check = TRUE;
     self->force = FALSE;
+    self->sparse = FALSE;
+    self->no_zero_skipped = FALSE;
+    self->no_fs_volumes = FALSE;
+    self->grow = FALSE;
+    self->gaps = g_strdup("metadata");
+    self->partition_table = g_strdup("auto");
 }
 
 /* ------------------------------------------------------------------ */
@@ -480,13 +620,104 @@ ptc_client_get_force(PtcClient *self)
     return self->force;
 }
 
+void
+ptc_client_set_sparse(PtcClient *self, gboolean sparse)
+{
+    g_return_if_fail(PTC_IS_CLIENT(self));
+    self->sparse = sparse;
+}
+
+gboolean
+ptc_client_get_sparse(PtcClient *self)
+{
+    g_return_val_if_fail(PTC_IS_CLIENT(self), FALSE);
+    return self->sparse;
+}
+
+void
+ptc_client_set_no_zero_skipped(PtcClient *self, gboolean no_zero_skipped)
+{
+    g_return_if_fail(PTC_IS_CLIENT(self));
+    self->no_zero_skipped = no_zero_skipped;
+}
+
+gboolean
+ptc_client_get_no_zero_skipped(PtcClient *self)
+{
+    g_return_val_if_fail(PTC_IS_CLIENT(self), FALSE);
+    return self->no_zero_skipped;
+}
+
+void
+ptc_client_set_no_fs_volumes(PtcClient *self, gboolean no_fs_volumes)
+{
+    g_return_if_fail(PTC_IS_CLIENT(self));
+    self->no_fs_volumes = no_fs_volumes;
+}
+
+gboolean
+ptc_client_get_no_fs_volumes(PtcClient *self)
+{
+    g_return_val_if_fail(PTC_IS_CLIENT(self), FALSE);
+    return self->no_fs_volumes;
+}
+
+void
+ptc_client_set_grow(PtcClient *self, gboolean grow)
+{
+    g_return_if_fail(PTC_IS_CLIENT(self));
+    self->grow = grow;
+}
+
+gboolean
+ptc_client_get_grow(PtcClient *self)
+{
+    g_return_val_if_fail(PTC_IS_CLIENT(self), FALSE);
+    return self->grow;
+}
+
+void
+ptc_client_set_gaps(PtcClient *self, const char *gaps)
+{
+    g_return_if_fail(PTC_IS_CLIENT(self));
+    g_free(self->gaps);
+    self->gaps = g_strdup(gaps != NULL ? gaps : "metadata");
+}
+
+const char *
+ptc_client_get_gaps(PtcClient *self)
+{
+    g_return_val_if_fail(PTC_IS_CLIENT(self), NULL);
+    return self->gaps;
+}
+
+void
+ptc_client_set_partition_table(PtcClient *self, const char *partition_table)
+{
+    g_return_if_fail(PTC_IS_CLIENT(self));
+    g_free(self->partition_table);
+    self->partition_table = g_strdup(partition_table != NULL ? partition_table : "auto");
+}
+
+const char *
+ptc_client_get_partition_table(PtcClient *self)
+{
+    g_return_val_if_fail(PTC_IS_CLIENT(self), NULL);
+    return self->partition_table;
+}
+
 /* ------------------------------------------------------------------ */
 /* Running                                                             */
 /* ------------------------------------------------------------------ */
 
+typedef struct {
+    PtcClient *self;
+    GCancellable *cancellable;
+} PtcRunContext;
+
 static void
-ptc_client_progress_cb(unsigned long long copied, unsigned long long total,
-                       gpointer user_data)
+ptc_client_engine_progress_cb(unsigned long long copied, unsigned long long total,
+                              gpointer user_data)
 {
     PtcClient *self = PTC_CLIENT(user_data);
 
@@ -494,11 +725,83 @@ ptc_client_progress_cb(unsigned long long copied, unsigned long long total,
                   (guint64)copied, (guint64)total);
 }
 
+static void
+ptc_client_disk_progress_cb(unsigned long long copied, unsigned long long total,
+                            gpointer user_data)
+{
+    PtcRunContext *ctx = user_data;
+
+    g_signal_emit(ctx->self, signals[SIGNAL_PROGRESS], 0,
+                  (guint64)copied, (guint64)total);
+}
+
+static void
+ptc_client_volume_started_cb(const ptc_volume_info *info, gpointer user_data)
+{
+    PtcRunContext *ctx = user_data;
+
+    g_signal_emit(ctx->self, signals[SIGNAL_VOLUME_STARTED], 0,
+                  info->index, info->count,
+                  (guint64)info->disk_offset, (guint64)info->disk_length,
+                  info->fs, info->label);
+}
+
+static void
+ptc_client_volume_progress_cb(const ptc_volume_info *info,
+                              unsigned long long copied, unsigned long long total,
+                              gpointer user_data)
+{
+    PtcRunContext *ctx = user_data;
+
+    g_signal_emit(ctx->self, signals[SIGNAL_VOLUME_PROGRESS], 0,
+                  info->index, info->count, (guint64)copied, (guint64)total);
+}
+
+static void
+ptc_client_volume_finished_cb(const ptc_volume_info *info, gpointer user_data)
+{
+    PtcRunContext *ctx = user_data;
+
+    g_signal_emit(ctx->self, signals[SIGNAL_VOLUME_FINISHED], 0,
+                  info->index, info->count);
+}
+
+static gboolean
+ptc_client_cancelled_cb(gpointer user_data)
+{
+    PtcRunContext *ctx = user_data;
+
+    return ctx->cancellable != NULL && g_cancellable_is_cancelled(ctx->cancellable);
+}
+
 static int
-ptc_client_run_internal(PtcClient *self, GError **error)
+ptc_client_parse_gaps(const char *gaps)
+{
+    if (g_strcmp0(gaps, "none") == 0)
+        return PTC_GAPS_NONE;
+    if (g_strcmp0(gaps, "sparse") == 0)
+        return PTC_GAPS_SPARSE;
+    if (g_strcmp0(gaps, "full") == 0)
+        return PTC_GAPS_FULL;
+    return PTC_GAPS_METADATA;
+}
+
+static int
+ptc_client_parse_ptable(const char *ptable)
+{
+    if (g_strcmp0(ptable, "raw") == 0)
+        return PTC_PT_RAW;
+    if (g_strcmp0(ptable, "regenerate") == 0)
+        return PTC_PT_REGENERATE;
+    return PTC_PT_AUTO;
+}
+
+static int
+ptc_client_run_internal(PtcClient *self, GCancellable *cancellable, GError **error)
 {
     const ptc_fs_backend *backend = NULL;
     int ret;
+    int is_disk = 0;
 
     ptc_opt_init(&opt);
 
@@ -520,6 +823,19 @@ ptc_client_run_internal(PtcClient *self, GError **error)
     case PTC_MODE_DOMAIN:
         opt.domain = 1;
         break;
+    case PTC_MODE_DISK_CLONE:
+        opt.clone = 1;
+        is_disk = 1;
+        break;
+    case PTC_MODE_DISK_RESTORE:
+        opt.restore = 1;
+        is_disk = 1;
+        break;
+    case PTC_MODE_DISK_CHKIMG:
+        opt.restore = 1;
+        opt.chkimg = 1;
+        is_disk = 1;
+        break;
     default:
         g_set_error(error, PTC_CLIENT_ERROR, PTC_CLIENT_ERROR_FAILED,
                     "Unknown mode %d", self->mode);
@@ -532,10 +848,40 @@ ptc_client_run_internal(PtcClient *self, GError **error)
     opt.check = self->check;
     opt.force = self->force;
     opt.device_size = self->device_size;
+    opt.sparse = self->sparse;
+    opt.no_zero_skipped = self->no_zero_skipped;
+    opt.no_fs_volumes = self->no_fs_volumes;
+    opt.grow = self->grow;
+    opt.gaps = ptc_client_parse_gaps(self->gaps);
+    opt.ptable = ptc_client_parse_ptable(self->partition_table);
     if (self->logfile != NULL)
         opt.logfile = self->logfile;
     opt.source = (char *)self->source;
     opt.target = (char *)self->target;
+
+    if (is_disk) {
+        PtcRunContext ctx = { self, cancellable };
+        ptc_disk_progress disk_progress = {
+            ptc_client_disk_progress_cb,
+            ptc_client_volume_started_cb,
+            ptc_client_volume_progress_cb,
+            ptc_client_volume_finished_cb,
+            ptc_client_cancelled_cb,
+            &ctx
+        };
+
+        ret = ptc_disk_engine_run(&disk_progress);
+        if (ret != 0) {
+            if (ret == -2 ||
+                (cancellable != NULL && g_cancellable_is_cancelled(cancellable)))
+                g_set_error_literal(error, G_IO_ERROR, G_IO_ERROR_CANCELLED,
+                                    "operation was cancelled");
+            else
+                g_set_error(error, PTC_CLIENT_ERROR, PTC_CLIENT_ERROR_FAILED,
+                            "Operation failed (code %d)", ret);
+        }
+        return ret;
+    }
 
     if (self->backend != NULL) {
         backend = ptc_fs_backend_lookup(self->backend);
@@ -555,7 +901,7 @@ ptc_client_run_internal(PtcClient *self, GError **error)
         }
     }
 
-    ret = ptc_engine_run(backend, ptc_client_progress_cb, self);
+    ret = ptc_engine_run(backend, ptc_client_engine_progress_cb, self);
     if (ret != 0)
         g_set_error(error, PTC_CLIENT_ERROR, PTC_CLIENT_ERROR_FAILED,
                     "Operation failed (code %d)", ret);
@@ -571,10 +917,8 @@ ptc_client_run(PtcClient *self, GCancellable *cancellable, GError **error)
 
     g_return_val_if_fail(PTC_IS_CLIENT(self), FALSE);
 
-    (void)cancellable;
-
     g_mutex_lock(&ptc_client_lock);
-    ret = ptc_client_run_internal(self, error);
+    ret = ptc_client_run_internal(self, cancellable, error);
     g_mutex_unlock(&ptc_client_lock);
 
     ok = (ret == 0);
@@ -590,10 +934,9 @@ ptc_client_task_thread(GTask *task, gpointer source_object,
     int ret;
 
     (void)task_data;
-    (void)cancellable;
 
     g_mutex_lock(&ptc_client_lock);
-    ret = ptc_client_run_internal(self, &error);
+    ret = ptc_client_run_internal(self, cancellable, &error);
     g_mutex_unlock(&ptc_client_lock);
 
     if (ret != 0) {

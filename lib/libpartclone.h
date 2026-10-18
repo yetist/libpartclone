@@ -40,6 +40,7 @@
 #include <gio/gio.h>
 
 #include "ptc-client.h"
+#include "ptc-image.h"
 
 G_BEGIN_DECLS
 

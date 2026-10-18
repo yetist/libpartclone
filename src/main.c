@@ -127,7 +127,7 @@ main(int argc, char **argv)
      * engine; it never needs a filesystem backend nor auto detection.
      */
     if (mode == PTC_CLI_MODE_DISK)
-        return ptc_disk_engine_run(NULL, NULL);
+        return ptc_disk_engine_run(NULL);
 
     /**
      * Restore and check modes do not need a primary backend: the filesystem

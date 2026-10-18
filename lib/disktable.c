@@ -754,6 +754,132 @@ int ptc_table_write_raw(const ptc_disk_table *t, int *dfw, cmd_opt *opt)
 }
 
 /* ------------------------------------------------------------------------- */
+/* Table growth (--grow, partition entry only)                               */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * table_find_gpt_geometry - number of sectors used by one GPT entry array.
+ */
+static int table_find_gpt_entry_sectors(const ptc_disk_table *t, uint64_t *sectors)
+{
+    uint32_t i;
+
+    for (i = 0; i < t->n_records; i++) {
+        const unsigned char *d = t->records[i].data;
+        uint32_t nents, esize;
+        uint64_t bytes;
+
+        if (t->records[i].length < 92 || memcmp(d, "EFI PART", 8) != 0)
+            continue;
+        nents = ld32(d + 80);
+        esize = ld32(d + 84);
+        if (nents == 0 || nents > 4096 || esize < 128 || esize > 4096)
+            return -1;
+        bytes = (uint64_t)nents * esize;
+        *sectors = (bytes + t->sector_size - 1) / t->sector_size;
+        return 0;
+    }
+    return -1;
+}
+
+int ptc_table_grow(ptc_disk_table *t, uint64_t target_size, cmd_opt *opt)
+{
+    uint32_t i, best = UINT32_MAX;
+    uint64_t best_start = 0;
+
+    if (t == NULL || target_size == 0 || t->sector_size == 0)
+        return -1;
+
+    if (t->type == PTC_TABLE_GPT) {
+        uint64_t entry_sectors, target_lba, last_usable;
+        ptc_part_entry *p;
+
+        if (table_find_gpt_entry_sectors(t, &entry_sectors) != 0)
+            return -1;
+        target_lba = target_size / t->sector_size;
+        if (target_lba <= entry_sectors + 2)
+            return -1;
+        last_usable = target_lba - entry_sectors - 2;
+
+        for (i = 0; i < t->n_parts; i++) {
+            p = &t->parts[i];
+            if (p->size_lba == 0)
+                continue;
+            if (p->flags & (PTC_PART_CONTAINER | PTC_PART_RESERVED))
+                continue;
+            if (best == UINT32_MAX || p->start_lba >= best_start) {
+                best = i;
+                best_start = p->start_lba;
+            }
+        }
+        if (best == UINT32_MAX)
+            return -1;
+
+        p = &t->parts[best];
+        if (p->start_lba + p->size_lba - 1 >= last_usable)
+            return 0;   /* already fills the target */
+        p->size_lba = last_usable - p->start_lba + 1;
+        log_mesg(1, 0, 1, opt->debug,
+                 "grow: GPT partition %u extended to %llu sectors (last usable LBA %llu)\n",
+                 p->index, (unsigned long long)p->size_lba, (unsigned long long)last_usable);
+        return 1;
+    }
+
+    if (t->type == PTC_TABLE_MBR) {
+        ptc_raw_record *mbr = NULL;
+        unsigned char *slot;
+        uint64_t disk_lba, new_size;
+        ptc_part_entry *p;
+
+        for (i = 0; i < t->n_records; i++) {
+            if (t->records[i].offset == 0 && t->records[i].length >= 512) {
+                mbr = &t->records[i];
+                break;
+            }
+        }
+        if (mbr == NULL)
+            return -1;
+
+        for (i = 0; i < t->n_parts; i++) {
+            p = &t->parts[i];
+            if (p->index < 1 || p->index > 4 || p->size_lba == 0)
+                continue;
+            if (best == UINT32_MAX || p->start_lba >= best_start) {
+                best = i;
+                best_start = p->start_lba;
+            }
+        }
+        if (best == UINT32_MAX)
+            return -1;
+
+        p = &t->parts[best];
+        disk_lba = target_size / t->sector_size;
+        if (p->start_lba >= disk_lba)
+            return -1;
+        new_size = disk_lba - p->start_lba;
+        if (new_size > 0xFFFFFFFFULL)
+            new_size = 0xFFFFFFFFULL;
+        if (new_size <= p->size_lba)
+            return 0;   /* already fills the target */
+
+        p->size_lba = new_size;
+        slot = mbr->data + 446 + (p->index - 1) * 16;
+        st32(slot + 12, (uint32_t)new_size);
+        /* Ending CHS beyond the CHS range uses the ">= 1024 cylinders" marker. */
+        slot[5] = 0xFE;
+        slot[6] = 0xFF;
+        slot[7] = 0xFF;
+        log_mesg(1, 0, 1, opt->debug,
+                 "grow: MBR partition %u extended to %llu sectors\n",
+                 p->index, (unsigned long long)new_size);
+        return 1;
+    }
+
+    log_mesg(1, 0, 1, opt->debug, "grow: unsupported partition table, not growing\n");
+    return -1;
+}
+
+/* ------------------------------------------------------------------------- */
 /* Table regeneration through libfdisk                                       */
 /* ------------------------------------------------------------------------- */
 

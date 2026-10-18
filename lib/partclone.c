@@ -85,6 +85,7 @@ int log_y_line = 0;
 #define OPT_DISK_GAPS 1010
 #define OPT_DISK_PTABLE 1011
 #define OPT_DISK_NO_FS_VOLUMES 1012
+#define OPT_DISK_GROW 1013
 //
 //enum {
 //	OPT_OFFSET_DOMAIN = 1000
@@ -282,6 +283,7 @@ void usage(void) {
 		"         --gaps=POLICY      Store gaps: none|metadata|sparse|full (default metadata)\n"
 		"         --partition-table=M  Restore table: auto|raw|regenerate (default auto)\n"
 		"         --no-fs-volumes    Store every partition as a raw volume\n"
+		"         --grow             Grow the last partition entry on a larger target\n"
 		"    -v,  --version          Display partclone version\n"
 		"    -h,  --help             Display this help\n"
 		, get_exec_name(), VERSION, get_exec_name(), DEFAULT_BUFFER_SIZE);
@@ -389,6 +391,7 @@ void ptc_opt_init(cmd_opt *opt) {
 	opt->gaps = PTC_GAPS_METADATA;
 	opt->ptable = PTC_PT_AUTO;
 	opt->no_fs_volumes = 0;
+	opt->grow = 0;
 }
 
 void ptc_parse_options(int argc, char **argv, cmd_opt* opt, ptc_cli_mode mode) {
@@ -420,6 +423,7 @@ void ptc_parse_options(int argc, char **argv, cmd_opt* opt, ptc_cli_mode mode) {
 		{ "gaps",		required_argument,	NULL,   OPT_DISK_GAPS },
 		{ "partition-table",	required_argument,	NULL,   OPT_DISK_PTABLE },
 		{ "no-fs-volumes",	no_argument,		NULL,   OPT_DISK_NO_FS_VOLUMES },
+		{ "grow",		no_argument,		NULL,   OPT_DISK_GROW },
 // all modes are accepted at runtime; the default mode is selected by the caller
 		{ "clone",		no_argument,		NULL,   'c' },
 		{ "compresscmd",	required_argument,	NULL,	'x' },
@@ -537,6 +541,9 @@ void ptc_parse_options(int argc, char **argv, cmd_opt* opt, ptc_cli_mode mode) {
 				break;
 			case OPT_DISK_NO_FS_VOLUMES:
 				opt->no_fs_volumes = 1;
+				break;
+			case OPT_DISK_GROW:
+				opt->grow = 1;
 				break;
 			case 'n':
 				memcpy(opt->note, optarg, NOTE_SIZE);
@@ -987,11 +994,12 @@ void log_mesg(int log_level, int log_exit, int log_stderr, int debug, const char
 	}
 
 	/// write log to logfile if debug is true
-	if (log_level <= debug)
+	if (msg != NULL && log_level <= debug)
 		fprintf(msg, "%s", tmp_str);
 
 	/// clear message
-	fflush(msg);
+	if (msg != NULL)
+		fflush(msg);
 
 	/// exit if lexit true
 	if ((!opt.force) && log_exit) {
@@ -1128,16 +1136,20 @@ void load_image_desc_v2(file_system_info* fs_info, image_options* img_opt,
  *
  * note: img_head is meaning full only when img_opt.image_version is >= 2.
  */
-void load_image_desc(int* ret, cmd_opt* opt, image_head_v2* img_head, file_system_info* fs_info, image_options* img_opt) {
+void load_image_desc_ex(int* ret, cmd_opt* opt, image_head_v2* img_head, file_system_info* fs_info, image_options* img_opt, image_desc_v2* preloaded) {
 
 	image_desc_v2 buf_v2;
 	int r_size;
 	int debug = opt->debug;
 	int img_version;
 
-	r_size = read_all(ret, (char*)&buf_v2, sizeof(buf_v2), opt);
-	if (r_size != sizeof(buf_v2))
-		log_mesg(0, 1, 1, debug, "read image_hdr error=%d\n", r_size);
+	if (preloaded != NULL) {
+		memcpy(&buf_v2, preloaded, sizeof(buf_v2));
+	} else {
+		r_size = read_all(ret, (char*)&buf_v2, sizeof(buf_v2), opt);
+		if (r_size != sizeof(buf_v2))
+			log_mesg(0, 1, 1, debug, "read image_hdr error=%d\n", r_size);
+	}
 
 	/// check the image magic
 	if (memcmp(buf_v2.head.magic, IMAGE_MAGIC, IMAGE_MAGIC_SIZE))
@@ -1188,6 +1200,10 @@ void load_image_desc(int* ret, cmd_opt* opt, image_head_v2* img_head, file_syste
 	}
 
 	} //switch
+}
+
+void load_image_desc(int* ret, cmd_opt* opt, image_head_v2* img_head, file_system_info* fs_info, image_options* img_opt) {
+	load_image_desc_ex(ret, opt, img_head, fs_info, img_opt, NULL);
 }
 
 void write_image_desc(int* ret, file_system_info fs_info, image_options img_opt, cmd_opt* opt) {

@@ -21,6 +21,7 @@ core_sources = files(
   'disktable.c',
   'ptc-fs-backend.c',
   'ptc-client.c',
+  'ptc-image.c',
 )
 
 core_deps = [
@@ -58,7 +59,7 @@ libpartclone_dep = declare_dependency(
 # ---------------------------------------------------------------------------
 # Public, self contained headers and pkg-config file
 # ---------------------------------------------------------------------------
-install_headers('libpartclone.h', 'ptc-client.h', subdir : 'partclone')
+install_headers('libpartclone.h', 'ptc-client.h', 'ptc-image.h', subdir : 'partclone')
 
 pkg = import('pkgconfig')
 pkg.generate(core_lib,

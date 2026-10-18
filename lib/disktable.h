@@ -115,6 +115,25 @@ extern int  ptc_table_read_blob(int *ret, ptc_disk_table *t, uint32_t table_size
 /// Write the raw records back verbatim (same-size target).
 extern int ptc_table_write_raw(const ptc_disk_table *t, int *dfw, cmd_opt *opt);
 
+/**
+ * ptc_table_grow:
+ * @t: parsed/loaded table, modified in place.
+ * @target_size: size of the target disk, in bytes.
+ * @opt: options (for logging).
+ *
+ * Extends the last partition entry so that it fills a larger target:
+ * - GPT: the partition with the highest start LBA is resized to the last usable
+ *   LBA of @target_size (the table must then be regenerated, see
+ *   ptc_table_regenerate());
+ * - MBR: the last primary or extended entry is resized to the end of the disk
+ *   in the raw sector itself (ptc_table_write_raw() then writes it back).
+ * The filesystem inside the partition is never resized.
+ *
+ * Returns: 1 when the table was changed, 0 when it already fitted, -1 when the
+ * table cannot be grown (not a MBR/GPT table, or impossible geometry).
+ */
+extern int ptc_table_grow(ptc_disk_table *t, uint64_t target_size, cmd_opt *opt);
+
 /// Regenerate the table from the manifest through libfdisk.
 extern int ptc_table_regenerate(const ptc_disk_table *t, const char *path,
                                 uint64_t target_size, cmd_opt *opt);

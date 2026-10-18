@@ -165,6 +165,9 @@ mode_name(PtcMode mode)
     case PTC_MODE_CHKIMG:  return "check";
     case PTC_MODE_DD:      return "dd";
     case PTC_MODE_DOMAIN:  return "domain";
+    case PTC_MODE_DISK_CLONE:   return "disk-clone";
+    case PTC_MODE_DISK_RESTORE: return "disk-restore";
+    case PTC_MODE_DISK_CHKIMG:  return "disk-check";
     }
     return "?";
 }
@@ -373,7 +376,7 @@ on_run_clicked(GtkButton *button, gpointer user_data)
         show_error(self, _("Please choose a source device or image."));
         return;
     }
-    if (mode != PTC_MODE_CHKIMG && target[0] == '\0') {
+    if (mode != PTC_MODE_CHKIMG && mode != PTC_MODE_DISK_CHKIMG && target[0] == '\0') {
         show_error(self, _("Please choose a target."));
         return;
     }
@@ -410,7 +413,7 @@ on_run_clicked(GtkButton *button, gpointer user_data)
 
     log_append(self, _("=== %s ==="), mode_name(mode));
     log_append(self, _("source : %s"), source);
-    if (mode != PTC_MODE_CHKIMG)
+    if (mode != PTC_MODE_CHKIMG && mode != PTC_MODE_DISK_CHKIMG)
         log_append(self, _("target : %s"), target);
     log_append(self, _("backend: %s"),
                backend != NULL ? backend : _("auto (detect)"));

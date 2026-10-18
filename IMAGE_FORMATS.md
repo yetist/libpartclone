@@ -117,16 +117,19 @@ written one after the other.
 
 # Format 0003 — whole-disk images
 
-> **Status: phases 1 to 3 implemented.** This section describes an image
+> **Status: phases 1 to 4 implemented.** This section describes an image
 > format and the backup/restore strategy for backing up an *entire disk*
 > (partition table plus every partition) with `partclone` / `libpartclone`.
 > Phase 1 (the container reader/writer and raw-only volumes), phase 2
 > (MBR/GPT parsing, the partition table blob and manifest, per-partition raw
-> volumes, gaps, and table restore - verbatim or regenerated through libfdisk)
-> and phase 3 (filesystem volumes built through the kernel partition devices,
-> reusing the per-filesystem backends) are implemented and exposed through the
-> new `partclone.disk` tool.  Device windows - reading a partition of a disk
-> image file without a kernel partition device - are still design only.
+> volumes, gaps, and table restore - verbatim or regenerated through libfdisk),
+> phase 3 (filesystem volumes built through the kernel partition devices,
+> reusing the per-filesystem backends) and phase 4 (`--grow`, the
+> `partclone.info` view of the volumes and the GObject API - `PtcImage` plus the
+> whole-disk `PtcClient` modes, with `::volume-*` signals and cancellation) are
+> implemented and exposed through the new `partclone.disk` tool.  Device windows
+> - reading a partition of a disk image file without a kernel partition device -
+> are still design only.
 > Formats 0001 and 0002 are unchanged and remain the formats produced by the
 > per-filesystem tools.
 
@@ -581,8 +584,8 @@ partclone.info /backup/sda.img                            # list the volumes
 ```
 
 Options below are the eventual surface; `--sparse`, `--no-zero-skipped`,
-`--check-image`, `--gaps`, `--partition-table` and `--no-fs-volumes` exist
-today, the rest are planned:
+`--check-image`, `--gaps`, `--partition-table`, `--no-fs-volumes` and `--grow`
+exist today, the rest are planned:
 
 | Option | Meaning
 |--------|--------
@@ -600,15 +603,19 @@ today, the rest are planned:
 `partclone.imager` keeps its current meaning (raw device image) and is not
 changed; whole-disk images are handled by `partclone.disk` (decision 5).
 
-## libpartclone API (proposal)
+## libpartclone API
 
-The container is a natural fit for the GObject API:
+The container is a natural fit for the GObject API; this is implemented in
+phase 4:
 
-  - `PtcClient` gains `PTC_MODE_DISK_CLONE` and `PTC_MODE_DISK_RESTORE`.
-  - A new introspectable `PtcImage` (or an extension of `PtcClient`) exposes the
-    volume list: index, disk offset, disk length, filesystem, label, flags.
-  - New signals report per-partition progress, e.g. `::volume-started`,
-    `::volume-progress`, `::volume-finished`, in addition to the existing
+  - `PtcClient` gains `PTC_MODE_DISK_CLONE`, `PTC_MODE_DISK_RESTORE` and
+    `PTC_MODE_DISK_CHKIMG`, plus the whole-disk options `sparse`,
+    `no-zero-skipped`, `no-fs-volumes`, `grow`, `gaps` and `partition-table`.
+  - A new introspectable `PtcImage` exposes the volume list as `PtcVolume`
+    objects: index, partition number, kind, disk offset, disk length, payload
+    length, filesystem, label and flags.
+  - New signals report per-partition progress, `::volume-started`,
+    `::volume-progress` and `::volume-finished`, in addition to the existing
     overall `::progress`.
   - `ptc_image_is_disk()` distinguishes a 0003 container from a plain 0002 image.
   - A `GCancellable` aborts between volumes and between block strips.
@@ -701,9 +708,17 @@ at the last few hundred bytes and validating the magic.
      source without partition devices (a disk image file) fall back to raw
      volumes, and `--no-fs-volumes` forces that fallback.  Restore reuses the
      ordinary 0002 child restore at the volume offset.
-  4. Add `--grow` (partition entry only), the GObject API and a
-     `partclone.info` view of the volumes.  A per-filesystem `resize_fs` hook is
-     a later phase (decision 4).
+  4. **Done.** `--grow` (partition entry only), the GObject API and the
+     `partclone.info` view of the volumes.  `--grow` extends the last partition
+     entry of a larger target - the highest-start GPT partition, resized to the
+     target's last usable LBA, or the last primary/extended MBR entry, resized
+     to the end of the disk - and never the filesystem.  `partclone.info` lists
+     the volumes of a 0003 image (`ptc_disk_image_load()` /
+     `ptc_disk_image_print()` in `lib/diskimg.c`).  The GObject API adds
+     `PtcImage`/`PtcVolume` (`lib/ptc-image.{c,h}`), the
+     `PTC_MODE_DISK_CLONE|DISK_RESTORE|DISK_CHKIMG` modes, the `::volume-*`
+     signals and a `GCancellable`-driven cancellation between volumes and block
+     strips.  A per-filesystem `resize_fs` hook is a later phase (decision 4).
 
 ## Resolved design decisions
 

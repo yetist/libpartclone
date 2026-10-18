@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2007~ Thomas Tsai <thomas at nchc org tw>
  *
- * Phases 1 to 3 of the format 0003 work described in IMAGE_FORMATS.md:
+ * Phases 1 to 4 of the format 0003 work described in IMAGE_FORMATS.md:
  *
  *   - the container reader/writer (512-byte disk header + 256-byte volume
  *     descriptors, both CRC32 protected);
@@ -20,6 +20,10 @@
  * partition offset).  Unsupported or reserved partitions, gaps and a source
  * without partition devices (a disk image file) are stored as raw volumes, as
  * in phases 1 and 2.
+ *
+ * Phase 4 adds the introspection used by partclone.info, the richer progress
+ * callbacks used by the GObject API (one event per volume plus cancellation)
+ * and --grow, which resizes the last partition entry for a larger target.
  *
  * A disk without a (recognizable) partition table is still stored as a single
  * raw volume covering the whole device, as in phase 1.  The child image of a
@@ -88,19 +92,67 @@ extern cmd_opt opt;
 /// fs_cmd_opt is defined in engine.c; the backend modules read it.
 extern fs_cmd_opt fs_opt;
 
-static ptc_progress_func disk_progress_cb;
-static gpointer disk_progress_data;
+static const ptc_disk_progress *disk_cbs;
 static int disk_done;
+static gboolean disk_cancelled;
+
+/// Description of the volume currently being processed, for the callbacks.
+static ptc_volume_info disk_cur_vol;
 
 /// Progress interface selected by ptc_disk_engine_run() and passed to
 /// backend->read_bitmap() while building a filesystem volume.
 static int disk_pui = 0;
 
 /**
+ * disk_poll_cancel - has the caller requested cancellation?
+ */
+static gboolean disk_poll_cancel(void)
+{
+    if (!disk_cancelled && disk_cbs != NULL && disk_cbs->cancelled != NULL &&
+        disk_cbs->cancelled(disk_cbs->data))
+        disk_cancelled = TRUE;
+    return disk_cancelled;
+}
+
+/**
+ * disk_started / disk_finished - fire the per-volume callbacks.
+ */
+static void disk_emit_volume_started(void)
+{
+    if (disk_cbs != NULL && disk_cbs->volume_started != NULL)
+        disk_cbs->volume_started(&disk_cur_vol, disk_cbs->data);
+}
+
+static void disk_emit_volume_finished(void)
+{
+    if (disk_cbs != NULL && disk_cbs->volume_finished != NULL)
+        disk_cbs->volume_finished(&disk_cur_vol, disk_cbs->data);
+}
+
+/**
+ * disk_fill_volume_info - build the callback description of one volume.
+ */
+static void disk_fill_volume_info(unsigned int index, unsigned int count,
+                                  const image_volume_desc_v3 *desc)
+{
+    memset(&disk_cur_vol, 0, sizeof(disk_cur_vol));
+    disk_cur_vol.index = index;
+    disk_cur_vol.count = count;
+    disk_cur_vol.kind = desc->kind;
+    disk_cur_vol.flags = desc->flags;
+    disk_cur_vol.part_number = desc->part_number;
+    disk_cur_vol.disk_offset = desc->disk_offset;
+    disk_cur_vol.disk_length = desc->disk_length;
+    disk_cur_vol.payload_length = desc->payload_length;
+    disk_cur_vol.fs = desc->fs;
+    disk_cur_vol.label = desc->label;
+}
+
+/**
  * disk_progress_thread - periodic progress updates.
  *
- * Mirrors engine.c's thread_update_pui() but also supports the GObject API
- * progress callback.
+ * Mirrors engine.c's thread_update_pui() but also forwards the GObject API
+ * progress and per-volume callbacks.
  */
 static void *disk_progress_thread(void *arg)
 {
@@ -112,8 +164,12 @@ static void *disk_progress_thread(void *arg)
         if (!opt.quiet)
             update_pui(&prog, copied, block_id, disk_done);
         json_status_update(&prog, copied, block_id, JSON_STATE_RUNNING);
-        if (disk_progress_cb != NULL)
-            disk_progress_cb(copied, prog.total, disk_progress_data);
+        if (disk_cbs != NULL) {
+            if (disk_cbs->overall_progress != NULL)
+                disk_cbs->overall_progress(copied, prog.total, disk_cbs->data);
+            if (disk_cbs->volume_progress != NULL)
+                disk_cbs->volume_progress(&disk_cur_vol, copied, prog.total, disk_cbs->data);
+        }
 
         /* Sleep in short slices so that finishing a volume does not block the
          * engine for a whole --UI-fresh interval (there is one thread per
@@ -285,6 +341,131 @@ const char *ptc_disk_vol_kind_str(uint16_t kind)
 }
 
 /* ------------------------------------------------------------------------- */
+/* Image introspection (partclone.info, PtcImage)                            */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * disk_skip_forward - advance @dfr by @bytes without keeping the data.
+ */
+static int disk_skip_forward(int *dfr, uint64_t bytes, cmd_opt *opt)
+{
+    char buf[65536];
+
+    while (bytes > 0) {
+        size_t chunk;
+
+        if (lseek(*dfr, (off_t)bytes, SEEK_CUR) != (off_t)-1)
+            return 0;
+        /* Not seekable (a pipe): read and discard. */
+        chunk = bytes < sizeof(buf) ? (size_t)bytes : sizeof(buf);
+        if (read_all(dfr, buf, chunk, opt) != (int)chunk)
+            return -1;
+        bytes -= chunk;
+    }
+    return 0;
+}
+
+int ptc_disk_image_load(int *dfr, const image_disk_head_v3 *pre_head,
+                        ptc_disk_image *img, cmd_opt *opt)
+{
+    uint32_t i;
+
+    memset(img, 0, sizeof(*img));
+    ptc_table_init(&img->table);
+
+    if (pre_head != NULL) {
+        img->head = *pre_head;
+    } else if (ptc_disk_load_head(dfr, &img->head, opt) != 0) {
+        return -1;
+    }
+
+    if (img->head.volume_count > 65536) {
+        log_mesg(0, 0, 1, opt->debug, "unreasonable volume count %u\n",
+                 img->head.volume_count);
+        return -1;
+    }
+
+    if (img->head.table_size > 0) {
+        if (ptc_table_read_blob(dfr, &img->table, img->head.table_size, opt) != 0)
+            return -1;
+        img->table.disk_size = img->head.disk_size;
+        if (img->head.sector_size != 0)
+            img->table.sector_size = img->head.sector_size;
+        img->has_table = 1;
+    }
+
+    if (img->head.volume_count > 0) {
+        img->volumes = calloc(img->head.volume_count, sizeof(*img->volumes));
+        if (img->volumes == NULL) {
+            log_mesg(0, 0, 1, opt->debug, "%s, %i, not enough memory\n", __func__, __LINE__);
+            return -1;
+        }
+    }
+
+    for (i = 0; i < img->head.volume_count; i++) {
+        ptc_disk_load_desc(dfr, &img->volumes[i], opt);
+        img->n_volumes++;
+        if (disk_skip_forward(dfr, img->volumes[i].payload_length, opt) != 0) {
+            log_mesg(0, 0, 1, opt->debug, "unable to skip volume %u payload\n", i + 1);
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+void ptc_disk_image_free(ptc_disk_image *img)
+{
+    if (img == NULL)
+        return;
+    free(img->volumes);
+    if (img->has_table)
+        ptc_table_free(&img->table);
+    memset(img, 0, sizeof(*img));
+}
+
+void ptc_disk_image_print(const ptc_disk_image *img, cmd_opt *opt)
+{
+    const image_disk_head_v3 *h = &img->head;
+    char size_str[11];
+    uint32_t i;
+
+    setlocale(LC_ALL, "");
+    bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
+    textdomain(GETTEXT_PACKAGE);
+
+    log_mesg(0, 0, 1, opt->debug, _("image format:    %s\n"), PTC_IMAGE_VERSION_0003);
+    log_mesg(0, 0, 1, opt->debug, _("created on a:    %u bits platform\n"), h->cpu_bits);
+    log_mesg(0, 0, 1, opt->debug, _("with partclone:  v%.14s\n"), h->ptc_version);
+
+    print_readable_size_str(h->disk_size, size_str);
+    log_mesg(0, 0, 1, opt->debug, _("Disk size:       %s = %llu Bytes\n"),
+             size_str, h->disk_size);
+    log_mesg(0, 0, 1, opt->debug, _("Sector size:     %u Byte\n"), h->sector_size);
+
+    if (img->has_table) {
+        log_mesg(0, 0, 1, opt->debug, _("Partition table: %s, %u entr(ies)\n"),
+                 ptc_table_type_str(img->table.type), img->table.n_parts);
+    } else {
+        log_mesg(0, 0, 1, opt->debug, _("Partition table: %s\n"), _("none"));
+    }
+
+    log_mesg(0, 0, 1, opt->debug, _("Volumes:         %u\n"), img->n_volumes);
+    log_mesg(0, 0, 1, opt->debug,
+             "  %-3s %-11s %-5s %-12s %-12s %-12s %-10s %s\n",
+             "#", "kind", "part", "offset", "length", "payload", "fs", "label");
+
+    for (i = 0; i < img->n_volumes; i++) {
+        const image_volume_desc_v3 *v = &img->volumes[i];
+        log_mesg(0, 0, 1, opt->debug,
+                 "  %-3u %-11s %-5u %-12llu %-12llu %-12llu %-10s %s\n",
+                 i + 1, ptc_disk_vol_kind_str(v->kind), v->part_number,
+                 v->disk_offset, v->disk_length, v->payload_length,
+                 v->fs[0] ? v->fs : "-", v->label[0] ? v->label : "-");
+    }
+}
+
+/* ------------------------------------------------------------------------- */
 /* Helpers                                                                   */
 /* ------------------------------------------------------------------------- */
 
@@ -426,6 +607,9 @@ static void disk_write_child(int *dfr, int *dfw, uint64_t src_base,
         unsigned int cs_added = 0, write_offset = 0;
         off_t offset;
         int r_size, w_size;
+
+        if (disk_poll_cancel())
+            break;
 
         for (blocks_skip = 0;
              block_id + blocks_skip < blocks_total &&
@@ -627,6 +811,9 @@ static void disk_restore_child(int *dfr, int *dfw,
         unsigned int read_offset;
         int r_size, w_size;
 
+        if (disk_poll_cancel())
+            break;
+
         blocks_read = copied + buffer_capacity < blocks_used
             ? buffer_capacity : (unsigned int)(blocks_used - copied);
         if (!blocks_read)
@@ -826,6 +1013,7 @@ static void disk_emit_volume(int *dfr, int *dfw, const ptc_region *region,
                              const image_options *img_opt,
                              unsigned long *bitmap, uint16_t kind,
                              uint16_t vol_flags, unsigned int block_size,
+                             unsigned int vol_index, unsigned int vol_count,
                              int target_stdout)
 {
     image_volume_desc_v3 desc;
@@ -862,6 +1050,9 @@ static void disk_emit_volume(int *dfr, int *dfw, const ptc_region *region,
 
     ptc_disk_write_desc(dfw, &desc, &opt);
 
+    disk_fill_volume_info(vol_index, vol_count, &desc);
+    disk_emit_volume_started();
+
     start = 0;
     stop = fs_info->usedblocks;
     flag = opt.no_block_detail ? NO_BLOCK_DETAIL : IO;
@@ -884,6 +1075,7 @@ static void disk_emit_volume(int *dfr, int *dfw, const ptc_region *region,
     pthread_join(prog_thread, &p_result);
     update_pui(&prog, copied, block_id, 1);
     json_status_finish(&prog, copied, block_id);
+    disk_emit_volume_finished();
 }
 
 /**
@@ -901,6 +1093,7 @@ static void disk_emit_volume(int *dfr, int *dfw, const ptc_region *region,
  */
 static void disk_clone_region(int *dfr, int *dfw, const ptc_disk_table *tbl,
                               const ptc_region *region, unsigned int sector_size,
+                              unsigned int vol_index, unsigned int vol_count,
                               int target_stdout)
 {
     file_system_info fs_info;
@@ -1011,7 +1204,7 @@ static void disk_clone_region(int *dfr, int *dfw, const ptc_disk_table *tbl,
     }
 
     disk_emit_volume(dfr, dfw, region, pe, &fs_info, &img_opt, bitmap, kind,
-                     vol_flags, block_size, target_stdout);
+                     vol_flags, block_size, vol_index, vol_count, target_stdout);
 
     free(bitmap);
     if (part_path != NULL)
@@ -1089,12 +1282,45 @@ static int disk_clone(int *dfr, int *dfw, int target_stdout)
     if (table_size > 0)
         ptc_table_write_blob(dfw, &tbl, &opt);
 
-    for (i = 0; i < n_regions; i++)
-        disk_clone_region(dfr, dfw, &tbl, &regions[i], sector_size, target_stdout);
+    for (i = 0; i < n_regions; i++) {
+        if (disk_poll_cancel())
+            break;
+        disk_clone_region(dfr, dfw, &tbl, &regions[i], sector_size,
+                          i + 1, n_regions, target_stdout);
+    }
 
     free(regions);
     ptc_table_free(&tbl);
-    return 0;
+    return disk_cancelled ? -2 : 0;
+}
+
+/**
+ * disk_fs_grow_command - recommended command to grow a filesystem.
+ *
+ * After a size-changing restore, --grow only extends the partition entry (see
+ * decision 4 in IMAGE_FORMATS.md); growing the filesystem itself is left to its
+ * own tool, which this returns for the known filesystems.
+ *
+ * Returns: (nullable): the command name, or %NULL when there is no known one.
+ */
+static const char *disk_fs_grow_command(const char *fs)
+{
+    if (fs == NULL || fs[0] == '\0')
+        return NULL;
+    if (strcmp(fs, extfs_MAGIC) == 0 || strcmp(fs, ext2_MAGIC) == 0 ||
+        strcmp(fs, ext3_MAGIC) == 0 || strcmp(fs, ext4_MAGIC) == 0)
+        return "resize2fs";
+    if (strcmp(fs, xfs_MAGIC) == 0)
+        return "xfs_growfs";
+    if (strcmp(fs, btrfs_MAGIC) == 0)
+        return "btrfs filesystem resize max";
+    if (strcmp(fs, f2fs_MAGIC) == 0)
+        return "resize.f2fs";
+    if (strcmp(fs, ntfs_MAGIC) == 0)
+        return "ntfsresize";
+    if (strcmp(fs, jfs_MAGIC) == 0)
+        return "resize.jfs";
+    return NULL;
 }
 
 static int disk_restore(int *dfr, int *dfw, int chkimg, int target_stdout)
@@ -1105,6 +1331,10 @@ static int disk_restore(int *dfr, int *dfw, int chkimg, int target_stdout)
     unsigned long long target_size = 0;
     unsigned long i;
     int have_table = 0;
+    int grow_applied = 0;
+    char grow_fs[64][FS_MAGIC_SIZE + 1];
+    uint32_t grow_part[64];
+    uint32_t n_grow_fs = 0;
 
     if (ptc_disk_load_head(dfr, &head, &opt) != 0)
         log_mesg(0, 1, 1, opt.debug, "not a valid format 0003 disk image.\n");
@@ -1142,10 +1372,22 @@ static int disk_restore(int *dfr, int *dfw, int chkimg, int target_stdout)
                 target_size = head.disk_size;
         }
 
+        /* --grow: extend the last partition entry to fill a larger target
+         * (partition entry only, never the filesystem; see decision 4). */
+        if (opt.grow && target_size > head.disk_size) {
+            if (ptc_table_grow(&tbl, target_size, &opt) >= 0)
+                grow_applied = 1;
+            else
+                log_mesg(1, 0, 0, opt.debug,
+                         "warning: cannot grow the partition table of this image\n");
+        }
+
         if (opt.ptable == PTC_PT_REGENERATE)
             want_regen = 1;
         else if (opt.ptable == PTC_PT_AUTO && tbl.type == PTC_TABLE_GPT &&
                  target_size != 0 && target_size != head.disk_size)
+            want_regen = 1;
+        if (grow_applied && tbl.type == PTC_TABLE_GPT)
             want_regen = 1;
 
         if (want_regen) {
@@ -1171,12 +1413,25 @@ static int disk_restore(int *dfr, int *dfw, int chkimg, int target_stdout)
     }
 
     for (i = 0; i < head.volume_count; i++) {
+        if (disk_poll_cancel())
+            break;
+
         ptc_disk_load_desc(dfr, &desc, &opt);
 
         log_mesg(0, 0, 0, opt.debug,
                  "Volume %lu/%u: kind=%s part=%u offset=%llu length=%llu payload=%llu\n",
                  i + 1, head.volume_count, ptc_disk_vol_kind_str(desc.kind),
                  desc.part_number, desc.disk_offset, desc.disk_length, desc.payload_length);
+
+        if (grow_applied && desc.kind == PTC_VOL_FILESYSTEM && n_grow_fs < 64) {
+            memcpy(grow_fs[n_grow_fs], desc.fs, FS_MAGIC_SIZE);
+            grow_fs[n_grow_fs][FS_MAGIC_SIZE] = '\0';
+            grow_part[n_grow_fs] = desc.part_number;
+            n_grow_fs++;
+        }
+
+        disk_fill_volume_info(i + 1, head.volume_count, &desc);
+        disk_emit_volume_started();
 
         switch (desc.kind) {
         case PTC_VOL_RAW_FULL:
@@ -1197,6 +1452,27 @@ static int disk_restore(int *dfr, int *dfw, int chkimg, int target_stdout)
 
         default:
             log_mesg(0, 1, 1, opt.debug, "unknown volume kind %u\n", desc.kind);
+        }
+
+        disk_emit_volume_finished();
+    }
+
+    /* --grow only extended the partition entry: tell the user how to grow the
+     * filesystem itself (decision 4). */
+    if (grow_applied) {
+        if (n_grow_fs == 0)
+            log_mesg(0, 0, 1, opt.debug,
+                     "The partition table was grown; grow the filesystem yourself if needed.\n");
+        for (i = 0; i < n_grow_fs; i++) {
+            const char *cmd = disk_fs_grow_command(grow_fs[i]);
+            if (cmd != NULL)
+                log_mesg(0, 0, 1, opt.debug,
+                         "Grown partition %u (%s): run '%s' on its device to grow the filesystem.\n",
+                         grow_part[i], grow_fs[i], cmd);
+            else
+                log_mesg(0, 0, 1, opt.debug,
+                         "Grown partition %u (%s): grow the filesystem yourself if needed.\n",
+                         grow_part[i], grow_fs[i]);
         }
     }
 
@@ -1226,7 +1502,7 @@ static int disk_restore(int *dfr, int *dfw, int chkimg, int target_stdout)
     if (have_table)
         ptc_table_free(&tbl);
 
-    return 0;
+    return disk_cancelled ? -2 : 0;
 }
 
 /**
@@ -1235,7 +1511,7 @@ static int disk_restore(int *dfr, int *dfw, int chkimg, int target_stdout)
  * Uses the global #opt (see ptc_parse_options()).  The mode is selected by
  * #opt.clone, #opt.chkimg or #opt.restore.
  */
-int ptc_disk_engine_run(ptc_progress_func progress, gpointer user_data)
+int ptc_disk_engine_run(const ptc_disk_progress *progress)
 {
     int debug = opt.debug;
     int pui, tui;
@@ -1244,8 +1520,8 @@ int ptc_disk_engine_run(ptc_progress_func progress, gpointer user_data)
     int ret = 0;
     int r;
 
-    disk_progress_cb = progress;
-    disk_progress_data = user_data;
+    disk_cbs = progress;
+    disk_cancelled = FALSE;
 
     if (!opt.clone && !opt.restore && !opt.chkimg)
         log_mesg(0, 1, 1, debug, "No operation selected for disk image.\n");

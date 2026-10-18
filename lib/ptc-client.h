@@ -33,6 +33,9 @@ G_DECLARE_FINAL_TYPE(PtcClient, ptc_client, PTC, CLIENT, GObject)
  * @PTC_MODE_CHKIMG: verify a partclone image.
  * @PTC_MODE_DD: raw device-to-device copy.
  * @PTC_MODE_DOMAIN: create a ddrescue domain log from a source device.
+ * @PTC_MODE_DISK_CLONE: clone a whole disk into a format 0003 image.
+ * @PTC_MODE_DISK_RESTORE: restore a format 0003 whole-disk image.
+ * @PTC_MODE_DISK_CHKIMG: verify a format 0003 whole-disk image.
  *
  * The operation performed by a #PtcClient.
  */
@@ -41,7 +44,10 @@ typedef enum {
     PTC_MODE_RESTORE,
     PTC_MODE_CHKIMG,
     PTC_MODE_DD,
-    PTC_MODE_DOMAIN
+    PTC_MODE_DOMAIN,
+    PTC_MODE_DISK_CLONE,
+    PTC_MODE_DISK_RESTORE,
+    PTC_MODE_DISK_CHKIMG
 } PtcMode;
 
 #define PTC_TYPE_MODE (ptc_mode_get_type())
@@ -108,6 +114,61 @@ gboolean ptc_client_get_check(PtcClient *self);
  */
 void     ptc_client_set_force(PtcClient *self, gboolean force);
 gboolean ptc_client_get_force(PtcClient *self);
+
+/**
+ * ptc_client_set_sparse:
+ * @self: a #PtcClient.
+ * @sparse: whether raw volumes (whole-disk mode) are stored with a
+ *   zero-detecting bitmap (the ``--sparse`` option).
+ */
+void     ptc_client_set_sparse(PtcClient *self, gboolean sparse);
+gboolean ptc_client_get_sparse(PtcClient *self);
+
+/**
+ * ptc_client_set_no_zero_skipped:
+ * @self: a #PtcClient.
+ * @no_zero_skipped: when %TRUE, blocks absent from a child bitmap are left
+ *   untouched instead of being zeroed on restore (the ``--no-zero-skipped``
+ *   option).
+ */
+void     ptc_client_set_no_zero_skipped(PtcClient *self, gboolean no_zero_skipped);
+gboolean ptc_client_get_no_zero_skipped(PtcClient *self);
+
+/**
+ * ptc_client_set_no_fs_volumes:
+ * @self: a #PtcClient.
+ * @no_fs_volumes: when %TRUE, every partition is stored as a raw volume
+ *   instead of a filesystem volume (the ``--no-fs-volumes`` option).
+ */
+void     ptc_client_set_no_fs_volumes(PtcClient *self, gboolean no_fs_volumes);
+gboolean ptc_client_get_no_fs_volumes(PtcClient *self);
+
+/**
+ * ptc_client_set_grow:
+ * @self: a #PtcClient.
+ * @grow: extend the last partition entry to fill a larger restore target
+ *   (the ``--grow`` option, whole-disk restore only).
+ */
+void     ptc_client_set_grow(PtcClient *self, gboolean grow);
+gboolean ptc_client_get_grow(PtcClient *self);
+
+/**
+ * ptc_client_set_gaps:
+ * @self: a #PtcClient.
+ * @gaps: (nullable): the gap policy, one of ``"none"``, ``"metadata"``,
+ *   ``"sparse"`` or ``"full"``; %NULL selects the default (``"metadata"``).
+ */
+void     ptc_client_set_gaps(PtcClient *self, const char *gaps);
+const char *ptc_client_get_gaps(PtcClient *self);
+
+/**
+ * ptc_client_set_partition_table:
+ * @self: a #PtcClient.
+ * @partition_table: (nullable): the table restore mode, one of ``"auto"``,
+ *   ``"raw"`` or ``"regenerate"``; %NULL selects the default (``"auto"``).
+ */
+void     ptc_client_set_partition_table(PtcClient *self, const char *partition_table);
+const char *ptc_client_get_partition_table(PtcClient *self);
 
 /**
  * ptc_client_run:

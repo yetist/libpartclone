@@ -10,8 +10,9 @@
  * reused unchanged.
  *
  * See IMAGE_FORMATS.md ("Format 0003 - whole-disk images") for the full
- * description of every field and of the implementation phases; phases 1 to 3
- * (container, partition tables and filesystem volumes) are implemented in
+ * description of every field and of the implementation phases; phases 1 to 4
+ * (container, partition tables, filesystem volumes and the introspection /
+ * whole-disk API used by partclone.info and PtcImage) are implemented in
  * diskimg.c.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -129,5 +130,45 @@ extern void ptc_disk_write_head(int *ret, image_disk_head_v3 *head, cmd_opt *opt
 extern void ptc_disk_load_desc(int *ret, image_volume_desc_v3 *desc, cmd_opt *opt);
 extern void ptc_disk_write_desc(int *ret, image_volume_desc_v3 *desc, cmd_opt *opt);
 extern const char *ptc_disk_vol_kind_str(uint16_t kind);
+
+/**
+ * ptc_disk_image:
+ * @head: the disk header.
+ * @has_table: %TRUE when a partition table blob was read.
+ * @table: the parsed partition table manifest.
+ * @volumes: (array length=n_volumes): the volume descriptors, in stream order.
+ * @n_volumes: number of volume descriptors read.
+ *
+ * An in-memory, read-only view of a format 0003 whole-disk image, used by
+ * introspection tools such as partclone.info and the #PtcImage GObject.
+ */
+typedef struct {
+    image_disk_head_v3   head;
+    int                  has_table;
+    ptc_disk_table       table;
+    image_volume_desc_v3 *volumes;
+    uint32_t             n_volumes;
+} ptc_disk_image;
+
+/**
+ * ptc_disk_image_load:
+ * @dfr: image file descriptor, positioned at offset 0 (or after @pre_head).
+ * @pre_head: (nullable): an already-read disk header.
+ * @img: (out): the loaded image; call ptc_disk_image_free() when done.
+ * @opt: options (for logging).
+ *
+ * Reads the disk header, the partition table blob and the volume descriptors of
+ * a format 0003 image.  The child images are skipped, not read.
+ *
+ * Returns: 0 on success, -1 on error.
+ */
+extern int  ptc_disk_image_load(int *dfr, const image_disk_head_v3 *pre_head,
+                                ptc_disk_image *img, cmd_opt *opt);
+
+/// Release everything allocated by ptc_disk_image_load().
+extern void ptc_disk_image_free(ptc_disk_image *img);
+
+/// Print a human readable summary of a loaded image (for partclone.info).
+extern void ptc_disk_image_print(const ptc_disk_image *img, cmd_opt *opt);
 
 #endif /* PTC_DISKIMG_H */
