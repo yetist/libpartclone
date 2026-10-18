@@ -38,6 +38,7 @@
 #include <dirent.h>
 #include <limits.h>
 #include <time.h>
+#include <glib/gi18n-lib.h>
 
 /**
  * progress.h - only for progress bar
@@ -123,14 +124,14 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
         int                     ret = 0;
         time_t                  now = time(&now);
 
-	static const char *const bad_sectors_warning_msg =
-		"*************************************************************************\n"
-		"* WARNING: The disk has bad sectors. This means physical damage on the  *\n"
-		"* disk surface caused by deterioration, manufacturing faults, or        *\n"
-		"* another reason. The reliability of the disk may remain stable or      *\n"
-		"* degrade quickly. Use the --rescue option to efficiently save as much  *\n"
-		"* data as possible!                                                     *\n"
-		"*************************************************************************\n";
+	const char *const bad_sectors_warning_msg =
+		_("*************************************************************************\n"
+		  "* WARNING: The disk has bad sectors. This means physical damage on the  *\n"
+		  "* disk surface caused by deterioration, manufacturing faults, or        *\n"
+		  "* another reason. The reliability of the disk may remain stable or      *\n"
+		  "* degrade quickly. Use the --rescue option to efficiently save as much  *\n"
+		  "* data as possible!                                                     *\n"
+		  "*************************************************************************\n");
 
 	file_system_info fs_info;   /// description of the file system
 	image_options    img_opt;
@@ -155,7 +156,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 	fs_opt.ignore_fschk = opt.ignore_fschk;
 
 	if ((opt.clone || opt.dd || opt.domain || opt.ddd) && backend == NULL) {
-		log_mesg(0, 1, 1, debug, "No filesystem backend selected for this operation.\n");
+		log_mesg(0, 1, 1, debug, _("No filesystem backend selected for this operation.\n"));
 	}
 
 	//if(opt.debug)
@@ -187,7 +188,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 
 	if (!opt.chkimg) {
 		if (geteuid() != 0)
-			log_mesg(0, 0, 1, debug, "You are not logged as root. You may have \"access denied\" errors when working.\n");
+			log_mesg(0, 0, 1, debug, _("You are not logged as root. You may have \"access denied\" errors when working.\n"));
 		else
 			log_mesg(1, 0, 0, debug, "UID is root.\n");
 	}
@@ -207,14 +208,14 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 	log_mesg(1, 0, 0, debug, "source=%s, target=%s \n", source, target);
 	dfr = open_source(source, &opt);
 	if (dfr == -1) {
-		log_mesg(0, 1, 1, debug, "Error exit\n");
+		log_mesg(0, 1, 1, debug, _("Error exit\n"));
 	}
 
 	if (!opt.chkimg) {
 		dfw = open_target(target, &opt);
 		if (opt.blockfile == 0) {
 		    if (dfw == -1) {
-			log_mesg(0, 1, 1, debug, "Error exit\n");
+			log_mesg(0, 1, 1, debug, _("Error exit\n"));
 		    }
 		}
 		if (strcmp(target, "-") == 0) {
@@ -240,7 +241,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 		cs_reseed = img_opt.reseed_checksum;
 
 		log_mesg(1, 0, 0, debug, "Initial image hdr - get Super Block from partition\n");
-		log_mesg(0, 0, 1, debug, "Reading Super Block\n");
+		log_mesg(0, 0, 1, debug, _("Reading Super Block\n"));
 
 		/// get Super Block information from partition
 		backend->read_super_blocks(source, &fs_info);
@@ -260,14 +261,14 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 		/// alloc a memory to store bitmap
 		bitmap = pc_alloc_bitmap(fs_info.totalblock);
 		if (bitmap == NULL) {
-			log_mesg(0, 1, 1, debug, "%s, %i, not enough memory\n", __func__, __LINE__);
+			log_mesg(0, 1, 1, debug, _("%s, %i, not enough memory\n"), __func__, __LINE__);
 		}
 
 		log_mesg(2, 0, 0, debug, "initial main bitmap pointer %p\n", bitmap);
 		log_mesg(1, 0, 0, debug, "Initial image hdr - read bitmap table\n");
 
 		/// read and check bitmap from partition
-		log_mesg(0, 0, 1, debug, "Calculating bitmap... Please wait... \n");
+		log_mesg(0, 0, 1, debug, _("Calculating bitmap... Please wait... \n"));
 		backend->read_bitmap(source, fs_info, bitmap, pui);
 		update_used_blocks_count(&fs_info, bitmap);
 
@@ -291,7 +292,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 			write_image_bitmap(&dfw, fs_info, img_opt, bitmap, &opt);
 		}
 
-		log_mesg(0, 0, 1, debug, "done!\n");
+		log_mesg(0, 0, 1, debug, _("done!\n"));
 
 	} else if (opt.restore) {
 
@@ -311,14 +312,14 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 		/// alloc a memory to restore bitmap
 		bitmap = pc_alloc_bitmap(fs_info.totalblock);
 		if (bitmap == NULL) {
-			log_mesg(0, 1, 1, debug, "%s, %i, not enough memory\n", __func__, __LINE__);
+			log_mesg(0, 1, 1, debug, _("%s, %i, not enough memory\n"), __func__, __LINE__);
 		}
 
 		log_mesg(2, 0, 0, debug, "initial main bitmap pointer %p\n", bitmap);
 		log_mesg(1, 0, 0, debug, "Initial image hdr - read bitmap table\n");
 
 		/// read and check bitmap from image file
-		log_mesg(0, 0, 1, debug, "Calculating bitmap... Please wait...\n");
+		log_mesg(0, 0, 1, debug, _("Calculating bitmap... Please wait...\n"));
 		load_image_bitmap(&dfr, opt, fs_info, img_opt, bitmap);
 
 		if (!opt.chkimg) {
@@ -334,7 +335,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 		}
 
 		log_mesg(2, 0, 0, debug, "check main bitmap pointer %p\n", bitmap);
-		log_mesg(0, 0, 1, debug, "done!\n");
+		log_mesg(0, 0, 1, debug, _("done!\n"));
 
 	} else if (opt.dd || opt.domain) {
 
@@ -354,14 +355,14 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 		/// alloc a memory to restore bitmap
 		bitmap = pc_alloc_bitmap(fs_info.totalblock);
 		if (bitmap == NULL) {
-			log_mesg(0, 1, 1, debug, "%s, %i, not enough memory\n", __func__, __LINE__);
+			log_mesg(0, 1, 1, debug, _("%s, %i, not enough memory\n"), __func__, __LINE__);
 		}
 
 		log_mesg(2, 0, 0, debug, "initial main bitmap pointer %p\n", bitmap);
 		log_mesg(1, 0, 0, debug, "Initial image hdr - read bitmap table\n");
 
 		/// read and check bitmap from partition
-		log_mesg(0, 0, 1, debug, "Calculating bitmap... Please wait... ");
+		log_mesg(0, 0, 1, debug, _("Calculating bitmap... Please wait... "));
 		backend->read_bitmap(source, fs_info, bitmap, pui);
 		update_used_blocks_count(&fs_info, bitmap);
 
@@ -374,7 +375,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 		}
 
 		log_mesg(2, 0, 0, debug, "check main bitmap pointer %p\n", bitmap);
-		log_mesg(0, 0, 1, debug, "done!\n");
+		log_mesg(0, 0, 1, debug, _("done!\n"));
 	} else if (opt.ddd){
 
 		if (dfr != 0){
@@ -382,7 +383,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 		    backend->read_super_blocks(source, &fs_info);
 		}else{
 		    if (target_stdout) {
-			log_mesg(0, 1, 1, debug, "%s, %i, stdout is not supported\n", __func__, __LINE__);
+			log_mesg(0, 1, 1, debug, _("%s, %i, stdout is not supported\n"), __func__, __LINE__);
 		    }
 		    if (stat(target, &st_dev) != -1) {
 		        if (S_ISBLK(st_dev.st_mode)) 
@@ -402,14 +403,14 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 		/// alloc a memory to restore bitmap
 		bitmap = pc_alloc_bitmap(fs_info.totalblock);
 		if (bitmap == NULL) {
-			log_mesg(0, 1, 1, debug, "%s, %i, not enough memory\n", __func__, __LINE__);
+			log_mesg(0, 1, 1, debug, _("%s, %i, not enough memory\n"), __func__, __LINE__);
 		}
 
 		log_mesg(2, 0, 0, debug, "initial main bitmap pointer %p\n", bitmap);
 		log_mesg(1, 0, 0, debug, "Initial image hdr - read bitmap table\n");
 
 		/// read and check bitmap from partition
-		log_mesg(0, 0, 1, debug, "Calculating bitmap... Please wait... ");
+		log_mesg(0, 0, 1, debug, _("Calculating bitmap... Please wait... "));
 		backend->read_bitmap(source, fs_info, bitmap, pui);
 		update_used_blocks_count(&fs_info, bitmap);
 
@@ -434,7 +435,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 		}
 
 		log_mesg(2, 0, 0, debug, "check main bitmap pointer %p\n", bitmap);
-		log_mesg(0, 0, 1, debug, "done!\n");
+		log_mesg(0, 0, 1, debug, _("done!\n"));
     
 	}
 
@@ -469,7 +470,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 	 */
 	pres = pthread_create(&prog_thread, NULL, thread_update_pui, NULL);
 	if(pres)
-	    log_mesg(0, 1, 1, debug, "%s, %i, thread create error\n", __func__, __LINE__);
+	    log_mesg(0, 1, 1, debug, _("%s, %i, thread create error\n"), __func__, __LINE__);
 
 
 	/**
@@ -496,7 +497,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
                 if (opt.read_direct_io == 1){
                     ret = posix_memalign((void **)&read_buffer, BSIZE, (buffer_capacity * block_size));
                     if ( ret < 0 ){
-                        log_mesg(0, 1, 1, debug, "%s, %i, memory for read posix_memalign error\n", __func__, __LINE__);
+                        log_mesg(0, 1, 1, debug, _("%s, %i, memory for read posix_memalign error\n"), __func__, __LINE__);
                     }
                     memset(read_buffer, 0, (buffer_capacity * block_size));
                 } else {
@@ -506,12 +507,12 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
                 write_buffer = (char*)malloc(write_size + cs_size);
 		
                 if (read_buffer == NULL || write_buffer == NULL) {
-			log_mesg(0, 1, 1, debug, "%s, %i, not enough memory\n", __func__, __LINE__);
+			log_mesg(0, 1, 1, debug, _("%s, %i, not enough memory\n"), __func__, __LINE__);
 		}
 
 		/// read data from the first block
 		if (lseek(dfr, 0, SEEK_SET) == (off_t)-1)
-			log_mesg(0, 1, 1, debug, "source seek ERROR:%s\n", strerror(errno));
+			log_mesg(0, 1, 1, debug, _("source seek ERROR:%s\n"), strerror(errno));
 
 		log_mesg(0, 0, 0, debug, "Total block %llu\n", blocks_total);
 
@@ -556,7 +557,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 
 		offset = (off_t)(block_id * block_size);
 		if (lseek(dfr, offset, SEEK_SET) == (off_t)-1)
-			log_mesg(0, 1, 1, debug, "source seek ERROR:%s\n", strerror(errno));
+			log_mesg(0, 1, 1, debug, _("source seek ERROR:%s\n"), strerror(errno));
 
 		/* The last block may be only partially present on the source device
 		 * (e.g. the NTFS Boot Record copy after the end of the volume).
@@ -578,7 +579,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 					} else
 						log_mesg(0, 1, 1, debug, "%s", bad_sectors_warning_msg);
 				} else
-					log_mesg(0, 1, 1, debug, "read error: %s\n", strerror(errno));
+					log_mesg(0, 1, 1, debug, _("read error: %s\n"), strerror(errno));
 			}
 
 			log_mesg(2, 0, 0, debug, "blocks_read = %i\n", blocks_read);
@@ -625,7 +626,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 			} else {
 				w_size = write_all(&dfw, write_buffer, write_offset, &opt);
 				if (w_size != write_offset)
-					log_mesg(0, 1, 1, debug, "image write ERROR:%s\n", strerror(errno));
+					log_mesg(0, 1, 1, debug, _("image write ERROR:%s\n"), strerror(errno));
 			}
 
 			/// count copied block
@@ -637,7 +638,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 
 			/// read or write error
 			if (r_size + cs_added * cs_size != w_size)
-				log_mesg(0, 1, 1, debug, "read(%i) and write(%i) different\n", r_size, w_size);
+				log_mesg(0, 1, 1, debug, _("read(%i) and write(%i) different\n"), r_size, w_size);
 
 		} while (1);
 
@@ -655,7 +656,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 					free(checksum_str);
 					w_size = write_all(&dfw, (char*)checksum, cs_size, &opt);
 					if (w_size != cs_size)
-						log_mesg(0, 1, 1, debug, "image write ERROR:%s\n", strerror(errno));
+						log_mesg(0, 1, 1, debug, _("image write ERROR:%s\n"), strerror(errno));
 				}
 			}
 		}
@@ -681,13 +682,13 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 				partial_offset = total_offset;
 
 			if (lseek(dfr, partial_offset, SEEK_CUR) == (off_t)-1)
-				log_mesg(0, 1, 1, debug, "source seek ERROR: %s\n", strerror(errno));
+				log_mesg(0, 1, 1, debug, _("source seek ERROR: %s\n"), strerror(errno));
 
 			total_offset -= partial_offset;
 		}
 
 		if (read_all(&dfr, last_block, fs_info.block_size, &opt) != fs_info.block_size)
-			log_mesg(0, 1, 1, debug, "ERROR: source image too short\n");
+			log_mesg(0, 1, 1, debug, _("ERROR: source image too short\n"));
 
 	} else if (opt.restore) {
 
@@ -727,13 +728,13 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 		//write_buffer = (char*)malloc(buffer_capacity * block_size);
 		posix_memalign((void**)&write_buffer, BSIZE, buffer_capacity * block_size);
 		if (read_buffer == NULL || write_buffer == NULL) {
-			log_mesg(0, 1, 1, debug, "%s, %i, not enough memory\n", __func__, __LINE__);
+			log_mesg(0, 1, 1, debug, _("%s, %i, not enough memory\n"), __func__, __LINE__);
 		}
 
 		if (target_stdout) {
 			empty_buffer = malloc(block_size);
 			if (empty_buffer == NULL) {
-				log_mesg(0, 1, 1, debug, "%s, %i, not enough memory\n", __func__, __LINE__);
+				log_mesg(0, 1, 1, debug, _("%s, %i, not enough memory\n"), __func__, __LINE__);
 				// If opt.force is set, log_mesg does not exit. Avoid NULL
 				// pointer dereference in memset below.
 				return -1;
@@ -745,7 +746,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 			/// seek to the first
 			if (opt.blockfile == 0) {
 			    if (skip_bytes(&dfw, empty_buffer, block_size, opt.offset, &opt) != opt.offset){
-				log_mesg(0, 1, 1, debug, "target seek ERROR:%s\n", strerror(errno));
+				log_mesg(0, 1, 1, debug, _("target seek ERROR:%s\n"), strerror(errno));
 			    }
 			}
 		}
@@ -775,7 +776,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 			if (engine_poll_cancel())
 			    break;
 			if (blocks_read < 0)
-			    log_mesg(0, 1, 1, debug, "blocks_read ERROR: impossible size of blocks_read\n");
+			    log_mesg(0, 1, 1, debug, _("blocks_read ERROR: impossible size of blocks_read\n"));
 
 			log_mesg(1, 0, 0, debug, "blocks_read = %d and copied = %lld\n", blocks_read, copied);
 			read_size = cnv_blocks_to_bytes(copied, blocks_read, block_size, &img_opt);
@@ -793,7 +794,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 
 			r_size = read_all(&dfr, read_buffer, read_size, &opt);
 			if (r_size != read_size)
-				log_mesg(0, 1, 1, debug, "read ERROR:%s\n", strerror(errno));
+				log_mesg(0, 1, 1, debug, _("read ERROR:%s\n"), strerror(errno));
 
 			// read buffer is the follows:
 			// <blocks_per_cs><cs1><blocks_per_cs><cs2>...
@@ -830,7 +831,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 				    free(checksum_str);
 				    free(checksum_orig_str);
 					if (memcmp(read_buffer + read_offset + block_size, checksum, cs_size)) {
-					    log_mesg(0, 1, 1, debug, "checksum error, block_id=%llu...\n ", block_id + i);
+					    log_mesg(0, 1, 1, debug, _("checksum error, block_id=%llu...\n "), block_id + i);
 					}
 
 					read_offset += cs_size;
@@ -856,7 +857,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 				log_mesg(1, 0, 0, debug, "checksum_code.orig = %s \n", checksum_orig_str);
 				free(checksum_str);
 				free(checksum_orig_str);
-				log_mesg(0, 1, 1, debug, "checksum error, block_id=%llu...\n ", block_id + i);
+				log_mesg(0, 1, 1, debug, _("checksum error, block_id=%llu...\n "), block_id + i);
 			    }
 
 			}
@@ -876,7 +877,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 					/// skip empty blocks
 					if (blocks_write == 0) {
 					    if (opt.blockfile == 0 && blocks_skip > 0 && skip_blocks(&dfw, empty_buffer, block_size, blocks_skip, &opt, &block_id) < 0) {
-						log_mesg(0, 1, 1, debug, "target seek ERROR:%s\n", strerror(errno));
+						log_mesg(0, 1, 1, debug, _("target seek ERROR:%s\n"), strerror(errno));
 					    } else if (opt.blockfile == 1 && blocks_skip > 0) 
 						block_id += blocks_skip; 
 					    blocks_skip = 0;
@@ -927,9 +928,9 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 				}
 				if (w_size != write_size) {
 						if (!opt.skip_write_error)
-							log_mesg(0, 1, 1, debug, "write block %llu ERROR:%s\n", block_id + blocks_written, strerror(errno));
+							log_mesg(0, 1, 1, debug, _("write block %llu ERROR:%s\n"), block_id + blocks_written, strerror(errno));
 						else
-							log_mesg(0, 0, 1, debug, "skip write block %llu error:%s\n", block_id + blocks_written, strerror(errno));
+							log_mesg(0, 0, 1, debug, _("skip write block %llu error:%s\n"), block_id + blocks_written, strerror(errno));
 					}
 				}
 			}
@@ -952,10 +953,10 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 			free(empty_buffer);
 		    } else {
 		    if (block_id < blocks_total && skip_blocks(&dfw, empty_buffer, block_size, blocks_total - block_id, &opt, &block_id) < 0) {
-			log_mesg(0, 0, 1, debug, "target seek ERROR:%s\n", strerror(errno));
+			log_mesg(0, 0, 1, debug, _("target seek ERROR:%s\n"), strerror(errno));
 		    }
 		    if (block_id * block_size < fs_info.device_size && skip_bytes(&dfw, empty_buffer, block_size, fs_info.device_size - block_id * block_size, &opt) != fs_info.device_size - block_id * block_size) {
-			log_mesg(0, 0, 1, debug, "target seek ERROR:%s\n", strerror(errno));
+			log_mesg(0, 0, 1, debug, _("target seek ERROR:%s\n"), strerror(errno));
 		    }
 		    free(empty_buffer);
 		    }
@@ -965,7 +966,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 			/// restore_raw_file option
 			if (opt.restore_raw_file && !pc_test_bit(blocks_total - 1, bitmap, fs_info.totalblock)) {
 			    if (ftruncate(dfw, (off_t)fs_info.device_size) == -1){
-				log_mesg(0, 0, 1, debug, "ftruncate ERROR:%s\n", strerror(errno));
+				log_mesg(0, 0, 1, debug, _("ftruncate ERROR:%s\n"), strerror(errno));
 			    }
 			    log_mesg(1, 0, 0, debug, "ftruncate:%llu\n", (off_t)fs_info.device_size);
 			}
@@ -982,7 +983,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
                 if ((opt.read_direct_io == 1) || (opt.write_direct_io == 1)){
                     ret = posix_memalign((void **)&buffer, BSIZE, (buffer_capacity * block_size));
                     if ( ret < 0 ){
-                        log_mesg(0, 1, 1, debug, "%s, %i, memory for read posix_memalign error\n", __func__, __LINE__);
+                        log_mesg(0, 1, 1, debug, _("%s, %i, memory for read posix_memalign error\n"), __func__, __LINE__);
                     }
                     memset(buffer, 0, (buffer_capacity * block_size));
                 } else {
@@ -990,13 +991,13 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
                 }
 
 		if (buffer == NULL) {
-			log_mesg(0, 1, 1, debug, "%s, %i, not enough memory\n", __func__, __LINE__);
+			log_mesg(0, 1, 1, debug, _("%s, %i, not enough memory\n"), __func__, __LINE__);
 		}
 
 		if (target_stdout) {
 			empty_buffer = malloc(block_size);
 			if (empty_buffer == NULL) {
-				log_mesg(0, 1, 1, debug, "%s, %i, not enough memory\n", __func__, __LINE__);
+				log_mesg(0, 1, 1, debug, _("%s, %i, not enough memory\n"), __func__, __LINE__);
 				// If opt.force is set, log_mesg does not exit. Avoid NULL
 				// pointer dereference in memset below.
 				return -1;
@@ -1007,9 +1008,9 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 		block_id = 0;
 
 		if (lseek(dfr, 0, SEEK_SET) == (off_t)-1)
-			log_mesg(0, 1, 1, debug, "source seek ERROR:%d\n", strerror(errno));
+			log_mesg(0, 1, 1, debug, _("source seek ERROR:%d\n"), strerror(errno));
 		if (skip_bytes(&dfw, empty_buffer, block_size, opt.offset, &opt) != opt.offset) {
-			log_mesg(0, 1, 1, debug, "target seek ERROR:%s\n", strerror(errno));
+			log_mesg(0, 1, 1, debug, _("target seek ERROR:%s\n"), strerror(errno));
 		}
 
 		log_mesg(0, 0, 0, debug, "Total block %llu\n", blocks_total);
@@ -1035,7 +1036,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 
 			if (blocks_skip) {
 				if (skip_blocks(&dfw, empty_buffer, block_size, blocks_skip, &opt, &block_id) < 0) {
-					log_mesg(0, 1, 1, debug, "target seek ERROR:%s\n", strerror(errno));
+					log_mesg(0, 1, 1, debug, _("target seek ERROR:%s\n"), strerror(errno));
 				}
 			}
 
@@ -1050,7 +1051,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 
 			offset = (off_t)(block_id * block_size);
 			if (lseek(dfr, offset, SEEK_SET) == (off_t)-1)
-				log_mesg(0, 1, 1, debug, "source seek ERROR:%s\n", strerror(errno));
+				log_mesg(0, 1, 1, debug, _("source seek ERROR:%s\n"), strerror(errno));
 
 			r_size = read_all(&dfr, buffer, blocks_read * block_size, &opt);
 			if (r_size != (int)(blocks_read * block_size)) {
@@ -1062,16 +1063,16 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 					} else
 						log_mesg(0, 1, 1, debug, "%s", bad_sectors_warning_msg);
 				} else
-					log_mesg(0, 1, 1, debug, "source read ERROR %s\n", strerror(errno));
+					log_mesg(0, 1, 1, debug, _("source read ERROR %s\n"), strerror(errno));
 			}
 
 			/// write buffer to target
 			w_size = write_all(&dfw, buffer, blocks_read * block_size, &opt);
 			if (w_size != (int)(blocks_read * block_size)) {
 				if (opt.skip_write_error)
-					log_mesg(0, 0, 1, debug, "skip write block %lli error:%s\n", block_id, strerror(errno));
+					log_mesg(0, 0, 1, debug, _("skip write block %lli error:%s\n"), block_id, strerror(errno));
 				else
-					log_mesg(0, 1, 1, debug, "write block %lli ERROR:%s\n", block_id, strerror(errno));
+					log_mesg(0, 1, 1, debug, _("write block %lli ERROR:%s\n"), block_id, strerror(errno));
 			}
 
 			/// count copied block
@@ -1083,9 +1084,9 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 			/// read or write error
 			if (r_size != w_size) {
 				if (opt.skip_write_error)
-					log_mesg(0, 0, 1, debug, "read and write different\n");
+					log_mesg(0, 0, 1, debug, _("read and write different\n"));
 				else
-					log_mesg(0, 1, 1, debug, "read and write different\n");
+					log_mesg(0, 1, 1, debug, _("read and write different\n"));
 			}
 		} while (1);
 
@@ -1095,10 +1096,10 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 			free(empty_buffer);
 		    } else {
 			if (block_id < blocks_total && skip_blocks(&dfw, empty_buffer, block_size, blocks_total - block_id, &opt, &block_id) < 0) {
-				log_mesg(0, 0, 1, debug, "write empty ERROR:%s\n", strerror(errno));
+				log_mesg(0, 0, 1, debug, _("write empty ERROR:%s\n"), strerror(errno));
 			}
 			if (block_id * block_size < fs_info.device_size && skip_bytes(&dfw, empty_buffer, block_size, fs_info.device_size - block_id * block_size, &opt) != fs_info.device_size - block_id * block_size) {
-				log_mesg(0, 0, 1, debug, "write empty ERROR:%s\n", strerror(errno));
+				log_mesg(0, 0, 1, debug, _("write empty ERROR:%s\n"), strerror(errno));
 			}
 			free(empty_buffer);
 		    }
@@ -1107,7 +1108,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 		/// restore_raw_file option
 		if (!engine_cancelled && opt.restore_raw_file && !pc_test_bit(blocks_total - 1, bitmap, fs_info.totalblock)) {
 		    if (ftruncate(dfw, (off_t)fs_info.device_size) == -1){
-			log_mesg(0, 0, 1, debug, "ftruncate ERROR:%s\n", strerror(errno));
+			log_mesg(0, 0, 1, debug, _("ftruncate ERROR:%s\n"), strerror(errno));
 		    }
 		    log_mesg(1, 0, 0, debug, "ftruncate:%llu\n", (off_t)fs_info.device_size);
 		}
@@ -1158,7 +1159,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
                 if ((opt.read_direct_io == 1) || (opt.write_direct_io == 1)){
                     ret = posix_memalign((void **)&buffer, BSIZE, (blocks_in_buffer * block_size));
                     if ( ret < 0 ){
-                        log_mesg(0, 1, 1, debug, "%s, %i, memory for read posix_memalign error\n", __func__, __LINE__);
+                        log_mesg(0, 1, 1, debug, _("%s, %i, memory for read posix_memalign error\n"), __func__, __LINE__);
                     }
                     memset(buffer, 0, (blocks_in_buffer * block_size));
                 } else {
@@ -1166,7 +1167,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
                 }
 
 		if (buffer == NULL) {
-			log_mesg(0, 1, 1, debug, "%s, %i, not enough memory\n", __func__, __LINE__);
+			log_mesg(0, 1, 1, debug, _("%s, %i, not enough memory\n"), __func__, __LINE__);
 		}
 
 		block_id = 0;
@@ -1222,7 +1223,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
                                     }
 				    break;
 				} else
-					log_mesg(0, 1, 1, debug, "source read ERROR %s\n", strerror(errno));
+					log_mesg(0, 1, 1, debug, _("source read ERROR %s\n"), strerror(errno));
 			}
 
 			/// write buffer to target
@@ -1240,9 +1241,9 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 			}
 			if (w_size != (int)(blocks_read * block_size)) {
 				if (opt.skip_write_error)
-					log_mesg(0, 0, 1, debug, "skip write block %lli error:%s\n", block_id, strerror(errno));
+					log_mesg(0, 0, 1, debug, _("skip write block %lli error:%s\n"), block_id, strerror(errno));
 				else
-					log_mesg(0, 1, 1, debug, "write block %lli ERROR:%s\n", block_id, strerror(errno));
+					log_mesg(0, 1, 1, debug, _("write block %lli ERROR:%s\n"), block_id, strerror(errno));
 			}
 
 			/// count copied block
@@ -1254,9 +1255,9 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 			/// read or write error
 			if (r_size != w_size) {
 				if (opt.skip_write_error)
-					log_mesg(0, 0, 1, debug, "read and write different\n");
+					log_mesg(0, 0, 1, debug, _("read and write different\n"));
 				else
-					log_mesg(0, 1, 1, debug, "read and write different\n");
+					log_mesg(0, 1, 1, debug, _("read and write different\n"));
 			}
 		} while (1);
 
@@ -1270,7 +1271,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 		/// restore_raw_file option
 		if (!engine_cancelled && opt.restore_raw_file && !pc_test_bit(blocks_total - 1, bitmap, fs_info.totalblock)) {
 		    if (ftruncate(dfw, (off_t)fs_info.device_size) == -1){
-			log_mesg(0, 0, 1, debug, "ftruncate ERROR:%s\n", strerror(errno));
+			log_mesg(0, 0, 1, debug, _("ftruncate ERROR:%s\n"), strerror(errno));
 		    }
 		    log_mesg(1, 0, 0, debug, "ftruncate:%llu\n", (off_t)fs_info.device_size);
 		}
@@ -1282,7 +1283,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 	done = 1;
 	pres = pthread_join(prog_thread, &p_result);
 	if(pres)
-	    log_mesg(0, 1, 1, debug, "%s, %i, thread join error\n", __func__, __LINE__);
+	    log_mesg(0, 1, 1, debug, _("%s, %i, thread join error\n"), __func__, __LINE__);
 	update_pui(&prog, copied, block_id, done);
 	json_status_finish(&prog, copied, block_id);
 	if (!opt.chkimg && !engine_cancelled)
@@ -1300,7 +1301,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 				ptc_fs_backend_by_magic(fs_info.fs);
 			if (fixup != NULL && fixup->post_clone_fixup != NULL) {
 				if (fixup->post_clone_fixup(&dfw, fs_info, opt) != 0)
-					log_mesg(0, 0, 1, debug, "%s: post_clone_fixup reported a non-fatal error\n", __func__);
+					log_mesg(0, 0, 1, debug, _("%s: post_clone_fixup reported a non-fatal error\n"), __func__);
 			}
 			/// Make sure the fixup bytes are durable before close.
 			sync_data(dfw, &opt);
@@ -1316,11 +1317,11 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
 	free(bitmap);
 	close_pui(pui);
 	if (engine_cancelled)
-		log_mesg(0, 0, 1, debug, "Operation cancelled.\n");
+		log_mesg(0, 0, 1, debug, _("Operation cancelled.\n"));
 	else if (!opt.chkimg)
-		fprintf(stderr, "Cloned successfully.\n");
+		fprintf(stderr, _("Cloned successfully.\n"));
 	else
-		printf("Checked successfully.\n");
+		printf(_("Checked successfully.\n"));
         now = time(&now);
         ptm = gmtime(&now);
         log_mesg(1, 0, 0, debug, "Partclone log finish at UTC %s", asctime(ptm));
@@ -1354,7 +1355,7 @@ int ptc_engine_run_named(const char *backend_name, ptc_progress_func progress,
 		backend = ptc_fs_backend_lookup(backend_name);
 		if (backend == NULL)
 			log_mesg(0, 1, 1, opt.debug,
-			         "Unknown filesystem backend: %s\n", backend_name);
+			         _("Unknown filesystem backend: %s\n"), backend_name);
 	}
 	return ptc_engine_run(backend, progress, cancelled, user_data);
 }

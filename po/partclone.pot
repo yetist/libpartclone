@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: partclone 0.3.50\n"
 "Report-Msgid-Bugs-To: thomas@clonezilla.org\n"
-"POT-Creation-Date: 2026-10-18 14:59+0800\n"
+"POT-Creation-Date: 2026-10-18 18:59+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -278,46 +278,237 @@ msgstr ""
 msgid "Partclone successfully mapped the device (%s) to the domain log (%s)\n"
 msgstr ""
 
-#: lib/diskimg.c:435
-#, c-format
-msgid "image format:    %s\n"
+#: lib/engine.c:128
+msgid ""
+"*************************************************************************\n"
+"* WARNING: The disk has bad sectors. This means physical damage on the  *\n"
+"* disk surface caused by deterioration, manufacturing faults, or        *\n"
+"* another reason. The reliability of the disk may remain stable or      *\n"
+"* degrade quickly. Use the --rescue option to efficiently save as much  *\n"
+"* data as possible!                                                     *\n"
+"*************************************************************************\n"
 msgstr ""
 
-#: lib/diskimg.c:436
+#: lib/engine.c:159
+msgid "No filesystem backend selected for this operation.\n"
+msgstr ""
+
+#: lib/engine.c:191
+msgid ""
+"You are not logged as root. You may have \"access denied\" errors when "
+"working.\n"
+msgstr ""
+
+#: lib/engine.c:211 lib/engine.c:218
+msgid "Error exit\n"
+msgstr ""
+
+#: lib/engine.c:244
+msgid "Reading Super Block\n"
+msgstr ""
+
+#: lib/engine.c:264 lib/engine.c:315 lib/engine.c:358 lib/engine.c:406
+#: lib/engine.c:510 lib/engine.c:731 lib/engine.c:737 lib/engine.c:994
+#: lib/engine.c:1000 lib/engine.c:1170
 #, c-format
-msgid "created on a:    %u bits platform\n"
+msgid "%s, %i, not enough memory\n"
+msgstr ""
+
+#: lib/engine.c:271
+msgid "Calculating bitmap... Please wait... \n"
+msgstr ""
+
+#: lib/engine.c:295 lib/engine.c:338 lib/engine.c:378 lib/engine.c:438
+msgid "done!\n"
+msgstr ""
+
+#: lib/engine.c:322
+msgid "Calculating bitmap... Please wait...\n"
+msgstr ""
+
+#: lib/engine.c:365 lib/engine.c:413
+msgid "Calculating bitmap... Please wait... "
+msgstr ""
+
+#: lib/engine.c:386
+#, c-format
+msgid "%s, %i, stdout is not supported\n"
+msgstr ""
+
+#: lib/engine.c:473
+#, c-format
+msgid "%s, %i, thread create error\n"
+msgstr ""
+
+#: lib/engine.c:500 lib/engine.c:986 lib/engine.c:1162
+#, c-format
+msgid "%s, %i, memory for read posix_memalign error\n"
+msgstr ""
+
+#: lib/engine.c:515 lib/engine.c:560 lib/engine.c:1054
+#, c-format
+msgid "source seek ERROR:%s\n"
+msgstr ""
+
+#: lib/engine.c:582
+#, c-format
+msgid "read error: %s\n"
+msgstr ""
+
+#: lib/engine.c:629 lib/engine.c:659
+#, c-format
+msgid "image write ERROR:%s\n"
+msgstr ""
+
+#: lib/engine.c:641
+#, c-format
+msgid "read(%i) and write(%i) different\n"
+msgstr ""
+
+#: lib/engine.c:685
+#, c-format
+msgid "source seek ERROR: %s\n"
+msgstr ""
+
+#: lib/engine.c:691
+msgid "ERROR: source image too short\n"
+msgstr ""
+
+#: lib/engine.c:749 lib/engine.c:880 lib/engine.c:956 lib/engine.c:959
+#: lib/engine.c:1013 lib/engine.c:1039
+#, c-format
+msgid "target seek ERROR:%s\n"
+msgstr ""
+
+#: lib/engine.c:779
+msgid "blocks_read ERROR: impossible size of blocks_read\n"
+msgstr ""
+
+#: lib/engine.c:797
+#, c-format
+msgid "read ERROR:%s\n"
+msgstr ""
+
+#: lib/engine.c:834 lib/engine.c:860
+#, c-format
+msgid ""
+"checksum error, block_id=%llu...\n"
+" "
+msgstr ""
+
+#: lib/engine.c:931
+#, c-format
+msgid "write block %llu ERROR:%s\n"
+msgstr ""
+
+#: lib/engine.c:933
+#, c-format
+msgid "skip write block %llu error:%s\n"
+msgstr ""
+
+#: lib/engine.c:969 lib/engine.c:1111 lib/engine.c:1274
+#, c-format
+msgid "ftruncate ERROR:%s\n"
+msgstr ""
+
+#: lib/engine.c:1011
+#, c-format
+msgid "source seek ERROR:%d\n"
+msgstr ""
+
+#: lib/engine.c:1066 lib/engine.c:1226
+#, c-format
+msgid "source read ERROR %s\n"
+msgstr ""
+
+#: lib/engine.c:1073 lib/engine.c:1244
+#, c-format
+msgid "skip write block %lli error:%s\n"
+msgstr ""
+
+#: lib/engine.c:1075 lib/engine.c:1246
+#, c-format
+msgid "write block %lli ERROR:%s\n"
+msgstr ""
+
+#: lib/engine.c:1087 lib/engine.c:1089 lib/engine.c:1258 lib/engine.c:1260
+msgid "read and write different\n"
+msgstr ""
+
+#: lib/engine.c:1099 lib/engine.c:1102
+#, c-format
+msgid "write empty ERROR:%s\n"
+msgstr ""
+
+#: lib/engine.c:1286
+#, c-format
+msgid "%s, %i, thread join error\n"
+msgstr ""
+
+#: lib/engine.c:1304
+#, c-format
+msgid "%s: post_clone_fixup reported a non-fatal error\n"
+msgstr ""
+
+#: lib/engine.c:1320
+msgid "Operation cancelled.\n"
+msgstr ""
+
+#: lib/engine.c:1322
+#, c-format
+msgid "Cloned successfully.\n"
+msgstr ""
+
+#: lib/engine.c:1324
+#, c-format
+msgid "Checked successfully.\n"
+msgstr ""
+
+#: lib/engine.c:1358
+#, c-format
+msgid "Unknown filesystem backend: %s\n"
 msgstr ""
 
 #: lib/diskimg.c:437
 #, c-format
-msgid "with partclone:  v%.14s\n"
+msgid "image format:    %s\n"
 msgstr ""
 
-#: lib/diskimg.c:440
+#: lib/diskimg.c:438
 #, c-format
-msgid "Disk size:       %s = %llu Bytes\n"
+msgid "created on a:    %u bits platform\n"
+msgstr ""
+
+#: lib/diskimg.c:439
+#, c-format
+msgid "with partclone:  v%.14s\n"
 msgstr ""
 
 #: lib/diskimg.c:442
 #, c-format
+msgid "Disk size:       %s = %llu Bytes\n"
+msgstr ""
+
+#: lib/diskimg.c:444
+#, c-format
 msgid "Sector size:     %u Byte\n"
 msgstr ""
 
-#: lib/diskimg.c:445
+#: lib/diskimg.c:447
 #, c-format
 msgid "Partition table: %s, %u entr(ies)\n"
 msgstr ""
 
-#: lib/diskimg.c:448
+#: lib/diskimg.c:450
 #, c-format
 msgid "Partition table: %s\n"
 msgstr ""
 
-#: lib/diskimg.c:448
+#: lib/diskimg.c:450
 msgid "none"
 msgstr ""
 
-#: lib/diskimg.c:451
+#: lib/diskimg.c:453
 #, c-format
 msgid "Volumes:         %u\n"
 msgstr ""

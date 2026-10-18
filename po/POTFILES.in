@@ -1,5 +1,6 @@
 # List of source files which contain translatable strings.
 lib/progress.c
 lib/partclone.c
+lib/engine.c
 lib/diskimg.c
 src/ptc-gtk4.c
