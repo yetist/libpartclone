@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: partclone-0.2.61\n"
 "Report-Msgid-Bugs-To: thomas@clonezilla.org\n"
-"POT-Creation-Date: 2026-10-18 19:02+0800\n"
+"POT-Creation-Date: 2026-10-18 20:09+0800\n"
 "PO-Revision-Date: 2013-06-13 09:03+0700\n"
 "Last-Translator: Trần Ngọc Quân <vnwildman@gmail.com>\n"
 "Language-Team: Vietnamese <translation-team-vi@lists.sourceforge.net>\n"
@@ -279,7 +279,8 @@ msgstr "Partclone đã nhân bản thành công thiết bị (%s) vào thiết b
 #: lib/partclone.c:2343
 #, c-format
 msgid "Partclone successfully mapped the device (%s) to the domain log (%s)\n"
-msgstr "Partclone đã ánh xạ thành công thiết bị (%s) vào nhật ký tên miền (%s)\n"
+msgstr ""
+"Partclone đã ánh xạ thành công thiết bị (%s) vào nhật ký tên miền (%s)\n"
 
 #: lib/engine.c:128
 msgid ""
@@ -290,7 +291,13 @@ msgid ""
 "* degrade quickly. Use the --rescue option to efficiently save as much  *\n"
 "* data as possible!                                                     *\n"
 "*************************************************************************\n"
-msgstr "*************************************************************************\n* CẢNH BÁO: Đĩa có các cung từ hỏng. Điều này nghĩa là hư hại vật lý    *\n* trên bề mặt đĩa do xuống cấp, lỗi sản xuất, hoặc một lý do khác.      *\n* Độ tin cậy của đĩa có thể giữ ổn định hoặc giảm nhanh chóng. Hãy      *\n* dùng tùy chọn --rescue để lưu càng nhiều dữ liệu càng tốt!            *\n*************************************************************************\n"
+msgstr ""
+"*************************************************************************\n"
+"* CẢNH BÁO: Đĩa có các cung từ hỏng. Điều này nghĩa là hư hại vật lý    *\n"
+"* trên bề mặt đĩa do xuống cấp, lỗi sản xuất, hoặc một lý do khác.      *\n"
+"* Độ tin cậy của đĩa có thể giữ ổn định hoặc giảm nhanh chóng. Hãy      *\n"
+"* dùng tùy chọn --rescue để lưu càng nhiều dữ liệu càng tốt!            *\n"
+"*************************************************************************\n"
 
 #: lib/engine.c:159
 msgid "No filesystem backend selected for this operation.\n"
@@ -300,7 +307,9 @@ msgstr "Chưa chọn backend hệ thống tập tin cho thao tác này.\n"
 msgid ""
 "You are not logged as root. You may have \"access denied\" errors when "
 "working.\n"
-msgstr "Bạn chưa đăng nhập với quyền root. Bạn có thể gặp lỗi \"truy cập bị từ chối\" khi làm việc.\n"
+msgstr ""
+"Bạn chưa đăng nhập với quyền root. Bạn có thể gặp lỗi \"truy cập bị từ "
+"chối\" khi làm việc.\n"
 
 #: lib/engine.c:211 lib/engine.c:218
 msgid "Error exit\n"
@@ -397,7 +406,9 @@ msgstr "LỖI đọc:%s\n"
 msgid ""
 "checksum error, block_id=%llu...\n"
 " "
-msgstr "lỗi tổng kiểm tra, block_id=%llu...\n "
+msgstr ""
+"lỗi tổng kiểm tra, block_id=%llu...\n"
+" "
 
 #: lib/engine.c:931
 #, c-format
@@ -507,7 +518,7 @@ msgstr "Bảng phân vùng: %s, %u mục\n"
 msgid "Partition table: %s\n"
 msgstr "Bảng phân vùng: %s\n"
 
-#: lib/diskimg.c:450
+#: lib/diskimg.c:450 src/ptc-gtk4.c:771 src/ptc-gtk4.c:798
 msgid "none"
 msgstr "không có"
 
@@ -516,320 +527,571 @@ msgstr "không có"
 msgid "Volumes:         %u\n"
 msgstr "Các ổ đĩa:       %u\n"
 
-#: src/ptc-gtk4.c:181
+#: src/ptc-gtk4.c:251
 msgid "Clone"
 msgstr "Nhân bản"
 
-#: src/ptc-gtk4.c:182
+#: src/ptc-gtk4.c:252
 msgid "Restore"
 msgstr "Phục hồi"
 
-#: src/ptc-gtk4.c:183
+#: src/ptc-gtk4.c:253
 msgid "Check image"
 msgstr "Kiểm tra ảnh"
 
-#: src/ptc-gtk4.c:184
+#: src/ptc-gtk4.c:254
 msgid "Device to device (dd)"
 msgstr "Thiết bị sang thiết bị (dd)"
 
-#: src/ptc-gtk4.c:185
+#: src/ptc-gtk4.c:255
 msgid "Domain log"
 msgstr "Nhật ký tên miền"
 
-#: src/ptc-gtk4.c:277 src/ptc-gtk4.c:423
+#: src/ptc-gtk4.c:256
+msgid "Disk clone (whole disk)"
+msgstr "Nhân bản đĩa (toàn bộ đĩa)"
+
+#: src/ptc-gtk4.c:257
+msgid "Disk restore (whole disk)"
+msgstr "Phục hồi đĩa (toàn bộ đĩa)"
+
+#: src/ptc-gtk4.c:258
+msgid "Check disk image"
+msgstr "Kiểm tra ảnh đĩa"
+
+#: src/ptc-gtk4.c:363 src/ptc-gtk4.c:807
+msgid "raw"
+msgstr "thô"
+
+#: src/ptc-gtk4.c:366
+#, c-format
+msgid "Volume %u/%u: %s (%s)"
+msgstr "Ổ đĩa %u/%u: %s (%s)"
+
+#: src/ptc-gtk4.c:368
+#, c-format
+msgid "Volume %u/%u: %s"
+msgstr "Ổ đĩa %u/%u: %s"
+
+#: src/ptc-gtk4.c:403 src/ptc-gtk4.c:429 src/ptc-gtk4.c:699
 msgid "Running..."
 msgstr "Đang chạy..."
 
-#: src/ptc-gtk4.c:316
+#: src/ptc-gtk4.c:426
+#, c-format
+msgid "Volume %u/%u done."
+msgstr "Ổ đĩa %u/%u đã xong."
+
+#: src/ptc-gtk4.c:526
 msgid "Finished"
 msgstr "Đã xong"
 
-#: src/ptc-gtk4.c:317
+#: src/ptc-gtk4.c:527
 msgid "--- finished ---"
 msgstr "--- đã xong ---"
 
-#: src/ptc-gtk4.c:319
+#: src/ptc-gtk4.c:529
+msgid "Cancelled"
+msgstr "Đã hủy"
+
+#: src/ptc-gtk4.c:530
+msgid "--- cancelled ---"
+msgstr "--- đã hủy ---"
+
+#: src/ptc-gtk4.c:532
 msgid "Failed"
 msgstr "Thất bại"
 
-#: src/ptc-gtk4.c:320
+#: src/ptc-gtk4.c:533
 #, c-format
 msgid "--- error: %s ---"
 msgstr "--- lỗi: %s ---"
 
-#: src/ptc-gtk4.c:321
+#: src/ptc-gtk4.c:534
 msgid "unknown error"
 msgstr "lỗi không xác định"
 
-#: src/ptc-gtk4.c:332
+#: src/ptc-gtk4.c:560
 msgid "self-test: verifying the image"
 msgstr "tự kiểm tra: đang xác minh ảnh"
 
-#: src/ptc-gtk4.c:376
+#: src/ptc-gtk4.c:568
+msgid "self-test: cloning a whole disk"
+msgstr "tự kiểm tra: đang nhân bản toàn bộ đĩa"
+
+#: src/ptc-gtk4.c:579
+msgid "self-test: checking the whole-disk image"
+msgstr "tự kiểm tra: đang kiểm tra ảnh toàn bộ đĩa"
+
+#: src/ptc-gtk4.c:626
 msgid "Please choose a source device or image."
 msgstr "Vui lòng chọn thiết bị hoặc ảnh nguồn."
 
-#: src/ptc-gtk4.c:380
+#: src/ptc-gtk4.c:630
 msgid "Please choose a target."
 msgstr "Vui lòng chọn đích."
 
-#: src/ptc-gtk4.c:384
+#: src/ptc-gtk4.c:634
 msgid "Please choose a log file."
 msgstr "Vui lòng chọn tệp nhật ký."
 
-#: src/ptc-gtk4.c:392
+#: src/ptc-gtk4.c:639
+msgid "The device size must be a number of bytes."
+msgstr "Kích thước thiết bị phải là một số byte."
+
+#: src/ptc-gtk4.c:647
 msgid "Cannot open the log file for writing."
 msgstr "Không thể mở tệp nhật ký để ghi."
 
-#: src/ptc-gtk4.c:414
+#: src/ptc-gtk4.c:684
 #, c-format
 msgid "=== %s ==="
 msgstr "=== %s ==="
 
-#: src/ptc-gtk4.c:415
+#: src/ptc-gtk4.c:685
 #, c-format
 msgid "source : %s"
 msgstr "nguồn : %s"
 
-#: src/ptc-gtk4.c:417
+#: src/ptc-gtk4.c:687
 #, c-format
 msgid "target : %s"
 msgstr "đích : %s"
 
-#: src/ptc-gtk4.c:418
+#: src/ptc-gtk4.c:689 src/ptc-gtk4.c:693
 #, c-format
 msgid "backend: %s"
 msgstr "backend: %s"
 
-#: src/ptc-gtk4.c:419 src/ptc-gtk4.c:837
+#: src/ptc-gtk4.c:689
+msgid "(whole-disk image, none)"
+msgstr "(ảnh toàn bộ đĩa, không có)"
+
+#: src/ptc-gtk4.c:690
+#, c-format
+msgid "gaps   : %s"
+msgstr "khoảng trống: %s"
+
+#: src/ptc-gtk4.c:691
+#, c-format
+msgid "table  : %s"
+msgstr "bảng   : %s"
+
+#: src/ptc-gtk4.c:694 src/ptc-gtk4.c:1438
 msgid "auto (detect)"
 msgstr "tự động (phát hiện)"
 
-#: src/ptc-gtk4.c:422
+#: src/ptc-gtk4.c:698
 msgid "starting"
 msgstr "đang bắt đầu"
 
-#: src/ptc-gtk4.c:476
+#: src/ptc-gtk4.c:703 src/ptc-gtk4.c:1574
+msgid "Waiting for the first volume..."
+msgstr "Đang chờ ổ đĩa đầu tiên..."
+
+#: src/ptc-gtk4.c:720 src/ptc-gtk4.c:721
+msgid "Cancelling..."
+msgstr "Đang hủy..."
+
+#: src/ptc-gtk4.c:758
+msgid "Format version"
+msgstr "Phiên bản định dạng"
+
+#: src/ptc-gtk4.c:760
+msgid "Size"
+msgstr "Kích thước"
+
+#: src/ptc-gtk4.c:761
+msgid "Sector size"
+msgstr "Kích thước sector"
+
+#: src/ptc-gtk4.c:762
+msgid "bytes"
+msgstr "byte"
+
+#: src/ptc-gtk4.c:770 src/ptc-gtk4.c:1315
+msgid "Partition table"
+msgstr "Bảng phân vùng"
+
+#: src/ptc-gtk4.c:772
+msgid "Volumes"
+msgstr "Các ổ đĩa"
+
+#: src/ptc-gtk4.c:793
+#, c-format
+msgid "Volume %u: %s (%s) at %s, length %s, %s%s\n"
+msgstr "Ổ đĩa %u: %s (%s) tại %s, độ dài %s, %s%s\n"
+
+#: src/ptc-gtk4.c:796
+msgid "sparse"
+msgstr "thưa"
+
+#: src/ptc-gtk4.c:796
+msgid "full"
+msgstr "đầy đủ"
+
+#: src/ptc-gtk4.c:799
+msgid ", bootable"
+msgstr ", có thể khởi động"
+
+#: src/ptc-gtk4.c:806
+msgid "File system"
+msgstr "Hệ thống tập tin"
+
+#: src/ptc-gtk4.c:820
+msgid "Close"
+msgstr "Đóng"
+
+#: src/ptc-gtk4.c:859
+msgid "Cannot read the image."
+msgstr "Không thể đọc ảnh."
+
+#: src/ptc-gtk4.c:865
+#, c-format
+msgid "=== image: %s ==="
+msgstr "=== ảnh: %s ==="
+
+#: src/ptc-gtk4.c:932
+msgid "Select an image to inspect"
+msgstr "Chọn một ảnh để xem xét"
+
+#: src/ptc-gtk4.c:955
 msgid "GTK4 front end for the libpartclone partition cloning library."
 msgstr "Giao diện GTK4 cho thư viện nhân bản phân vùng libpartclone."
 
-#: src/ptc-gtk4.c:514
+#: src/ptc-gtk4.c:1001
 msgid "An operation is still running."
 msgstr "Một thao tác vẫn đang chạy."
 
-#: src/ptc-gtk4.c:516
-msgid "Quitting now will abort the operation."
-msgstr "Thoát ngay bây giờ sẽ hủy bỏ thao tác."
+#: src/ptc-gtk4.c:1003
+msgid "Quitting now will cancel the operation and leave the target incomplete."
+msgstr "Thoát ngay bây giờ sẽ hủy thao tác và để lại đích chưa hoàn tất."
 
-#: src/ptc-gtk4.c:518
+#: src/ptc-gtk4.c:1005 src/ptc-gtk4.c:1553
 msgid "Cancel"
 msgstr "Hủy"
 
-#: src/ptc-gtk4.c:518
+#: src/ptc-gtk4.c:1005
 msgid "Quit"
 msgstr "Thoát"
 
-#: src/ptc-gtk4.c:587
+#: src/ptc-gtk4.c:1075
 msgid "Select source device or image"
 msgstr "Chọn thiết bị hoặc ảnh nguồn"
 
-#: src/ptc-gtk4.c:622
+#: src/ptc-gtk4.c:1110
 msgid "Select target device or image"
 msgstr "Chọn thiết bị hoặc ảnh đích"
 
-#: src/ptc-gtk4.c:657
+#: src/ptc-gtk4.c:1145
 msgid "Select log file"
 msgstr "Chọn tệp nhật ký"
 
-#: src/ptc-gtk4.c:700
+#: src/ptc-gtk4.c:1224
 #, c-format
 msgid "self-test: cloning %s"
 msgstr "tự kiểm tra: đang nhân bản %s"
 
-#: src/ptc-gtk4.c:764
+#: src/ptc-gtk4.c:1293
+msgid "Whole-disk image options (format 0003)"
+msgstr "Tùy chọn ảnh toàn bộ đĩa (định dạng 0003)"
+
+#: src/ptc-gtk4.c:1309
+msgid ""
+"How the gaps between partitions (boot loaders, padding, backup GPT) are "
+"stored."
+msgstr ""
+"Cách lưu các khoảng trống giữa các phân vùng (bộ nạp khởi động, phần đệm, "
+"GPT dự phòng)."
+
+#: src/ptc-gtk4.c:1311
+msgid "Gaps"
+msgstr "Khoảng trống"
+
+#: src/ptc-gtk4.c:1317
+msgid ""
+"How the partition table is written on restore: verbatim, or rebuilt for a "
+"target of a different size."
+msgstr ""
+"Cách ghi bảng phân vùng khi phục hồi: nguyên văn, hoặc dựng lại cho đích có "
+"kích thước khác."
+
+#: src/ptc-gtk4.c:1323
+msgid "Store raw volumes sparsely"
+msgstr "Lưu các ổ đĩa thô theo dạng thưa"
+
+#: src/ptc-gtk4.c:1325
+msgid ""
+"Use a zero-detecting bitmap for raw volumes (gaps and unsupported "
+"partitions)."
+msgstr ""
+"Dùng bitmap phát hiện số không cho các ổ đĩa thô (khoảng trống và phân vùng "
+"không được hỗ trợ)."
+
+#: src/ptc-gtk4.c:1328
+msgid "Store every partition as raw"
+msgstr "Lưu mọi phân vùng dưới dạng thô"
+
+#: src/ptc-gtk4.c:1330
+msgid ""
+"Do not use the per-filesystem backend, so every partition is a raw volume."
+msgstr ""
+"Không dùng backend theo từng hệ thống tập tin, để mọi phân vùng là một ổ đĩa "
+"thô."
+
+#: src/ptc-gtk4.c:1333
+msgid "Do not zero skipped blocks"
+msgstr "Không ghi số không vào các khối bị bỏ qua"
+
+#: src/ptc-gtk4.c:1335
+msgid ""
+"On restore, leave blocks absent from the image untouched instead of writing "
+"zeros."
+msgstr ""
+"Khi phục hồi, để nguyên các khối không có trong ảnh thay vì ghi số không."
+
+#: src/ptc-gtk4.c:1338
+msgid "Grow the last partition"
+msgstr "Mở rộng phân vùng cuối cùng"
+
+#: src/ptc-gtk4.c:1340
+msgid ""
+"On a larger target, extend the last partition entry (the filesystem itself "
+"is not resized)."
+msgstr ""
+"Trên đích lớn hơn, mở rộng mục phân vùng cuối cùng (bản thân hệ thống tập "
+"tin không được thay đổi kích thước)."
+
+#: src/ptc-gtk4.c:1363
 msgid "_Run"
 msgstr "_Chạy"
 
-#: src/ptc-gtk4.c:765
+#: src/ptc-gtk4.c:1364
+msgid "_Inspect image..."
+msgstr "Xem _ảnh..."
+
+#: src/ptc-gtk4.c:1365
 msgid "_Clear log"
 msgstr "_Xóa nhật ký"
 
-#: src/ptc-gtk4.c:766
+#: src/ptc-gtk4.c:1366
 msgid "_About"
 msgstr "_Giới thiệu"
 
-#: src/ptc-gtk4.c:767
+#: src/ptc-gtk4.c:1367
 msgid "_Quit"
 msgstr "_Thoát"
 
-#: src/ptc-gtk4.c:775
+#: src/ptc-gtk4.c:1375
 msgid "Main menu"
 msgstr "Trình đơn chính"
 
-#: src/ptc-gtk4.c:796
+#: src/ptc-gtk4.c:1397
 msgid "partclone"
 msgstr "partclone"
 
-#: src/ptc-gtk4.c:807
+#: src/ptc-gtk4.c:1408
 #, c-format
 msgid ""
 "libpartclone %s\n"
 "backends: %s"
-msgstr "libpartclone %s\ncác backend: %s"
+msgstr ""
+"libpartclone %s\n"
+"các backend: %s"
 
-#: src/ptc-gtk4.c:824
+#: src/ptc-gtk4.c:1425
 msgid "Mode"
 msgstr "Chế độ"
 
-#: src/ptc-gtk4.c:828
+#: src/ptc-gtk4.c:1429
 msgid ""
-"Operation to perform. The available target fields change with the selected "
-"mode."
-msgstr "Thao tác cần thực hiện. Các trường đích khả dụng thay đổi theo chế độ đã chọn."
+"Operation to perform. The available fields change with the selected mode."
+msgstr ""
+"Thao tác cần thực hiện. Các trường khả dụng thay đổi theo chế độ đã chọn."
 
-#: src/ptc-gtk4.c:841
+#: src/ptc-gtk4.c:1442
 msgid "Backend"
 msgstr "Backend"
 
-#: src/ptc-gtk4.c:845
-msgid "Filesystem backend. Use \"auto (detect)\" to let partclone pick one."
-msgstr "Backend hệ thống tập tin. Dùng \"tự động (phát hiện)\" để partclone tự chọn."
+#: src/ptc-gtk4.c:1446
+msgid ""
+"Filesystem backend. Use \"auto (detect)\" to let partclone pick one. Not "
+"used for whole-disk images."
+msgstr ""
+"Backend hệ thống tập tin. Dùng \"tự động (phát hiện)\" để partclone tự chọn. "
+"Không dùng cho ảnh toàn bộ đĩa."
 
-#: src/ptc-gtk4.c:851
+#: src/ptc-gtk4.c:1453
 msgid "Source"
 msgstr "Nguồn"
 
-#: src/ptc-gtk4.c:855
+#: src/ptc-gtk4.c:1457
 msgid "Device or image the data is read from."
 msgstr "Thiết bị hoặc ảnh mà dữ liệu được đọc từ đó."
 
-#: src/ptc-gtk4.c:857 src/ptc-gtk4.c:870 src/ptc-gtk4.c:884
+#: src/ptc-gtk4.c:1459 src/ptc-gtk4.c:1472 src/ptc-gtk4.c:1486
 msgid "Browse..."
 msgstr "Duyệt..."
 
-#: src/ptc-gtk4.c:863
+#: src/ptc-gtk4.c:1465
 msgid "Target"
 msgstr "Đích"
 
-#: src/ptc-gtk4.c:868
+#: src/ptc-gtk4.c:1470
 msgid "Device or image the data is written to."
 msgstr "Thiết bị hoặc ảnh mà dữ liệu được ghi vào."
 
-#: src/ptc-gtk4.c:877
+#: src/ptc-gtk4.c:1479
 msgid "Log file"
 msgstr "Tệp nhật ký"
 
-#: src/ptc-gtk4.c:882
+#: src/ptc-gtk4.c:1484
 msgid "The engine writes its detailed report to this file."
 msgstr "Bộ máy ghi báo cáo chi tiết của nó vào tệp này."
 
-#: src/ptc-gtk4.c:891
+#: src/ptc-gtk4.c:1492
+msgid "Device size"
+msgstr "Kích thước thiết bị"
+
+#: src/ptc-gtk4.c:1494
+msgid "0 = auto (bytes)"
+msgstr "0 = tự động (byte)"
+
+#: src/ptc-gtk4.c:1497
+msgid ""
+"Override the device size in bytes when it cannot be detected (clone only)."
+msgstr ""
+"Ghi đè kích thước thiết bị theo byte khi không thể phát hiện (chỉ khi nhân "
+"bản)."
+
+#: src/ptc-gtk4.c:1504
 msgid "Skip target size check (-C)"
 msgstr "Bỏ qua kiểm tra kích thước đích (-C)"
 
-#: src/ptc-gtk4.c:894
+#: src/ptc-gtk4.c:1507
 msgid "Do not check that the target is large enough before writing."
 msgstr "Không kiểm tra xem đích có đủ lớn trước khi ghi."
 
-#: src/ptc-gtk4.c:896
+#: src/ptc-gtk4.c:1509
 msgid "Force (-F)"
 msgstr "Buộc (-F)"
 
-#: src/ptc-gtk4.c:899
+#: src/ptc-gtk4.c:1512
 msgid ""
 "Keep the process alive on recoverable errors and report them in the log "
 "instead of aborting."
-msgstr "Giữ tiến trình tiếp tục khi gặp lỗi có thể phục hồi và báo cáo chúng trong nhật ký thay vì hủy bỏ."
+msgstr ""
+"Giữ tiến trình tiếp tục khi gặp lỗi có thể phục hồi và báo cáo chúng trong "
+"nhật ký thay vì hủy bỏ."
 
-#: src/ptc-gtk4.c:902
+#: src/ptc-gtk4.c:1515
 msgid "Quiet engine output"
 msgstr "Tắt tiếng xuất của bộ máy"
 
-#: src/ptc-gtk4.c:905
+#: src/ptc-gtk4.c:1518
 msgid "Suppress the progress messages the engine would print on stdout."
 msgstr "Chặn các thông báo tiến trình mà bộ máy in ra stdout."
 
-#: src/ptc-gtk4.c:907
+#: src/ptc-gtk4.c:1520
 msgid "Overwrite target (-O)"
 msgstr "Ghi đè đích (-O)"
 
-#: src/ptc-gtk4.c:909
+#: src/ptc-gtk4.c:1522
 msgid ""
 "Replace the target if it already exists (required to update an existing "
 "image)."
-msgstr "Thay thế đích nếu nó đã tồn tại (cần thiết để cập nhật một ảnh hiện có)."
+msgstr ""
+"Thay thế đích nếu nó đã tồn tại (cần thiết để cập nhật một ảnh hiện có)."
 
-#: src/ptc-gtk4.c:919
+#: src/ptc-gtk4.c:1531
+msgid "Debug level"
+msgstr "Mức gỡ lỗi"
+
+#: src/ptc-gtk4.c:1535
+msgid "Engine verbosity: 0 quiet, 1 or 2 increasingly detailed."
+msgstr "Độ chi tiết của engine: 0 im lặng, 1 hoặc 2 ngày càng chi tiết."
+
+#: src/ptc-gtk4.c:1548
 msgid "Run"
 msgstr "Chạy"
 
-#: src/ptc-gtk4.c:922
+#: src/ptc-gtk4.c:1551
 msgid "Start the operation (F5)."
 msgstr "Bắt đầu thao tác (F5)."
 
-#: src/ptc-gtk4.c:924
+#: src/ptc-gtk4.c:1555
+msgid "Stop the running operation at the next block boundary."
+msgstr "Dừng thao tác đang chạy tại ranh giới khối tiếp theo."
+
+#: src/ptc-gtk4.c:1558
 msgid "Clear log"
 msgstr "Xóa nhật ký"
 
-#: src/ptc-gtk4.c:925
+#: src/ptc-gtk4.c:1559
 msgid "Clear the log view (Ctrl+L)."
 msgstr "Xóa khung xem nhật ký (Ctrl+L)."
 
-#: src/ptc-gtk4.c:934
+#: src/ptc-gtk4.c:1569
 msgid "idle"
 msgstr "đang chờ"
 
-#: src/ptc-gtk4.c:937
+#: src/ptc-gtk4.c:1585
 msgid "Ready"
 msgstr "Sẵn sàng"
 
-#: src/ptc-gtk4.c:977
+#: src/ptc-gtk4.c:1625
 #, c-format
 msgid "libpartclone %s ready."
 msgstr "libpartclone %s sẵn sàng."
 
-#: src/ptc-gtk4.c:993
+#: src/ptc-gtk4.c:1641
 #, c-format
 msgid "[!] Unknown backend: %s"
 msgstr "[!] Backend không xác định: %s"
 
-#: src/ptc-gtk4.c:1001
+#: src/ptc-gtk4.c:1649
 #, c-format
 msgid "[!] Unknown mode: %s"
 msgstr "[!] Chế độ không xác định: %s"
 
-#: src/ptc-gtk4.c:1015
-msgid "Clone a temporary file, verify it, then quit (headless test)"
-msgstr "Nhân bản một tệp tạm, xác minh nó, rồi thoát (kiểm tra không giao diện)"
+#: src/ptc-gtk4.c:1663
+msgid "Clone, check, then do a whole-disk round-trip and quit (headless test)"
+msgstr ""
+"Nhân bản, kiểm tra, sau đó thực hiện một vòng toàn bộ đĩa và thoát (kiểm tra "
+"không giao diện)"
 
-#: src/ptc-gtk4.c:1018
+#: src/ptc-gtk4.c:1666
 msgid "Source device or image"
 msgstr "Thiết bị hoặc ảnh nguồn"
 
-#: src/ptc-gtk4.c:1018 src/ptc-gtk4.c:1020
+#: src/ptc-gtk4.c:1666 src/ptc-gtk4.c:1668
 msgid "PATH"
 msgstr "ĐƯỜNG_DẪN"
 
-#: src/ptc-gtk4.c:1020
+#: src/ptc-gtk4.c:1668
 msgid "Target device or image"
 msgstr "Thiết bị hoặc ảnh đích"
 
-#: src/ptc-gtk4.c:1022
+#: src/ptc-gtk4.c:1670
 msgid "Backend name (default: autodetect)"
 msgstr "Tên backend (mặc định: tự phát hiện)"
 
-#: src/ptc-gtk4.c:1022
+#: src/ptc-gtk4.c:1670
 msgid "NAME"
 msgstr "TÊN"
 
-#: src/ptc-gtk4.c:1024
-msgid "Operation: clone, restore, check, dd or domain"
-msgstr "Thao tác: clone, restore, check, dd hoặc domain"
+#: src/ptc-gtk4.c:1672
+msgid ""
+"Operation: clone, restore, check, dd, domain, disk-clone, disk-restore or "
+"disk-check"
+msgstr ""
+"Thao tác: clone, restore, check, dd, domain, disk-clone, disk-restore hoặc "
+"disk-check"
 
-#: src/ptc-gtk4.c:1024
+#: src/ptc-gtk4.c:1673
 msgid "MODE"
 msgstr "CHẾ_ĐỘ"
 
-#: src/ptc-gtk4.c:1026
+#: src/ptc-gtk4.c:1675
 msgid "SOURCE"
 msgstr "NGUỒN"

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: partclone 0.3.50\n"
 "Report-Msgid-Bugs-To: thomas@clonezilla.org\n"
-"POT-Creation-Date: 2026-10-18 18:59+0800\n"
+"POT-Creation-Date: 2026-10-18 20:09+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -504,7 +504,7 @@ msgstr ""
 msgid "Partition table: %s\n"
 msgstr ""
 
-#: lib/diskimg.c:450
+#: lib/diskimg.c:450 src/ptc-gtk4.c:771 src/ptc-gtk4.c:798
 msgid "none"
 msgstr ""
 
@@ -513,320 +513,546 @@ msgstr ""
 msgid "Volumes:         %u\n"
 msgstr ""
 
-#: src/ptc-gtk4.c:181
+#: src/ptc-gtk4.c:251
 msgid "Clone"
 msgstr ""
 
-#: src/ptc-gtk4.c:182
+#: src/ptc-gtk4.c:252
 msgid "Restore"
 msgstr ""
 
-#: src/ptc-gtk4.c:183
+#: src/ptc-gtk4.c:253
 msgid "Check image"
 msgstr ""
 
-#: src/ptc-gtk4.c:184
+#: src/ptc-gtk4.c:254
 msgid "Device to device (dd)"
 msgstr ""
 
-#: src/ptc-gtk4.c:185
+#: src/ptc-gtk4.c:255
 msgid "Domain log"
 msgstr ""
 
-#: src/ptc-gtk4.c:277 src/ptc-gtk4.c:423
+#: src/ptc-gtk4.c:256
+msgid "Disk clone (whole disk)"
+msgstr ""
+
+#: src/ptc-gtk4.c:257
+msgid "Disk restore (whole disk)"
+msgstr ""
+
+#: src/ptc-gtk4.c:258
+msgid "Check disk image"
+msgstr ""
+
+#: src/ptc-gtk4.c:363 src/ptc-gtk4.c:807
+msgid "raw"
+msgstr ""
+
+#: src/ptc-gtk4.c:366
+#, c-format
+msgid "Volume %u/%u: %s (%s)"
+msgstr ""
+
+#: src/ptc-gtk4.c:368
+#, c-format
+msgid "Volume %u/%u: %s"
+msgstr ""
+
+#: src/ptc-gtk4.c:403 src/ptc-gtk4.c:429 src/ptc-gtk4.c:699
 msgid "Running..."
 msgstr ""
 
-#: src/ptc-gtk4.c:316
+#: src/ptc-gtk4.c:426
+#, c-format
+msgid "Volume %u/%u done."
+msgstr ""
+
+#: src/ptc-gtk4.c:526
 msgid "Finished"
 msgstr ""
 
-#: src/ptc-gtk4.c:317
+#: src/ptc-gtk4.c:527
 msgid "--- finished ---"
 msgstr ""
 
-#: src/ptc-gtk4.c:319
+#: src/ptc-gtk4.c:529
+msgid "Cancelled"
+msgstr ""
+
+#: src/ptc-gtk4.c:530
+msgid "--- cancelled ---"
+msgstr ""
+
+#: src/ptc-gtk4.c:532
 msgid "Failed"
 msgstr ""
 
-#: src/ptc-gtk4.c:320
+#: src/ptc-gtk4.c:533
 #, c-format
 msgid "--- error: %s ---"
 msgstr ""
 
-#: src/ptc-gtk4.c:321
+#: src/ptc-gtk4.c:534
 msgid "unknown error"
 msgstr ""
 
-#: src/ptc-gtk4.c:332
+#: src/ptc-gtk4.c:560
 msgid "self-test: verifying the image"
 msgstr ""
 
-#: src/ptc-gtk4.c:376
+#: src/ptc-gtk4.c:568
+msgid "self-test: cloning a whole disk"
+msgstr ""
+
+#: src/ptc-gtk4.c:579
+msgid "self-test: checking the whole-disk image"
+msgstr ""
+
+#: src/ptc-gtk4.c:626
 msgid "Please choose a source device or image."
 msgstr ""
 
-#: src/ptc-gtk4.c:380
+#: src/ptc-gtk4.c:630
 msgid "Please choose a target."
 msgstr ""
 
-#: src/ptc-gtk4.c:384
+#: src/ptc-gtk4.c:634
 msgid "Please choose a log file."
 msgstr ""
 
-#: src/ptc-gtk4.c:392
+#: src/ptc-gtk4.c:639
+msgid "The device size must be a number of bytes."
+msgstr ""
+
+#: src/ptc-gtk4.c:647
 msgid "Cannot open the log file for writing."
 msgstr ""
 
-#: src/ptc-gtk4.c:414
+#: src/ptc-gtk4.c:684
 #, c-format
 msgid "=== %s ==="
 msgstr ""
 
-#: src/ptc-gtk4.c:415
+#: src/ptc-gtk4.c:685
 #, c-format
 msgid "source : %s"
 msgstr ""
 
-#: src/ptc-gtk4.c:417
+#: src/ptc-gtk4.c:687
 #, c-format
 msgid "target : %s"
 msgstr ""
 
-#: src/ptc-gtk4.c:418
+#: src/ptc-gtk4.c:689 src/ptc-gtk4.c:693
 #, c-format
 msgid "backend: %s"
 msgstr ""
 
-#: src/ptc-gtk4.c:419 src/ptc-gtk4.c:837
+#: src/ptc-gtk4.c:689
+msgid "(whole-disk image, none)"
+msgstr ""
+
+#: src/ptc-gtk4.c:690
+#, c-format
+msgid "gaps   : %s"
+msgstr ""
+
+#: src/ptc-gtk4.c:691
+#, c-format
+msgid "table  : %s"
+msgstr ""
+
+#: src/ptc-gtk4.c:694 src/ptc-gtk4.c:1438
 msgid "auto (detect)"
 msgstr ""
 
-#: src/ptc-gtk4.c:422
+#: src/ptc-gtk4.c:698
 msgid "starting"
 msgstr ""
 
-#: src/ptc-gtk4.c:476
+#: src/ptc-gtk4.c:703 src/ptc-gtk4.c:1574
+msgid "Waiting for the first volume..."
+msgstr ""
+
+#: src/ptc-gtk4.c:720 src/ptc-gtk4.c:721
+msgid "Cancelling..."
+msgstr ""
+
+#: src/ptc-gtk4.c:758
+msgid "Format version"
+msgstr ""
+
+#: src/ptc-gtk4.c:760
+msgid "Size"
+msgstr ""
+
+#: src/ptc-gtk4.c:761
+msgid "Sector size"
+msgstr ""
+
+#: src/ptc-gtk4.c:762
+msgid "bytes"
+msgstr ""
+
+#: src/ptc-gtk4.c:770 src/ptc-gtk4.c:1315
+msgid "Partition table"
+msgstr ""
+
+#: src/ptc-gtk4.c:772
+msgid "Volumes"
+msgstr ""
+
+#: src/ptc-gtk4.c:793
+#, c-format
+msgid "Volume %u: %s (%s) at %s, length %s, %s%s\n"
+msgstr ""
+
+#: src/ptc-gtk4.c:796
+msgid "sparse"
+msgstr ""
+
+#: src/ptc-gtk4.c:796
+msgid "full"
+msgstr ""
+
+#: src/ptc-gtk4.c:799
+msgid ", bootable"
+msgstr ""
+
+#: src/ptc-gtk4.c:806
+msgid "File system"
+msgstr ""
+
+#: src/ptc-gtk4.c:820
+msgid "Close"
+msgstr ""
+
+#: src/ptc-gtk4.c:859
+msgid "Cannot read the image."
+msgstr ""
+
+#: src/ptc-gtk4.c:865
+#, c-format
+msgid "=== image: %s ==="
+msgstr ""
+
+#: src/ptc-gtk4.c:932
+msgid "Select an image to inspect"
+msgstr ""
+
+#: src/ptc-gtk4.c:955
 msgid "GTK4 front end for the libpartclone partition cloning library."
 msgstr ""
 
-#: src/ptc-gtk4.c:514
+#: src/ptc-gtk4.c:1001
 msgid "An operation is still running."
 msgstr ""
 
-#: src/ptc-gtk4.c:516
-msgid "Quitting now will abort the operation."
+#: src/ptc-gtk4.c:1003
+msgid "Quitting now will cancel the operation and leave the target incomplete."
 msgstr ""
 
-#: src/ptc-gtk4.c:518
+#: src/ptc-gtk4.c:1005 src/ptc-gtk4.c:1553
 msgid "Cancel"
 msgstr ""
 
-#: src/ptc-gtk4.c:518
+#: src/ptc-gtk4.c:1005
 msgid "Quit"
 msgstr ""
 
-#: src/ptc-gtk4.c:587
+#: src/ptc-gtk4.c:1075
 msgid "Select source device or image"
 msgstr ""
 
-#: src/ptc-gtk4.c:622
+#: src/ptc-gtk4.c:1110
 msgid "Select target device or image"
 msgstr ""
 
-#: src/ptc-gtk4.c:657
+#: src/ptc-gtk4.c:1145
 msgid "Select log file"
 msgstr ""
 
-#: src/ptc-gtk4.c:700
+#: src/ptc-gtk4.c:1224
 #, c-format
 msgid "self-test: cloning %s"
 msgstr ""
 
-#: src/ptc-gtk4.c:764
+#: src/ptc-gtk4.c:1293
+msgid "Whole-disk image options (format 0003)"
+msgstr ""
+
+#: src/ptc-gtk4.c:1309
+msgid ""
+"How the gaps between partitions (boot loaders, padding, backup GPT) are "
+"stored."
+msgstr ""
+
+#: src/ptc-gtk4.c:1311
+msgid "Gaps"
+msgstr ""
+
+#: src/ptc-gtk4.c:1317
+msgid ""
+"How the partition table is written on restore: verbatim, or rebuilt for a "
+"target of a different size."
+msgstr ""
+
+#: src/ptc-gtk4.c:1323
+msgid "Store raw volumes sparsely"
+msgstr ""
+
+#: src/ptc-gtk4.c:1325
+msgid ""
+"Use a zero-detecting bitmap for raw volumes (gaps and unsupported "
+"partitions)."
+msgstr ""
+
+#: src/ptc-gtk4.c:1328
+msgid "Store every partition as raw"
+msgstr ""
+
+#: src/ptc-gtk4.c:1330
+msgid ""
+"Do not use the per-filesystem backend, so every partition is a raw volume."
+msgstr ""
+
+#: src/ptc-gtk4.c:1333
+msgid "Do not zero skipped blocks"
+msgstr ""
+
+#: src/ptc-gtk4.c:1335
+msgid ""
+"On restore, leave blocks absent from the image untouched instead of writing "
+"zeros."
+msgstr ""
+
+#: src/ptc-gtk4.c:1338
+msgid "Grow the last partition"
+msgstr ""
+
+#: src/ptc-gtk4.c:1340
+msgid ""
+"On a larger target, extend the last partition entry (the filesystem itself "
+"is not resized)."
+msgstr ""
+
+#: src/ptc-gtk4.c:1363
 msgid "_Run"
 msgstr ""
 
-#: src/ptc-gtk4.c:765
+#: src/ptc-gtk4.c:1364
+msgid "_Inspect image..."
+msgstr ""
+
+#: src/ptc-gtk4.c:1365
 msgid "_Clear log"
 msgstr ""
 
-#: src/ptc-gtk4.c:766
+#: src/ptc-gtk4.c:1366
 msgid "_About"
 msgstr ""
 
-#: src/ptc-gtk4.c:767
+#: src/ptc-gtk4.c:1367
 msgid "_Quit"
 msgstr ""
 
-#: src/ptc-gtk4.c:775
+#: src/ptc-gtk4.c:1375
 msgid "Main menu"
 msgstr ""
 
-#: src/ptc-gtk4.c:796
+#: src/ptc-gtk4.c:1397
 msgid "partclone"
 msgstr ""
 
-#: src/ptc-gtk4.c:807
+#: src/ptc-gtk4.c:1408
 #, c-format
 msgid ""
 "libpartclone %s\n"
 "backends: %s"
 msgstr ""
 
-#: src/ptc-gtk4.c:824
+#: src/ptc-gtk4.c:1425
 msgid "Mode"
 msgstr ""
 
-#: src/ptc-gtk4.c:828
+#: src/ptc-gtk4.c:1429
 msgid ""
-"Operation to perform. The available target fields change with the selected "
-"mode."
+"Operation to perform. The available fields change with the selected mode."
 msgstr ""
 
-#: src/ptc-gtk4.c:841
+#: src/ptc-gtk4.c:1442
 msgid "Backend"
 msgstr ""
 
-#: src/ptc-gtk4.c:845
-msgid "Filesystem backend. Use \"auto (detect)\" to let partclone pick one."
+#: src/ptc-gtk4.c:1446
+msgid ""
+"Filesystem backend. Use \"auto (detect)\" to let partclone pick one. Not "
+"used for whole-disk images."
 msgstr ""
 
-#: src/ptc-gtk4.c:851
+#: src/ptc-gtk4.c:1453
 msgid "Source"
 msgstr ""
 
-#: src/ptc-gtk4.c:855
+#: src/ptc-gtk4.c:1457
 msgid "Device or image the data is read from."
 msgstr ""
 
-#: src/ptc-gtk4.c:857 src/ptc-gtk4.c:870 src/ptc-gtk4.c:884
+#: src/ptc-gtk4.c:1459 src/ptc-gtk4.c:1472 src/ptc-gtk4.c:1486
 msgid "Browse..."
 msgstr ""
 
-#: src/ptc-gtk4.c:863
+#: src/ptc-gtk4.c:1465
 msgid "Target"
 msgstr ""
 
-#: src/ptc-gtk4.c:868
+#: src/ptc-gtk4.c:1470
 msgid "Device or image the data is written to."
 msgstr ""
 
-#: src/ptc-gtk4.c:877
+#: src/ptc-gtk4.c:1479
 msgid "Log file"
 msgstr ""
 
-#: src/ptc-gtk4.c:882
+#: src/ptc-gtk4.c:1484
 msgid "The engine writes its detailed report to this file."
 msgstr ""
 
-#: src/ptc-gtk4.c:891
+#: src/ptc-gtk4.c:1492
+msgid "Device size"
+msgstr ""
+
+#: src/ptc-gtk4.c:1494
+msgid "0 = auto (bytes)"
+msgstr ""
+
+#: src/ptc-gtk4.c:1497
+msgid ""
+"Override the device size in bytes when it cannot be detected (clone only)."
+msgstr ""
+
+#: src/ptc-gtk4.c:1504
 msgid "Skip target size check (-C)"
 msgstr ""
 
-#: src/ptc-gtk4.c:894
+#: src/ptc-gtk4.c:1507
 msgid "Do not check that the target is large enough before writing."
 msgstr ""
 
-#: src/ptc-gtk4.c:896
+#: src/ptc-gtk4.c:1509
 msgid "Force (-F)"
 msgstr ""
 
-#: src/ptc-gtk4.c:899
+#: src/ptc-gtk4.c:1512
 msgid ""
 "Keep the process alive on recoverable errors and report them in the log "
 "instead of aborting."
 msgstr ""
 
-#: src/ptc-gtk4.c:902
+#: src/ptc-gtk4.c:1515
 msgid "Quiet engine output"
 msgstr ""
 
-#: src/ptc-gtk4.c:905
+#: src/ptc-gtk4.c:1518
 msgid "Suppress the progress messages the engine would print on stdout."
 msgstr ""
 
-#: src/ptc-gtk4.c:907
+#: src/ptc-gtk4.c:1520
 msgid "Overwrite target (-O)"
 msgstr ""
 
-#: src/ptc-gtk4.c:909
+#: src/ptc-gtk4.c:1522
 msgid ""
 "Replace the target if it already exists (required to update an existing "
 "image)."
 msgstr ""
 
-#: src/ptc-gtk4.c:919
+#: src/ptc-gtk4.c:1531
+msgid "Debug level"
+msgstr ""
+
+#: src/ptc-gtk4.c:1535
+msgid "Engine verbosity: 0 quiet, 1 or 2 increasingly detailed."
+msgstr ""
+
+#: src/ptc-gtk4.c:1548
 msgid "Run"
 msgstr ""
 
-#: src/ptc-gtk4.c:922
+#: src/ptc-gtk4.c:1551
 msgid "Start the operation (F5)."
 msgstr ""
 
-#: src/ptc-gtk4.c:924
+#: src/ptc-gtk4.c:1555
+msgid "Stop the running operation at the next block boundary."
+msgstr ""
+
+#: src/ptc-gtk4.c:1558
 msgid "Clear log"
 msgstr ""
 
-#: src/ptc-gtk4.c:925
+#: src/ptc-gtk4.c:1559
 msgid "Clear the log view (Ctrl+L)."
 msgstr ""
 
-#: src/ptc-gtk4.c:934
+#: src/ptc-gtk4.c:1569
 msgid "idle"
 msgstr ""
 
-#: src/ptc-gtk4.c:937
+#: src/ptc-gtk4.c:1585
 msgid "Ready"
 msgstr ""
 
-#: src/ptc-gtk4.c:977
+#: src/ptc-gtk4.c:1625
 #, c-format
 msgid "libpartclone %s ready."
 msgstr ""
 
-#: src/ptc-gtk4.c:993
+#: src/ptc-gtk4.c:1641
 #, c-format
 msgid "[!] Unknown backend: %s"
 msgstr ""
 
-#: src/ptc-gtk4.c:1001
+#: src/ptc-gtk4.c:1649
 #, c-format
 msgid "[!] Unknown mode: %s"
 msgstr ""
 
-#: src/ptc-gtk4.c:1015
-msgid "Clone a temporary file, verify it, then quit (headless test)"
+#: src/ptc-gtk4.c:1663
+msgid "Clone, check, then do a whole-disk round-trip and quit (headless test)"
 msgstr ""
 
-#: src/ptc-gtk4.c:1018
+#: src/ptc-gtk4.c:1666
 msgid "Source device or image"
 msgstr ""
 
-#: src/ptc-gtk4.c:1018 src/ptc-gtk4.c:1020
+#: src/ptc-gtk4.c:1666 src/ptc-gtk4.c:1668
 msgid "PATH"
 msgstr ""
 
-#: src/ptc-gtk4.c:1020
+#: src/ptc-gtk4.c:1668
 msgid "Target device or image"
 msgstr ""
 
-#: src/ptc-gtk4.c:1022
+#: src/ptc-gtk4.c:1670
 msgid "Backend name (default: autodetect)"
 msgstr ""
 
-#: src/ptc-gtk4.c:1022
+#: src/ptc-gtk4.c:1670
 msgid "NAME"
 msgstr ""
 
-#: src/ptc-gtk4.c:1024
-msgid "Operation: clone, restore, check, dd or domain"
+#: src/ptc-gtk4.c:1672
+msgid ""
+"Operation: clone, restore, check, dd, domain, disk-clone, disk-restore or "
+"disk-check"
 msgstr ""
 
-#: src/ptc-gtk4.c:1024
+#: src/ptc-gtk4.c:1673
 msgid "MODE"
 msgstr ""
 
-#: src/ptc-gtk4.c:1026
+#: src/ptc-gtk4.c:1675
 msgid "SOURCE"
 msgstr ""

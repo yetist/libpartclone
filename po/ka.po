@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: partclone 0.3.46\n"
 "Report-Msgid-Bugs-To: thomas@clonezilla.org\n"
-"POT-Creation-Date: 2026-10-18 19:02+0800\n"
+"POT-Creation-Date: 2026-10-18 20:09+0800\n"
 "PO-Revision-Date: 2026-03-22 08:16+0100\n"
 "Last-Translator: Ekaterine Papava <papava.e@gtu.ge>\n"
 "Language-Team: Georgian <(nothing)>\n"
@@ -517,7 +517,7 @@ msgstr "დანაყოფების ცხრილი: %s, %u ჩან�
 msgid "Partition table: %s\n"
 msgstr "დანაყოფების ცხრილი: %s\n"
 
-#: lib/diskimg.c:450
+#: lib/diskimg.c:450 src/ptc-gtk4.c:771 src/ptc-gtk4.c:798
 msgid "none"
 msgstr "არცერთი"
 
@@ -526,161 +526,371 @@ msgstr "არცერთი"
 msgid "Volumes:         %u\n"
 msgstr "ტომები:         %u\n"
 
-#: src/ptc-gtk4.c:181
+#: src/ptc-gtk4.c:251
 msgid "Clone"
 msgstr "კლონირება"
 
-#: src/ptc-gtk4.c:182
+#: src/ptc-gtk4.c:252
 msgid "Restore"
 msgstr "აღდგენა"
 
-#: src/ptc-gtk4.c:183
+#: src/ptc-gtk4.c:253
 msgid "Check image"
 msgstr "ასლის ფაილის შემოწმება"
 
-#: src/ptc-gtk4.c:184
+#: src/ptc-gtk4.c:254
 msgid "Device to device (dd)"
 msgstr "მოწყობილობიდან მოწყობილობაზე (dd)"
 
-#: src/ptc-gtk4.c:185
+#: src/ptc-gtk4.c:255
 msgid "Domain log"
 msgstr "დომენის ჟურნალი"
 
-#: src/ptc-gtk4.c:277 src/ptc-gtk4.c:423
+#: src/ptc-gtk4.c:256
+msgid "Disk clone (whole disk)"
+msgstr "დისკის კლონირება (მთელი დისკი)"
+
+#: src/ptc-gtk4.c:257
+msgid "Disk restore (whole disk)"
+msgstr "დისკის აღდგენა (მთელი დისკი)"
+
+#: src/ptc-gtk4.c:258
+msgid "Check disk image"
+msgstr "დისკის ასლის ფაილის შემოწმება"
+
+#: src/ptc-gtk4.c:363 src/ptc-gtk4.c:807
+msgid "raw"
+msgstr "ნედლი"
+
+#: src/ptc-gtk4.c:366
+#, c-format
+msgid "Volume %u/%u: %s (%s)"
+msgstr "ტომი %u/%u: %s (%s)"
+
+#: src/ptc-gtk4.c:368
+#, c-format
+msgid "Volume %u/%u: %s"
+msgstr "ტომი %u/%u: %s"
+
+#: src/ptc-gtk4.c:403 src/ptc-gtk4.c:429 src/ptc-gtk4.c:699
 msgid "Running..."
 msgstr "მიმდინარეობს..."
 
-#: src/ptc-gtk4.c:316
+#: src/ptc-gtk4.c:426
+#, c-format
+msgid "Volume %u/%u done."
+msgstr "ტომი %u/%u დასრულდა."
+
+#: src/ptc-gtk4.c:526
 msgid "Finished"
 msgstr "დასრულდა"
 
-#: src/ptc-gtk4.c:317
+#: src/ptc-gtk4.c:527
 msgid "--- finished ---"
 msgstr "--- დასრულდა ---"
 
-#: src/ptc-gtk4.c:319
+#: src/ptc-gtk4.c:529
+msgid "Cancelled"
+msgstr "გაუქმდა"
+
+#: src/ptc-gtk4.c:530
+msgid "--- cancelled ---"
+msgstr "--- გაუქმდა ---"
+
+#: src/ptc-gtk4.c:532
 msgid "Failed"
 msgstr "ჩავარდა"
 
-#: src/ptc-gtk4.c:320
+#: src/ptc-gtk4.c:533
 #, c-format
 msgid "--- error: %s ---"
 msgstr "--- შეცდომა: %s ---"
 
-#: src/ptc-gtk4.c:321
+#: src/ptc-gtk4.c:534
 msgid "unknown error"
 msgstr "უცნობი შეცდომა"
 
-#: src/ptc-gtk4.c:332
+#: src/ptc-gtk4.c:560
 msgid "self-test: verifying the image"
 msgstr "თვითტესტი: ასლის ფაილის შემოწმება"
 
-#: src/ptc-gtk4.c:376
+#: src/ptc-gtk4.c:568
+msgid "self-test: cloning a whole disk"
+msgstr "თვითტესტი: მთელი დისკის კლონირება"
+
+#: src/ptc-gtk4.c:579
+msgid "self-test: checking the whole-disk image"
+msgstr "თვითტესტი: მთელი დისკის ასლის ფაილის შემოწმება"
+
+#: src/ptc-gtk4.c:626
 msgid "Please choose a source device or image."
 msgstr "გთხოვთ აირჩიოთ წყაროს მოწყობილობა ან ასლის ფაილი."
 
-#: src/ptc-gtk4.c:380
+#: src/ptc-gtk4.c:630
 msgid "Please choose a target."
 msgstr "გთხოვთ აირჩიოთ სამიზნე."
 
-#: src/ptc-gtk4.c:384
+#: src/ptc-gtk4.c:634
 msgid "Please choose a log file."
 msgstr "გთხოვთ აირჩიოთ ჟურნალის ფაილი."
 
-#: src/ptc-gtk4.c:392
+#: src/ptc-gtk4.c:639
+msgid "The device size must be a number of bytes."
+msgstr "მოწყობილობის ზომა უნდა იყოს ბაიტების რაოდენობა."
+
+#: src/ptc-gtk4.c:647
 msgid "Cannot open the log file for writing."
 msgstr "ჟურნალის ფაილის ჩაწერისთვის გახსნა ვერ მოხერხდა."
 
-#: src/ptc-gtk4.c:414
+#: src/ptc-gtk4.c:684
 #, c-format
 msgid "=== %s ==="
 msgstr "=== %s ==="
 
-#: src/ptc-gtk4.c:415
+#: src/ptc-gtk4.c:685
 #, c-format
 msgid "source : %s"
 msgstr "წყარო : %s"
 
-#: src/ptc-gtk4.c:417
+#: src/ptc-gtk4.c:687
 #, c-format
 msgid "target : %s"
 msgstr "სამიზნე : %s"
 
-#: src/ptc-gtk4.c:418
+#: src/ptc-gtk4.c:689 src/ptc-gtk4.c:693
 #, c-format
 msgid "backend: %s"
 msgstr "backend: %s"
 
-#: src/ptc-gtk4.c:419 src/ptc-gtk4.c:837
+#: src/ptc-gtk4.c:689
+msgid "(whole-disk image, none)"
+msgstr "(მთელი დისკის ასლის ფაილი, არცერთი)"
+
+#: src/ptc-gtk4.c:690
+#, c-format
+msgid "gaps   : %s"
+msgstr "ხარვეზები : %s"
+
+#: src/ptc-gtk4.c:691
+#, c-format
+msgid "table  : %s"
+msgstr "ცხრილი : %s"
+
+#: src/ptc-gtk4.c:694 src/ptc-gtk4.c:1438
 msgid "auto (detect)"
 msgstr "ავტომატური (გამოვლენა)"
 
-#: src/ptc-gtk4.c:422
+#: src/ptc-gtk4.c:698
 msgid "starting"
 msgstr "იწყება"
 
-#: src/ptc-gtk4.c:476
+#: src/ptc-gtk4.c:703 src/ptc-gtk4.c:1574
+msgid "Waiting for the first volume..."
+msgstr "პირველი ტომის მოლოდინი..."
+
+#: src/ptc-gtk4.c:720 src/ptc-gtk4.c:721
+msgid "Cancelling..."
+msgstr "უქმდება..."
+
+#: src/ptc-gtk4.c:758
+msgid "Format version"
+msgstr "ფორმატის ვერსია"
+
+#: src/ptc-gtk4.c:760
+msgid "Size"
+msgstr "ზომა"
+
+#: src/ptc-gtk4.c:761
+msgid "Sector size"
+msgstr "სექტორის ზომა"
+
+#: src/ptc-gtk4.c:762
+msgid "bytes"
+msgstr "ბაიტი"
+
+#: src/ptc-gtk4.c:770 src/ptc-gtk4.c:1315
+msgid "Partition table"
+msgstr "დანაყოფების ცხრილი"
+
+#: src/ptc-gtk4.c:772
+msgid "Volumes"
+msgstr "ტომები"
+
+#: src/ptc-gtk4.c:793
+#, c-format
+msgid "Volume %u: %s (%s) at %s, length %s, %s%s\n"
+msgstr "ტომი %u: %s (%s) %s-ზე, სიგრძე %s, %s%s\n"
+
+#: src/ptc-gtk4.c:796
+msgid "sparse"
+msgstr "გაფანტული"
+
+#: src/ptc-gtk4.c:796
+msgid "full"
+msgstr "სრული"
+
+#: src/ptc-gtk4.c:799
+msgid ", bootable"
+msgstr ", ჩატვირთვადი"
+
+#: src/ptc-gtk4.c:806
+msgid "File system"
+msgstr "ფაილური სისტემა"
+
+#: src/ptc-gtk4.c:820
+msgid "Close"
+msgstr "დახურვა"
+
+#: src/ptc-gtk4.c:859
+msgid "Cannot read the image."
+msgstr "ასლის ფაილის წაკითხვა შეუძლებელია."
+
+#: src/ptc-gtk4.c:865
+#, c-format
+msgid "=== image: %s ==="
+msgstr "=== ასლის ფაილი: %s ==="
+
+#: src/ptc-gtk4.c:932
+msgid "Select an image to inspect"
+msgstr "აირჩიეთ შესამოწმებელი ასლის ფაილი"
+
+#: src/ptc-gtk4.c:955
 msgid "GTK4 front end for the libpartclone partition cloning library."
 msgstr "libpartclone-ის დანაყოფების კლონირების ბიბლიოთეკის GTK4 ინტერფეისი."
 
-#: src/ptc-gtk4.c:514
+#: src/ptc-gtk4.c:1001
 msgid "An operation is still running."
 msgstr "ოპერაცია ჯერ კიდევ მიმდინარეობს."
 
-#: src/ptc-gtk4.c:516
-msgid "Quitting now will abort the operation."
-msgstr "ახლა გასვლა შეწყვეტს ოპერაციას."
+#: src/ptc-gtk4.c:1003
+msgid "Quitting now will cancel the operation and leave the target incomplete."
+msgstr "ახლავე გასვლა გააუქმებს ოპერაციას და დატოვებს სამიზნეს არასრულს."
 
-#: src/ptc-gtk4.c:518
+#: src/ptc-gtk4.c:1005 src/ptc-gtk4.c:1553
 msgid "Cancel"
 msgstr "გაუქმება"
 
-#: src/ptc-gtk4.c:518
+#: src/ptc-gtk4.c:1005
 msgid "Quit"
 msgstr "გასვლა"
 
-#: src/ptc-gtk4.c:587
+#: src/ptc-gtk4.c:1075
 msgid "Select source device or image"
 msgstr "წყაროს მოწყობილობის ან ასლის ფაილის არჩევა"
 
-#: src/ptc-gtk4.c:622
+#: src/ptc-gtk4.c:1110
 msgid "Select target device or image"
 msgstr "სამიზნე მოწყობილობის ან ასლის ფაილის არჩევა"
 
-#: src/ptc-gtk4.c:657
+#: src/ptc-gtk4.c:1145
 msgid "Select log file"
 msgstr "ჟურნალის ფაილის არჩევა"
 
-#: src/ptc-gtk4.c:700
+#: src/ptc-gtk4.c:1224
 #, c-format
 msgid "self-test: cloning %s"
 msgstr "თვითტესტი: %s-ის კლონირება"
 
-#: src/ptc-gtk4.c:764
+#: src/ptc-gtk4.c:1293
+msgid "Whole-disk image options (format 0003)"
+msgstr "მთელი დისკის ასლის ფაილის პარამეტრები (ფორმატი 0003)"
+
+#: src/ptc-gtk4.c:1309
+msgid ""
+"How the gaps between partitions (boot loaders, padding, backup GPT) are "
+"stored."
+msgstr ""
+"როგორ ინახება დანაყოფებს შორის ხარვეზები (ჩამტვირთავები, შემავსებელი, "
+"სარეზერვო GPT)."
+
+#: src/ptc-gtk4.c:1311
+msgid "Gaps"
+msgstr "ხარვეზები"
+
+#: src/ptc-gtk4.c:1317
+msgid ""
+"How the partition table is written on restore: verbatim, or rebuilt for a "
+"target of a different size."
+msgstr ""
+"როგორ იწერება დანაყოფების ცხრილი აღდგენისას: უცვლელად, ან ხელახლა აშენებული "
+"სხვა ზომის სამიზნისთვის."
+
+#: src/ptc-gtk4.c:1323
+msgid "Store raw volumes sparsely"
+msgstr "ნედლი ტომების გაფანტულად შენახვა"
+
+#: src/ptc-gtk4.c:1325
+msgid ""
+"Use a zero-detecting bitmap for raw volumes (gaps and unsupported "
+"partitions)."
+msgstr ""
+"ნულების აღმომჩენი ბიტრუკის გამოყენება ნედლი ტომებისთვის (ხარვეზები და "
+"მხარდაუჭერელი დანაყოფები)."
+
+#: src/ptc-gtk4.c:1328
+msgid "Store every partition as raw"
+msgstr "ყველა დანაყოფის ნედლად შენახვა"
+
+#: src/ptc-gtk4.c:1330
+msgid ""
+"Do not use the per-filesystem backend, so every partition is a raw volume."
+msgstr ""
+"არ გამოიყენოთ ცალკეული ფაილური სისტემის backend, რომ ყველა დანაყოფი ნედლი "
+"ტომი იყოს."
+
+#: src/ptc-gtk4.c:1333
+msgid "Do not zero skipped blocks"
+msgstr "გამოტოვებული ბლოკების ნულებით არ შევსება"
+
+#: src/ptc-gtk4.c:1335
+msgid ""
+"On restore, leave blocks absent from the image untouched instead of writing "
+"zeros."
+msgstr ""
+"აღდგენისას ასლის ფაილში არმყოფი ბლოკები ხელუხლებლად დატოვება ნულების ჩაწერის "
+"ნაცვლად."
+
+#: src/ptc-gtk4.c:1338
+msgid "Grow the last partition"
+msgstr "ბოლო დანაყოფის გაზრდა"
+
+#: src/ptc-gtk4.c:1340
+msgid ""
+"On a larger target, extend the last partition entry (the filesystem itself "
+"is not resized)."
+msgstr ""
+"უფრო დიდ სამიზნეზე ბოლო დანაყოფის ჩანაწერის გაფართოება (თავად ფაილური "
+"სისტემა არ იცვლება)."
+
+#: src/ptc-gtk4.c:1363
 msgid "_Run"
 msgstr "_გაშვება"
 
-#: src/ptc-gtk4.c:765
+#: src/ptc-gtk4.c:1364
+msgid "_Inspect image..."
+msgstr "ასლის ფაილის დათვალიერება..."
+
+#: src/ptc-gtk4.c:1365
 msgid "_Clear log"
 msgstr "_ჟურნალის გასუფთავება"
 
-#: src/ptc-gtk4.c:766
+#: src/ptc-gtk4.c:1366
 msgid "_About"
 msgstr "_შესახებ"
 
-#: src/ptc-gtk4.c:767
+#: src/ptc-gtk4.c:1367
 msgid "_Quit"
 msgstr "_გასვლა"
 
-#: src/ptc-gtk4.c:775
+#: src/ptc-gtk4.c:1375
 msgid "Main menu"
 msgstr "მთავარი მენიუ"
 
-#: src/ptc-gtk4.c:796
+#: src/ptc-gtk4.c:1397
 msgid "partclone"
 msgstr "partclone"
 
-#: src/ptc-gtk4.c:807
+#: src/ptc-gtk4.c:1408
 #, c-format
 msgid ""
 "libpartclone %s\n"
@@ -689,91 +899,106 @@ msgstr ""
 "libpartclone %s\n"
 "ბექენდები: %s"
 
-#: src/ptc-gtk4.c:824
+#: src/ptc-gtk4.c:1425
 msgid "Mode"
 msgstr "რეჟიმი"
 
-#: src/ptc-gtk4.c:828
+#: src/ptc-gtk4.c:1429
 msgid ""
-"Operation to perform. The available target fields change with the selected "
-"mode."
+"Operation to perform. The available fields change with the selected mode."
 msgstr ""
-"შესასრულებელი ოპერაცია. ხელმისაწვდომი სამიზნე ველები იცვლება არჩეული "
-"რეჟიმის მიხედვით."
+"შესასრულებელი ოპერაცია. ხელმისაწვდომი ველები იცვლება არჩეული რეჟიმის "
+"მიხედვით."
 
-#: src/ptc-gtk4.c:841
+#: src/ptc-gtk4.c:1442
 msgid "Backend"
 msgstr "ბექენდი"
 
-#: src/ptc-gtk4.c:845
-msgid "Filesystem backend. Use \"auto (detect)\" to let partclone pick one."
+#: src/ptc-gtk4.c:1446
+msgid ""
+"Filesystem backend. Use \"auto (detect)\" to let partclone pick one. Not "
+"used for whole-disk images."
 msgstr ""
-"ფაილური სისტემის ბექენდი. გამოიყენეთ \"ავტომატური (გამოვლენა)\", რომ "
-"partclone-მა თავად აირჩიოს."
+"ფაილური სისტემის backend. გამოიყენეთ \"ავტომატური (გამოვლენა)\", რომ "
+"partclone-მა თავად აირჩიოს. არ გამოიყენება მთელი დისკის ასლის ფაილებისთვის."
 
-#: src/ptc-gtk4.c:851
+#: src/ptc-gtk4.c:1453
 msgid "Source"
 msgstr "წყარო"
 
-#: src/ptc-gtk4.c:855
+#: src/ptc-gtk4.c:1457
 msgid "Device or image the data is read from."
 msgstr "მოწყობილობა ან ასლის ფაილი, საიდანაც იკითხება მონაცემები."
 
-#: src/ptc-gtk4.c:857 src/ptc-gtk4.c:870 src/ptc-gtk4.c:884
+#: src/ptc-gtk4.c:1459 src/ptc-gtk4.c:1472 src/ptc-gtk4.c:1486
 msgid "Browse..."
 msgstr "დათვალიერება..."
 
-#: src/ptc-gtk4.c:863
+#: src/ptc-gtk4.c:1465
 msgid "Target"
 msgstr "სამიზნე"
 
-#: src/ptc-gtk4.c:868
+#: src/ptc-gtk4.c:1470
 msgid "Device or image the data is written to."
 msgstr "მოწყობილობა ან ასლის ფაილი, სადაც იწერება მონაცემები."
 
-#: src/ptc-gtk4.c:877
+#: src/ptc-gtk4.c:1479
 msgid "Log file"
 msgstr "ჟურნალის ფაილი"
 
-#: src/ptc-gtk4.c:882
+#: src/ptc-gtk4.c:1484
 msgid "The engine writes its detailed report to this file."
 msgstr "ძრავი თავის დეტალურ ანგარიშს ამ ფაილში წერს."
 
-#: src/ptc-gtk4.c:891
+#: src/ptc-gtk4.c:1492
+msgid "Device size"
+msgstr "მოწყობილობის ზომა"
+
+#: src/ptc-gtk4.c:1494
+msgid "0 = auto (bytes)"
+msgstr "0 = ავტომატური (ბაიტი)"
+
+#: src/ptc-gtk4.c:1497
+msgid ""
+"Override the device size in bytes when it cannot be detected (clone only)."
+msgstr ""
+"მოწყობილობის ზომის ბაიტებში გადაფარვა, როცა მისი გამოვლენა შეუძლებელია "
+"(მხოლოდ კლონირებისას)."
+
+#: src/ptc-gtk4.c:1504
 msgid "Skip target size check (-C)"
 msgstr "სამიზნის ზომის შემოწმების გამოტოვება (-C)"
 
-#: src/ptc-gtk4.c:894
+#: src/ptc-gtk4.c:1507
 msgid "Do not check that the target is large enough before writing."
 msgstr "არ შემოწმდეს, რომ სამიზნე საკმარისად დიდია ჩაწერამდე."
 
-#: src/ptc-gtk4.c:896
+#: src/ptc-gtk4.c:1509
 msgid "Force (-F)"
 msgstr "იძულებითი (-F)"
 
-#: src/ptc-gtk4.c:899
+#: src/ptc-gtk4.c:1512
 msgid ""
 "Keep the process alive on recoverable errors and report them in the log "
 "instead of aborting."
 msgstr ""
-"პროცესი არ შეწყდეს აღდგენადი შეცდომებისას და ისინი ჟურნალში "
-"დაფიქსირდეს შეწყვეტის ნაცვლად."
+"პროცესი არ შეწყდეს აღდგენადი შეცდომებისას და ისინი ჟურნალში დაფიქსირდეს "
+"შეწყვეტის ნაცვლად."
 
-#: src/ptc-gtk4.c:902
+#: src/ptc-gtk4.c:1515
 msgid "Quiet engine output"
 msgstr "ძრავის გამოტანის დადუმება"
 
-#: src/ptc-gtk4.c:905
+#: src/ptc-gtk4.c:1518
 msgid "Suppress the progress messages the engine would print on stdout."
 msgstr ""
-"გამოტოვდეს პროგრესის შეტყობინებები, რომლებსაც ძრავი stdout-ზე "
-"დაბეჭდავდა."
+"გამოტოვდეს პროგრესის შეტყობინებები, რომლებსაც ძრავი stdout-ზე დაბეჭდავდა."
 
-#: src/ptc-gtk4.c:907
+#: src/ptc-gtk4.c:1520
 msgid "Overwrite target (-O)"
 msgstr "სამიზნის გადაწერა (-O)"
 
-#: src/ptc-gtk4.c:909
+#: src/ptc-gtk4.c:1522
 msgid ""
 "Replace the target if it already exists (required to update an existing "
 "image)."
@@ -781,77 +1006,94 @@ msgstr ""
 "შეიცვალოს სამიზნე, თუ ის უკვე არსებობს (საჭიროა არსებული ასლის ფაილის "
 "განახლებისთვის)."
 
-#: src/ptc-gtk4.c:919
+#: src/ptc-gtk4.c:1531
+msgid "Debug level"
+msgstr "გამართვის დონე"
+
+#: src/ptc-gtk4.c:1535
+msgid "Engine verbosity: 0 quiet, 1 or 2 increasingly detailed."
+msgstr "ძრავის დეტალურობა: 0 მშვიდი, 1 ან 2 უფრო დეტალური."
+
+#: src/ptc-gtk4.c:1548
 msgid "Run"
 msgstr "გაშვება"
 
-#: src/ptc-gtk4.c:922
+#: src/ptc-gtk4.c:1551
 msgid "Start the operation (F5)."
 msgstr "ოპერაციის დაწყება (F5)."
 
-#: src/ptc-gtk4.c:924
+#: src/ptc-gtk4.c:1555
+msgid "Stop the running operation at the next block boundary."
+msgstr "მიმდინარე ოპერაციის შეჩერება ბლოკის შემდეგ საზღვარზე."
+
+#: src/ptc-gtk4.c:1558
 msgid "Clear log"
 msgstr "ჟურნალის გასუფთავება"
 
-#: src/ptc-gtk4.c:925
+#: src/ptc-gtk4.c:1559
 msgid "Clear the log view (Ctrl+L)."
 msgstr "ჟურნალის ხედის გასუფთავება (Ctrl+L)."
 
-#: src/ptc-gtk4.c:934
+#: src/ptc-gtk4.c:1569
 msgid "idle"
 msgstr "უმოქმედო"
 
-#: src/ptc-gtk4.c:937
+#: src/ptc-gtk4.c:1585
 msgid "Ready"
 msgstr "მზადაა"
 
-#: src/ptc-gtk4.c:977
+#: src/ptc-gtk4.c:1625
 #, c-format
 msgid "libpartclone %s ready."
 msgstr "libpartclone %s მზადაა."
 
-#: src/ptc-gtk4.c:993
+#: src/ptc-gtk4.c:1641
 #, c-format
 msgid "[!] Unknown backend: %s"
 msgstr "[!] უცნობი backend: %s"
 
-#: src/ptc-gtk4.c:1001
+#: src/ptc-gtk4.c:1649
 #, c-format
 msgid "[!] Unknown mode: %s"
 msgstr "[!] უცნობი რეჟიმი: %s"
 
-#: src/ptc-gtk4.c:1015
-msgid "Clone a temporary file, verify it, then quit (headless test)"
-msgstr "დროებითი ფაილის კლონირება, შემოწმება და შემდეგ გასვლა (უთავო ტესტი)"
+#: src/ptc-gtk4.c:1663
+msgid "Clone, check, then do a whole-disk round-trip and quit (headless test)"
+msgstr ""
+"კლონირება, შემოწმება, შემდეგ მთელი დისკის სრული ციკლი და გასვლა (უთავო ტესტი)"
 
-#: src/ptc-gtk4.c:1018
+#: src/ptc-gtk4.c:1666
 msgid "Source device or image"
 msgstr "წყაროს მოწყობილობა ან ასლის ფაილი"
 
-#: src/ptc-gtk4.c:1018 src/ptc-gtk4.c:1020
+#: src/ptc-gtk4.c:1666 src/ptc-gtk4.c:1668
 msgid "PATH"
 msgstr "PATH"
 
-#: src/ptc-gtk4.c:1020
+#: src/ptc-gtk4.c:1668
 msgid "Target device or image"
 msgstr "სამიზნე მოწყობილობა ან ასლის ფაილი"
 
-#: src/ptc-gtk4.c:1022
+#: src/ptc-gtk4.c:1670
 msgid "Backend name (default: autodetect)"
 msgstr "backend-ის სახელი (ნაგულისხმევი: ავტომატური გამოვლენა)"
 
-#: src/ptc-gtk4.c:1022
+#: src/ptc-gtk4.c:1670
 msgid "NAME"
 msgstr "NAME"
 
-#: src/ptc-gtk4.c:1024
-msgid "Operation: clone, restore, check, dd or domain"
-msgstr "ოპერაცია: clone, restore, check, dd ან domain"
+#: src/ptc-gtk4.c:1672
+msgid ""
+"Operation: clone, restore, check, dd, domain, disk-clone, disk-restore or "
+"disk-check"
+msgstr ""
+"ოპერაცია: clone, restore, check, dd, domain, disk-clone, disk-restore ან "
+"disk-check"
 
-#: src/ptc-gtk4.c:1024
+#: src/ptc-gtk4.c:1673
 msgid "MODE"
 msgstr "MODE"
 
-#: src/ptc-gtk4.c:1026
+#: src/ptc-gtk4.c:1675
 msgid "SOURCE"
 msgstr "SOURCE"

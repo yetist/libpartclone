@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Partclone 0.2.51\n"
 "Report-Msgid-Bugs-To: thomas@clonezilla.org\n"
-"POT-Creation-Date: 2026-10-18 19:02+0800\n"
+"POT-Creation-Date: 2026-10-18 20:09+0800\n"
 "PO-Revision-Date: 2007-11-01 11:35+0800\n"
 "Last-Translator: Yu-Chin Tsai <thomas@nchc.org.tw>\n"
 "Language-Team: Chinese (traditional) <zh-l10n@linux.org.tw>\n"
@@ -290,9 +290,12 @@ msgid ""
 "*************************************************************************\n"
 msgstr ""
 "*************************************************************************\n"
-"* 警告：磁碟有壞軌。這是由於磁碟表面劣化、製造瑕疵或其他原因                                         *\n"
-"* 所造成的實體損壞。磁碟的可靠性可能保持穩定，或迅速下降。                                          *\n"
-"* 請使用 --rescue 選項，以盡可能有效率地救回最多的資料！                                      *\n"
+"* 警告：磁碟有壞軌。這是由於磁碟表面劣化、製造瑕疵或其他原"
+"因                                         *\n"
+"* 所造成的實體損壞。磁碟的可靠性可能保持穩定，或迅速下"
+"降。                                          *\n"
+"* 請使用 --rescue 選項，以盡可能有效率地救回最多的資"
+"料！                                      *\n"
 "*************************************************************************\n"
 
 #: lib/engine.c:159
@@ -400,7 +403,9 @@ msgstr "讀取錯誤:%s\n"
 msgid ""
 "checksum error, block_id=%llu...\n"
 " "
-msgstr "校驗和錯誤, block_id=%llu...\n "
+msgstr ""
+"校驗和錯誤, block_id=%llu...\n"
+" "
 
 #: lib/engine.c:931
 #, c-format
@@ -510,7 +515,7 @@ msgstr "分割表: %s, %u 個項目\n"
 msgid "Partition table: %s\n"
 msgstr "分割表: %s\n"
 
-#: lib/diskimg.c:450
+#: lib/diskimg.c:450 src/ptc-gtk4.c:771 src/ptc-gtk4.c:798
 msgid "none"
 msgstr "無"
 
@@ -519,161 +524,359 @@ msgstr "無"
 msgid "Volumes:         %u\n"
 msgstr "磁碟區:         %u\n"
 
-#: src/ptc-gtk4.c:181
+#: src/ptc-gtk4.c:251
 msgid "Clone"
 msgstr "複製"
 
-#: src/ptc-gtk4.c:182
+#: src/ptc-gtk4.c:252
 msgid "Restore"
 msgstr "還原"
 
-#: src/ptc-gtk4.c:183
+#: src/ptc-gtk4.c:253
 msgid "Check image"
 msgstr "檢查映像檔"
 
-#: src/ptc-gtk4.c:184
+#: src/ptc-gtk4.c:254
 msgid "Device to device (dd)"
 msgstr "裝置對裝置 (dd)"
 
-#: src/ptc-gtk4.c:185
+#: src/ptc-gtk4.c:255
 msgid "Domain log"
 msgstr "網域日誌"
 
-#: src/ptc-gtk4.c:277 src/ptc-gtk4.c:423
+#: src/ptc-gtk4.c:256
+msgid "Disk clone (whole disk)"
+msgstr "磁碟複製（整顆磁碟）"
+
+#: src/ptc-gtk4.c:257
+msgid "Disk restore (whole disk)"
+msgstr "磁碟還原（整顆磁碟）"
+
+#: src/ptc-gtk4.c:258
+msgid "Check disk image"
+msgstr "檢查磁碟映像檔"
+
+#: src/ptc-gtk4.c:363 src/ptc-gtk4.c:807
+msgid "raw"
+msgstr "原始"
+
+#: src/ptc-gtk4.c:366
+#, c-format
+msgid "Volume %u/%u: %s (%s)"
+msgstr "磁碟區 %u/%u：%s（%s）"
+
+#: src/ptc-gtk4.c:368
+#, c-format
+msgid "Volume %u/%u: %s"
+msgstr "磁碟區 %u/%u：%s"
+
+#: src/ptc-gtk4.c:403 src/ptc-gtk4.c:429 src/ptc-gtk4.c:699
 msgid "Running..."
 msgstr "正在執行…"
 
-#: src/ptc-gtk4.c:316
+#: src/ptc-gtk4.c:426
+#, c-format
+msgid "Volume %u/%u done."
+msgstr "磁碟區 %u/%u 已完成。"
+
+#: src/ptc-gtk4.c:526
 msgid "Finished"
 msgstr "已完成"
 
-#: src/ptc-gtk4.c:317
+#: src/ptc-gtk4.c:527
 msgid "--- finished ---"
 msgstr "--- 完成 ---"
 
-#: src/ptc-gtk4.c:319
+#: src/ptc-gtk4.c:529
+msgid "Cancelled"
+msgstr "已取消"
+
+#: src/ptc-gtk4.c:530
+msgid "--- cancelled ---"
+msgstr "--- 已取消 ---"
+
+#: src/ptc-gtk4.c:532
 msgid "Failed"
 msgstr "失敗"
 
-#: src/ptc-gtk4.c:320
+#: src/ptc-gtk4.c:533
 #, c-format
 msgid "--- error: %s ---"
 msgstr "--- 錯誤：%s ---"
 
-#: src/ptc-gtk4.c:321
+#: src/ptc-gtk4.c:534
 msgid "unknown error"
 msgstr "未知錯誤"
 
-#: src/ptc-gtk4.c:332
+#: src/ptc-gtk4.c:560
 msgid "self-test: verifying the image"
 msgstr "自我測試：正在檢查映像檔"
 
-#: src/ptc-gtk4.c:376
+#: src/ptc-gtk4.c:568
+msgid "self-test: cloning a whole disk"
+msgstr "自我測試：正在複製整顆磁碟"
+
+#: src/ptc-gtk4.c:579
+msgid "self-test: checking the whole-disk image"
+msgstr "自我測試：正在檢查整顆磁碟映像檔"
+
+#: src/ptc-gtk4.c:626
 msgid "Please choose a source device or image."
 msgstr "請選擇來源裝置或映像檔。"
 
-#: src/ptc-gtk4.c:380
+#: src/ptc-gtk4.c:630
 msgid "Please choose a target."
 msgstr "請選擇目標。"
 
-#: src/ptc-gtk4.c:384
+#: src/ptc-gtk4.c:634
 msgid "Please choose a log file."
 msgstr "請選擇日誌檔。"
 
-#: src/ptc-gtk4.c:392
+#: src/ptc-gtk4.c:639
+msgid "The device size must be a number of bytes."
+msgstr "裝置大小必須是位元組數。"
+
+#: src/ptc-gtk4.c:647
 msgid "Cannot open the log file for writing."
 msgstr "無法開啟日誌檔進行寫入。"
 
-#: src/ptc-gtk4.c:414
+#: src/ptc-gtk4.c:684
 #, c-format
 msgid "=== %s ==="
 msgstr "=== %s ==="
 
-#: src/ptc-gtk4.c:415
+#: src/ptc-gtk4.c:685
 #, c-format
 msgid "source : %s"
 msgstr "來源 : %s"
 
-#: src/ptc-gtk4.c:417
+#: src/ptc-gtk4.c:687
 #, c-format
 msgid "target : %s"
 msgstr "目標 : %s"
 
-#: src/ptc-gtk4.c:418
+#: src/ptc-gtk4.c:689 src/ptc-gtk4.c:693
 #, c-format
 msgid "backend: %s"
 msgstr "後端: %s"
 
-#: src/ptc-gtk4.c:419 src/ptc-gtk4.c:837
+#: src/ptc-gtk4.c:689
+msgid "(whole-disk image, none)"
+msgstr "（整顆磁碟映像檔，無）"
+
+#: src/ptc-gtk4.c:690
+#, c-format
+msgid "gaps   : %s"
+msgstr "間隙   ：%s"
+
+#: src/ptc-gtk4.c:691
+#, c-format
+msgid "table  : %s"
+msgstr "分割表 ：%s"
+
+#: src/ptc-gtk4.c:694 src/ptc-gtk4.c:1438
 msgid "auto (detect)"
 msgstr "自動（偵測）"
 
-#: src/ptc-gtk4.c:422
+#: src/ptc-gtk4.c:698
 msgid "starting"
 msgstr "正在啟動"
 
-#: src/ptc-gtk4.c:476
+#: src/ptc-gtk4.c:703 src/ptc-gtk4.c:1574
+msgid "Waiting for the first volume..."
+msgstr "正在等待第一個磁碟區…"
+
+#: src/ptc-gtk4.c:720 src/ptc-gtk4.c:721
+msgid "Cancelling..."
+msgstr "正在取消…"
+
+#: src/ptc-gtk4.c:758
+msgid "Format version"
+msgstr "格式版本"
+
+#: src/ptc-gtk4.c:760
+msgid "Size"
+msgstr "大小"
+
+#: src/ptc-gtk4.c:761
+msgid "Sector size"
+msgstr "磁區大小"
+
+#: src/ptc-gtk4.c:762
+msgid "bytes"
+msgstr "位元組"
+
+#: src/ptc-gtk4.c:770 src/ptc-gtk4.c:1315
+msgid "Partition table"
+msgstr "分割表"
+
+#: src/ptc-gtk4.c:772
+msgid "Volumes"
+msgstr "磁碟區"
+
+#: src/ptc-gtk4.c:793
+#, c-format
+msgid "Volume %u: %s (%s) at %s, length %s, %s%s\n"
+msgstr "磁碟區 %u：%s（%s）位於 %s，長度 %s，%s%s\n"
+
+#: src/ptc-gtk4.c:796
+msgid "sparse"
+msgstr "稀疏"
+
+#: src/ptc-gtk4.c:796
+msgid "full"
+msgstr "完整"
+
+#: src/ptc-gtk4.c:799
+msgid ", bootable"
+msgstr "，可開機"
+
+#: src/ptc-gtk4.c:806
+msgid "File system"
+msgstr "檔案系統"
+
+#: src/ptc-gtk4.c:820
+msgid "Close"
+msgstr "關閉"
+
+#: src/ptc-gtk4.c:859
+msgid "Cannot read the image."
+msgstr "無法讀取映像檔。"
+
+#: src/ptc-gtk4.c:865
+#, c-format
+msgid "=== image: %s ==="
+msgstr "=== 映像檔：%s ==="
+
+#: src/ptc-gtk4.c:932
+msgid "Select an image to inspect"
+msgstr "選擇要檢視的映像檔"
+
+#: src/ptc-gtk4.c:955
 msgid "GTK4 front end for the libpartclone partition cloning library."
 msgstr "libpartclone 分割區複製函式庫的 GTK4 前端。"
 
-#: src/ptc-gtk4.c:514
+#: src/ptc-gtk4.c:1001
 msgid "An operation is still running."
 msgstr "仍有操作正在執行。"
 
-#: src/ptc-gtk4.c:516
-msgid "Quitting now will abort the operation."
-msgstr "現在結束將中止該操作。"
+#: src/ptc-gtk4.c:1003
+msgid "Quitting now will cancel the operation and leave the target incomplete."
+msgstr "現在結束將取消操作，並使目標不完整。"
 
-#: src/ptc-gtk4.c:518
+#: src/ptc-gtk4.c:1005 src/ptc-gtk4.c:1553
 msgid "Cancel"
 msgstr "取消"
 
-#: src/ptc-gtk4.c:518
+#: src/ptc-gtk4.c:1005
 msgid "Quit"
 msgstr "結束"
 
-#: src/ptc-gtk4.c:587
+#: src/ptc-gtk4.c:1075
 msgid "Select source device or image"
 msgstr "選擇來源裝置或映像檔"
 
-#: src/ptc-gtk4.c:622
+#: src/ptc-gtk4.c:1110
 msgid "Select target device or image"
 msgstr "選擇目標裝置或映像檔"
 
-#: src/ptc-gtk4.c:657
+#: src/ptc-gtk4.c:1145
 msgid "Select log file"
 msgstr "選擇日誌檔"
 
-#: src/ptc-gtk4.c:700
+#: src/ptc-gtk4.c:1224
 #, c-format
 msgid "self-test: cloning %s"
 msgstr "自我測試：正在複製 %s"
 
-#: src/ptc-gtk4.c:764
+#: src/ptc-gtk4.c:1293
+msgid "Whole-disk image options (format 0003)"
+msgstr "整顆磁碟映像檔選項（格式 0003）"
+
+#: src/ptc-gtk4.c:1309
+msgid ""
+"How the gaps between partitions (boot loaders, padding, backup GPT) are "
+"stored."
+msgstr "分割區之間的間隙（開機載入程式、填充、備份 GPT）如何儲存。"
+
+#: src/ptc-gtk4.c:1311
+msgid "Gaps"
+msgstr "間隙"
+
+#: src/ptc-gtk4.c:1317
+msgid ""
+"How the partition table is written on restore: verbatim, or rebuilt for a "
+"target of a different size."
+msgstr "還原時如何寫入分割表：原樣寫入，或為不同大小的目標重建。"
+
+#: src/ptc-gtk4.c:1323
+msgid "Store raw volumes sparsely"
+msgstr "以稀疏方式儲存原始磁碟區"
+
+#: src/ptc-gtk4.c:1325
+msgid ""
+"Use a zero-detecting bitmap for raw volumes (gaps and unsupported "
+"partitions)."
+msgstr "對原始磁碟區（間隙和不支援的分割區）使用零偵測位元圖。"
+
+#: src/ptc-gtk4.c:1328
+msgid "Store every partition as raw"
+msgstr "將每個分割區儲存為原始磁碟區"
+
+#: src/ptc-gtk4.c:1330
+msgid ""
+"Do not use the per-filesystem backend, so every partition is a raw volume."
+msgstr "不使用依檔案系統的後端，因此每個分割區都是原始磁碟區。"
+
+#: src/ptc-gtk4.c:1333
+msgid "Do not zero skipped blocks"
+msgstr "不將略過的區塊清零"
+
+#: src/ptc-gtk4.c:1335
+msgid ""
+"On restore, leave blocks absent from the image untouched instead of writing "
+"zeros."
+msgstr "還原時，對映像檔中缺少的區塊保持不變，而不是寫入零。"
+
+#: src/ptc-gtk4.c:1338
+msgid "Grow the last partition"
+msgstr "擴展最後一個分割區"
+
+#: src/ptc-gtk4.c:1340
+msgid ""
+"On a larger target, extend the last partition entry (the filesystem itself "
+"is not resized)."
+msgstr "在更大的目標上擴展最後一個分割區項目（檔案系統本身不會調整大小）。"
+
+#: src/ptc-gtk4.c:1363
 msgid "_Run"
 msgstr "_執行"
 
-#: src/ptc-gtk4.c:765
+#: src/ptc-gtk4.c:1364
+msgid "_Inspect image..."
+msgstr "檢視映像檔(_I)…"
+
+#: src/ptc-gtk4.c:1365
 msgid "_Clear log"
 msgstr "_清除日誌"
 
-#: src/ptc-gtk4.c:766
+#: src/ptc-gtk4.c:1366
 msgid "_About"
 msgstr "_關於"
 
-#: src/ptc-gtk4.c:767
+#: src/ptc-gtk4.c:1367
 msgid "_Quit"
 msgstr "_結束"
 
-#: src/ptc-gtk4.c:775
+#: src/ptc-gtk4.c:1375
 msgid "Main menu"
 msgstr "主選單"
 
-#: src/ptc-gtk4.c:796
+#: src/ptc-gtk4.c:1397
 msgid "partclone"
 msgstr "partclone"
 
-#: src/ptc-gtk4.c:807
+#: src/ptc-gtk4.c:1408
 #, c-format
 msgid ""
 "libpartclone %s\n"
@@ -682,159 +885,191 @@ msgstr ""
 "libpartclone %s\n"
 "後端: %s"
 
-#: src/ptc-gtk4.c:824
+#: src/ptc-gtk4.c:1425
 msgid "Mode"
 msgstr "模式"
 
-#: src/ptc-gtk4.c:828
+#: src/ptc-gtk4.c:1429
 msgid ""
-"Operation to perform. The available target fields change with the selected "
-"mode."
-msgstr "要執行的操作。可用的目標欄位會隨所選模式而改變。"
+"Operation to perform. The available fields change with the selected mode."
+msgstr "要執行的操作。可用欄位會隨所選模式而變化。"
 
-#: src/ptc-gtk4.c:841
+#: src/ptc-gtk4.c:1442
 msgid "Backend"
 msgstr "後端"
 
-#: src/ptc-gtk4.c:845
-msgid "Filesystem backend. Use \"auto (detect)\" to let partclone pick one."
-msgstr "檔案系統後端。使用「自動（偵測）」讓 partclone 自行選擇。"
+#: src/ptc-gtk4.c:1446
+msgid ""
+"Filesystem backend. Use \"auto (detect)\" to let partclone pick one. Not "
+"used for whole-disk images."
+msgstr ""
+"檔案系統後端。使用\"自動（偵測）\"讓 partclone 自動選擇。整顆磁碟映像檔不使用"
+"此項。"
 
-#: src/ptc-gtk4.c:851
+#: src/ptc-gtk4.c:1453
 msgid "Source"
 msgstr "來源"
 
-#: src/ptc-gtk4.c:855
+#: src/ptc-gtk4.c:1457
 msgid "Device or image the data is read from."
 msgstr "從中讀取資料的裝置或映像檔。"
 
-#: src/ptc-gtk4.c:857 src/ptc-gtk4.c:870 src/ptc-gtk4.c:884
+#: src/ptc-gtk4.c:1459 src/ptc-gtk4.c:1472 src/ptc-gtk4.c:1486
 msgid "Browse..."
 msgstr "瀏覽…"
 
-#: src/ptc-gtk4.c:863
+#: src/ptc-gtk4.c:1465
 msgid "Target"
 msgstr "目標"
 
-#: src/ptc-gtk4.c:868
+#: src/ptc-gtk4.c:1470
 msgid "Device or image the data is written to."
 msgstr "寫入資料的裝置或映像檔。"
 
-#: src/ptc-gtk4.c:877
+#: src/ptc-gtk4.c:1479
 msgid "Log file"
 msgstr "日誌檔"
 
-#: src/ptc-gtk4.c:882
+#: src/ptc-gtk4.c:1484
 msgid "The engine writes its detailed report to this file."
 msgstr "引擎會將詳細報告寫入此檔案。"
 
-#: src/ptc-gtk4.c:891
+#: src/ptc-gtk4.c:1492
+msgid "Device size"
+msgstr "裝置大小"
+
+#: src/ptc-gtk4.c:1494
+msgid "0 = auto (bytes)"
+msgstr "0 = 自動（位元組）"
+
+#: src/ptc-gtk4.c:1497
+msgid ""
+"Override the device size in bytes when it cannot be detected (clone only)."
+msgstr "當無法偵測裝置大小時，以位元組為單位覆寫它（僅複製）。"
+
+#: src/ptc-gtk4.c:1504
 msgid "Skip target size check (-C)"
 msgstr "略過目標大小檢查 (-C)"
 
-#: src/ptc-gtk4.c:894
+#: src/ptc-gtk4.c:1507
 msgid "Do not check that the target is large enough before writing."
 msgstr "寫入前不檢查目標是否夠大。"
 
-#: src/ptc-gtk4.c:896
+#: src/ptc-gtk4.c:1509
 msgid "Force (-F)"
 msgstr "強制 (-F)"
 
-#: src/ptc-gtk4.c:899
+#: src/ptc-gtk4.c:1512
 msgid ""
 "Keep the process alive on recoverable errors and report them in the log "
 "instead of aborting."
 msgstr "遇到可復原的錯誤時保持行程執行，並記錄到日誌而非中止。"
 
-#: src/ptc-gtk4.c:902
+#: src/ptc-gtk4.c:1515
 msgid "Quiet engine output"
 msgstr "靜默引擎輸出"
 
-#: src/ptc-gtk4.c:905
+#: src/ptc-gtk4.c:1518
 msgid "Suppress the progress messages the engine would print on stdout."
 msgstr "抑制引擎原本會列印到標準輸出的進度訊息。"
 
-#: src/ptc-gtk4.c:907
+#: src/ptc-gtk4.c:1520
 msgid "Overwrite target (-O)"
 msgstr "覆寫目標 (-O)"
 
-#: src/ptc-gtk4.c:909
+#: src/ptc-gtk4.c:1522
 msgid ""
 "Replace the target if it already exists (required to update an existing "
 "image)."
 msgstr "若目標已存在則取代（更新既有映像檔時需要）。"
 
-#: src/ptc-gtk4.c:919
+#: src/ptc-gtk4.c:1531
+msgid "Debug level"
+msgstr "偵錯層級"
+
+#: src/ptc-gtk4.c:1535
+msgid "Engine verbosity: 0 quiet, 1 or 2 increasingly detailed."
+msgstr "引擎詳細程度：0 安靜，1 或 2 越來越詳細。"
+
+#: src/ptc-gtk4.c:1548
 msgid "Run"
 msgstr "執行"
 
-#: src/ptc-gtk4.c:922
+#: src/ptc-gtk4.c:1551
 msgid "Start the operation (F5)."
 msgstr "開始操作 (F5)。"
 
-#: src/ptc-gtk4.c:924
+#: src/ptc-gtk4.c:1555
+msgid "Stop the running operation at the next block boundary."
+msgstr "在下一個區塊邊界停止正在執行的操作。"
+
+#: src/ptc-gtk4.c:1558
 msgid "Clear log"
 msgstr "清除日誌"
 
-#: src/ptc-gtk4.c:925
+#: src/ptc-gtk4.c:1559
 msgid "Clear the log view (Ctrl+L)."
 msgstr "清除日誌檢視 (Ctrl+L)。"
 
-#: src/ptc-gtk4.c:934
+#: src/ptc-gtk4.c:1569
 msgid "idle"
 msgstr "閒置"
 
-#: src/ptc-gtk4.c:937
+#: src/ptc-gtk4.c:1585
 msgid "Ready"
 msgstr "就緒"
 
-#: src/ptc-gtk4.c:977
+#: src/ptc-gtk4.c:1625
 #, c-format
 msgid "libpartclone %s ready."
 msgstr "libpartclone %s 就緒。"
 
-#: src/ptc-gtk4.c:993
+#: src/ptc-gtk4.c:1641
 #, c-format
 msgid "[!] Unknown backend: %s"
 msgstr "[!] 未知後端：%s"
 
-#: src/ptc-gtk4.c:1001
+#: src/ptc-gtk4.c:1649
 #, c-format
 msgid "[!] Unknown mode: %s"
 msgstr "[!] 未知模式：%s"
 
-#: src/ptc-gtk4.c:1015
-msgid "Clone a temporary file, verify it, then quit (headless test)"
-msgstr "複製一個暫存檔並檢查，然後結束（無介面測試）"
+#: src/ptc-gtk4.c:1663
+msgid "Clone, check, then do a whole-disk round-trip and quit (headless test)"
+msgstr "複製、檢查，然後進行一次整顆磁碟往返測試並結束（無介面測試）"
 
-#: src/ptc-gtk4.c:1018
+#: src/ptc-gtk4.c:1666
 msgid "Source device or image"
 msgstr "來源裝置或映像檔"
 
-#: src/ptc-gtk4.c:1018 src/ptc-gtk4.c:1020
+#: src/ptc-gtk4.c:1666 src/ptc-gtk4.c:1668
 msgid "PATH"
 msgstr "路徑"
 
-#: src/ptc-gtk4.c:1020
+#: src/ptc-gtk4.c:1668
 msgid "Target device or image"
 msgstr "目標裝置或映像檔"
 
-#: src/ptc-gtk4.c:1022
+#: src/ptc-gtk4.c:1670
 msgid "Backend name (default: autodetect)"
 msgstr "後端名稱（預設：自動偵測）"
 
-#: src/ptc-gtk4.c:1022
+#: src/ptc-gtk4.c:1670
 msgid "NAME"
 msgstr "名稱"
 
-#: src/ptc-gtk4.c:1024
-msgid "Operation: clone, restore, check, dd or domain"
-msgstr "操作：clone、restore、check、dd 或 domain"
+#: src/ptc-gtk4.c:1672
+msgid ""
+"Operation: clone, restore, check, dd, domain, disk-clone, disk-restore or "
+"disk-check"
+msgstr ""
+"操作：clone、restore、check、dd、domain、disk-clone、disk-restore 或 disk-"
+"check"
 
-#: src/ptc-gtk4.c:1024
+#: src/ptc-gtk4.c:1673
 msgid "MODE"
 msgstr "模式"
 
-#: src/ptc-gtk4.c:1026
+#: src/ptc-gtk4.c:1675
 msgid "SOURCE"
 msgstr "來源"

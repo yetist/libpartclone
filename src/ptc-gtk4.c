@@ -6,9 +6,12 @@
  * A GTK4 front end for the public libpartclone API.  It exercises:
  *   - enumerating the available filesystem backend modules,
  *   - clone / restore / check / dd / domain,
- *   - the ::progress signal (marshalled from the engine thread to the
- *     GTK main loop),
- *   - asynchronous execution (ptc_client_run_async) so the UI stays alive.
+ *   - whole-disk clone / restore / check (format 0003) with the disk options,
+ *   - the ::progress signal and, for whole-disk images, the per-volume
+ *     ::volume-started / ::volume-progress / ::volume-finished signals,
+ *   - inspecting an image with PtcImage / PtcVolume,
+ *   - asynchronous execution (ptc_client_run_async) plus cancellation through a
+ *     GCancellable, so the UI stays alive and an operation can be stopped.
  *
  * The user interface is fully translated through the shared "partclone"
  * gettext domain (see po/).
@@ -21,9 +24,11 @@
 
 #include <config.h>
 
+#include <errno.h>
 #include <locale.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <glib/gstdio.h>
 #include <glib/gi18n.h>
@@ -42,6 +47,8 @@ typedef struct {
     GtkEntry *source;
     GtkEntry *target;
     GtkEntry *logfile;
+    GtkEntry *device_size;         /* bytes, empty or 0 means auto */
+    GtkSpinButton *debug;
 
     GtkWidget *target_label;
     GtkWidget *target_browse;
@@ -51,15 +58,32 @@ typedef struct {
     GtkCheckButton *opt_quiet;
     GtkCheckButton *opt_overwrite;
 
+    /* Whole-disk (format 0003) options; only meaningful for the disk modes. */
+    GtkWidget *disk_frame;
+    GtkDropDown *opt_gaps;
+    GtkDropDown *opt_ptable;
+    GtkCheckButton *opt_sparse;
+    GtkCheckButton *opt_no_zero_skipped;
+    GtkCheckButton *opt_no_fs_volumes;
+    GtkCheckButton *opt_grow;
+
     GtkButton *run;
+    GtkButton *cancel;
     GtkButton *clear;
     GtkProgressBar *progress;
+    GtkWidget *volume_row;
+    GtkProgressBar *volume_progress;
+    GtkLabel *volume_status;
     GtkLabel *status;
     GtkTextView *logview;
 
+    GCancellable *cancellable;
+    gboolean quit_after_run;
+    gboolean cancelling;
+
     PtcClient *client;
     gboolean running;
-    int self_test;                 /* 0 off, 1 clone, 2 check, 3 done */
+    int self_test;                 /* 0 off, 1..4 steps, 5 done */
 } PtcGtkApp;
 
 static PtcGtkApp app;
@@ -75,25 +99,55 @@ static gchar *opt_backend = NULL;
 static gchar *opt_mode = NULL;
 static gchar **opt_remaining = NULL;
 
-static const char *const self_test_source = "/tmp/ptc-gtk4-selftest.src";
-static const char *const self_test_image  = "/tmp/ptc-gtk4-selftest.pcl";
-static const char *const self_test_log    = "/tmp/ptc-gtk4-selftest.log";
+static const char *const self_test_source    = "/tmp/ptc-gtk4-selftest.src";
+static const char *const self_test_image     = "/tmp/ptc-gtk4-selftest.pcl";
+static const char *const self_test_disk_src  = "/tmp/ptc-gtk4-selftest.disk.src";
+static const char *const self_test_disk_img  = "/tmp/ptc-gtk4-selftest.disk.pcl";
+static const char *const self_test_log       = "/tmp/ptc-gtk4-selftest.log";
 
 /* Keyboard accelerators. */
-static const char *const accel_quit[]  = { "<Control>q", NULL };
-static const char *const accel_run[]   = { "F5", NULL };
-static const char *const accel_clear[] = { "<Control>l", NULL };
-static const char *const accel_about[] = { "F1", NULL };
+static const char *const accel_quit[]    = { "<Control>q", NULL };
+static const char *const accel_run[]     = { "F5", NULL };
+static const char *const accel_clear[]   = { "<Control>l", NULL };
+static const char *const accel_inspect[] = { "<Control>i", NULL };
+static const char *const accel_about[]   = { "F1", NULL };
 
-/* The engine emits ::progress from its own thread; the values below are
+/* Value lists for the whole-disk option drop downs.  These are the literal
+ * strings the engine expects, so they are not translated. */
+static const char *const gaps_values[]   = { "none", "metadata", "sparse", "full", NULL };
+static const char *const ptable_values[] = { "auto", "raw", "regenerate", NULL };
+
+/* The engine emits its signals from its own thread; the values below are
  * handed over to the main loop through a single coalesced idle source. */
+typedef struct {
+    guint64 copied;
+    guint64 total;
+
+    gboolean vol_active;
+    guint    vol_index;
+    guint    vol_count;
+    guint64  vol_copied;
+    guint64  vol_total;
+    guint64  vol_offset;
+    guint64  vol_length;
+    char     vol_fs[64];
+    char     vol_label[128];
+
+    gboolean vol_done;
+    guint    vol_done_index;
+} ProgressState;
+
 static GMutex progress_lock;
 static gboolean progress_pending;
-static guint64 progress_copied;
-static guint64 progress_total;
+static ProgressState progress_state;
+static guint ui_last_volume;        /* main thread only */
 
 static void on_run_clicked(GtkButton *button, gpointer user_data);
 static void on_clear_clicked(GtkButton *button, gpointer user_data);
+static gboolean progress_idle(gpointer user_data);
+static void on_inspect_chosen(GObject *source, GAsyncResult *result,
+                              gpointer user_data);
+static gboolean dialog_was_dismissed(const GError *error);
 static gboolean self_test_next(gpointer user_data);
 static void self_test_start(PtcGtkApp *self);
 static GtkWidget *build_window(PtcGtkApp *self);
@@ -143,6 +197,20 @@ show_error(PtcGtkApp *self, const char *message)
     g_object_unref(alert);
 }
 
+static gboolean
+mode_is_disk(PtcMode mode)
+{
+    return mode == PTC_MODE_DISK_CLONE ||
+           mode == PTC_MODE_DISK_RESTORE ||
+           mode == PTC_MODE_DISK_CHKIMG;
+}
+
+static gboolean
+mode_needs_target(PtcMode mode)
+{
+    return mode != PTC_MODE_CHKIMG && mode != PTC_MODE_DISK_CHKIMG;
+}
+
 static PtcMode
 mode_from_index(guint index)
 {
@@ -152,6 +220,9 @@ mode_from_index(guint index)
     case 2:  return PTC_MODE_CHKIMG;
     case 3:  return PTC_MODE_DD;
     case 4:  return PTC_MODE_DOMAIN;
+    case 5:  return PTC_MODE_DISK_CLONE;
+    case 6:  return PTC_MODE_DISK_RESTORE;
+    case 7:  return PTC_MODE_DISK_CHKIMG;
     default: return PTC_MODE_CLONE;
     }
 }
@@ -160,11 +231,11 @@ static const char *
 mode_name(PtcMode mode)
 {
     switch (mode) {
-    case PTC_MODE_CLONE:   return "clone";
-    case PTC_MODE_RESTORE: return "restore";
-    case PTC_MODE_CHKIMG:  return "check";
-    case PTC_MODE_DD:      return "dd";
-    case PTC_MODE_DOMAIN:  return "domain";
+    case PTC_MODE_CLONE:        return "clone";
+    case PTC_MODE_RESTORE:      return "restore";
+    case PTC_MODE_CHKIMG:       return "check";
+    case PTC_MODE_DD:           return "dd";
+    case PTC_MODE_DOMAIN:       return "domain";
     case PTC_MODE_DISK_CLONE:   return "disk-clone";
     case PTC_MODE_DISK_RESTORE: return "disk-restore";
     case PTC_MODE_DISK_CHKIMG:  return "disk-check";
@@ -176,14 +247,17 @@ mode_name(PtcMode mode)
 static const char *const *
 mode_labels(void)
 {
-    static const char *labels[6];
+    static const char *labels[9];
 
     labels[0] = _("Clone");
     labels[1] = _("Restore");
     labels[2] = _("Check image");
     labels[3] = _("Device to device (dd)");
     labels[4] = _("Domain log");
-    labels[5] = NULL;
+    labels[5] = _("Disk clone (whole disk)");
+    labels[6] = _("Disk restore (whole disk)");
+    labels[7] = _("Check disk image");
+    labels[8] = NULL;
     return labels;
 }
 
@@ -191,7 +265,8 @@ static int
 mode_index_from_name(const char *name)
 {
     static const char *const names[] = {
-        "clone", "restore", "check", "dd", "domain", NULL
+        "clone", "restore", "check", "dd", "domain",
+        "disk-clone", "disk-restore", "disk-check", NULL
     };
     int i;
 
@@ -229,6 +304,27 @@ backend_index_from_name(PtcGtkApp *self, const char *name)
     return -1;
 }
 
+/* Parse a byte count; an empty string means "auto" (0). */
+static gboolean
+parse_size(const char *text, guint64 *out)
+{
+    gchar *end = NULL;
+    guint64 value;
+
+    if (text == NULL || *text == '\0') {
+        *out = 0;
+        return TRUE;
+    }
+
+    errno = 0;
+    value = g_ascii_strtoull(text, &end, 0);
+    if (errno != 0 || end == text || (end != NULL && *end != '\0'))
+        return FALSE;
+
+    *out = value;
+    return TRUE;
+}
+
 static void
 set_running(PtcGtkApp *self, gboolean running)
 {
@@ -236,6 +332,7 @@ set_running(PtcGtkApp *self, gboolean running)
 
     self->running = running;
     gtk_widget_set_sensitive(GTK_WIDGET(self->run), !running);
+    gtk_widget_set_sensitive(GTK_WIDGET(self->cancel), running);
 
     action = g_action_map_lookup_action(G_ACTION_MAP(self->app), "run");
     if (action != NULL)
@@ -246,51 +343,12 @@ set_running(PtcGtkApp *self, gboolean running)
 /* Progress                                                            */
 /* ------------------------------------------------------------------ */
 
-static gboolean
-progress_idle(gpointer user_data)
-{
-    PtcGtkApp *self = user_data;
-    guint64 copied, total;
-    char *text;
-
-    g_mutex_lock(&progress_lock);
-    copied = progress_copied;
-    total = progress_total;
-    progress_pending = FALSE;
-    g_mutex_unlock(&progress_lock);
-
-    if (total > 0) {
-        char *copied_text = g_format_size_full(copied, G_FORMAT_SIZE_IEC_UNITS);
-        char *total_text  = g_format_size_full(total, G_FORMAT_SIZE_IEC_UNITS);
-
-        gtk_progress_bar_set_fraction(self->progress,
-                                      (double)copied / (double)total);
-        text = g_strdup_printf("%s / %s (%.1f%%)", copied_text, total_text,
-                               100.0 * (double)copied / (double)total);
-        g_free(copied_text);
-        g_free(total_text);
-    } else {
-        text = g_strdup_printf("%" G_GUINT64_FORMAT, copied);
-    }
-
-    gtk_progress_bar_set_text(self->progress, text);
-    gtk_label_set_text(self->status, _("Running..."));
-    g_free(text);
-
-    return G_SOURCE_REMOVE;
-}
-
 static void
-on_progress(PtcClient *client, guint64 copied, guint64 total, gpointer user_data)
+progress_schedule(PtcGtkApp *self)
 {
-    PtcGtkApp *self = user_data;
     gboolean schedule;
 
-    (void)client;
-
     g_mutex_lock(&progress_lock);
-    progress_copied = copied;
-    progress_total = total;
     schedule = !progress_pending;
     progress_pending = TRUE;
     g_mutex_unlock(&progress_lock);
@@ -298,6 +356,158 @@ on_progress(PtcClient *client, guint64 copied, guint64 total, gpointer user_data
     if (schedule)
         g_main_context_invoke_full(NULL, G_PRIORITY_DEFAULT,
                                    progress_idle, self, NULL);
+}
+
+static char *
+volume_text(const ProgressState *s)
+{
+    const char *fs = s->vol_fs[0] != '\0' ? s->vol_fs : _("raw");
+
+    if (s->vol_label[0] != '\0')
+        return g_strdup_printf(_("Volume %u/%u: %s (%s)"),
+                               s->vol_index, s->vol_count, fs, s->vol_label);
+    return g_strdup_printf(_("Volume %u/%u: %s"),
+                           s->vol_index, s->vol_count, fs);
+}
+
+static gboolean
+progress_idle(gpointer user_data)
+{
+    PtcGtkApp *self = user_data;
+    ProgressState snapshot;
+    char *text;
+
+    g_mutex_lock(&progress_lock);
+    snapshot = progress_state;
+    progress_pending = FALSE;
+    progress_state.vol_done = FALSE;
+    g_mutex_unlock(&progress_lock);
+
+    if (snapshot.total > 0) {
+        char *copied_text = g_format_size_full(snapshot.copied, G_FORMAT_SIZE_IEC_UNITS);
+        char *total_text  = g_format_size_full(snapshot.total, G_FORMAT_SIZE_IEC_UNITS);
+
+        gtk_progress_bar_set_fraction(self->progress,
+                                      (double)snapshot.copied / (double)snapshot.total);
+        text = g_strdup_printf("%s / %s (%.1f%%)", copied_text, total_text,
+                               100.0 * (double)snapshot.copied / (double)snapshot.total);
+        g_free(copied_text);
+        g_free(total_text);
+    } else {
+        text = g_strdup_printf("%" G_GUINT64_FORMAT, snapshot.copied);
+    }
+
+    gtk_progress_bar_set_text(self->progress, text);
+    g_free(text);
+
+    /* A late progress notification after the run finished must not overwrite
+     * the final status line. */
+    if (!self->running)
+        return G_SOURCE_REMOVE;
+
+    /* Per-volume progress of a whole-disk operation. */
+    if (snapshot.vol_active) {
+        char *vol_text = volume_text(&snapshot);
+
+        gtk_widget_set_visible(self->volume_row, TRUE);
+        gtk_label_set_text(self->volume_status, vol_text);
+        gtk_progress_bar_set_fraction(self->volume_progress,
+            snapshot.vol_total > 0
+                ? (double)snapshot.vol_copied / (double)snapshot.vol_total
+                : 0.0);
+
+        if (snapshot.vol_index != ui_last_volume) {
+            log_append(self, "%s", vol_text);
+            ui_last_volume = snapshot.vol_index;
+        }
+        g_free(vol_text);
+    }
+
+    if (snapshot.vol_done && snapshot.vol_done_index == ui_last_volume)
+        log_append(self, _("Volume %u/%u done."),
+                   snapshot.vol_done_index, snapshot.vol_count);
+
+    gtk_label_set_text(self->status,
+                       self->cancelling ? _("Cancelling...") : _("Running..."));
+    return G_SOURCE_REMOVE;
+}
+
+static void
+on_progress(PtcClient *client, guint64 copied, guint64 total, gpointer user_data)
+{
+    PtcGtkApp *self = user_data;
+
+    (void)client;
+
+    g_mutex_lock(&progress_lock);
+    progress_state.copied = copied;
+    progress_state.total = total;
+    g_mutex_unlock(&progress_lock);
+
+    progress_schedule(self);
+}
+
+static void
+on_volume_started(PtcClient *client, guint index, guint count,
+                  guint64 offset, guint64 length,
+                  const char *filesystem, const char *label,
+                  gpointer user_data)
+{
+    PtcGtkApp *self = user_data;
+
+    (void)client;
+
+    g_mutex_lock(&progress_lock);
+    progress_state.vol_active = TRUE;
+    progress_state.vol_index = index;
+    progress_state.vol_count = count;
+    progress_state.vol_offset = offset;
+    progress_state.vol_length = length;
+    progress_state.vol_copied = 0;
+    progress_state.vol_total = 0;
+    g_strlcpy(progress_state.vol_fs, filesystem != NULL ? filesystem : "",
+              sizeof(progress_state.vol_fs));
+    g_strlcpy(progress_state.vol_label, label != NULL ? label : "",
+              sizeof(progress_state.vol_label));
+    g_mutex_unlock(&progress_lock);
+
+    progress_schedule(self);
+}
+
+static void
+on_volume_progress(PtcClient *client, guint index, guint count,
+                   guint64 copied, guint64 total, gpointer user_data)
+{
+    PtcGtkApp *self = user_data;
+
+    (void)client;
+
+    g_mutex_lock(&progress_lock);
+    progress_state.vol_index = index;
+    progress_state.vol_count = count;
+    progress_state.vol_copied = copied;
+    progress_state.vol_total = total;
+    g_mutex_unlock(&progress_lock);
+
+    progress_schedule(self);
+}
+
+static void
+on_volume_finished(PtcClient *client, guint index, guint count,
+                   gpointer user_data)
+{
+    PtcGtkApp *self = user_data;
+
+    (void)client;
+
+    g_mutex_lock(&progress_lock);
+    progress_state.vol_index = index;
+    progress_state.vol_count = count;
+    progress_state.vol_done = TRUE;
+    progress_state.vol_done_index = index;
+    g_mutex_unlock(&progress_lock);
+
+    progress_schedule(self);
 }
 
 /* ------------------------------------------------------------------ */
@@ -310,38 +520,78 @@ on_run_done(GObject *source, GAsyncResult *result, gpointer user_data)
     PtcGtkApp *self = user_data;
     GError *error = NULL;
     gboolean ok = ptc_client_run_finish(PTC_CLIENT(source), result, &error);
+    gboolean cancelled = (!ok && error != NULL &&
+                          g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED));
 
     if (ok) {
         gtk_progress_bar_set_fraction(self->progress, 1.0);
         gtk_label_set_text(self->status, _("Finished"));
         log_append(self, _("--- finished ---"));
+    } else if (cancelled) {
+        gtk_label_set_text(self->status, _("Cancelled"));
+        log_append(self, _("--- cancelled ---"));
     } else {
         gtk_label_set_text(self->status, _("Failed"));
         log_append(self, _("--- error: %s ---"),
                    error != NULL ? error->message : _("unknown error"));
-        g_clear_error(&error);
     }
+    g_clear_error(&error);
 
+    self->cancelling = FALSE;
+    g_clear_object(&self->cancellable);
     g_clear_object(&self->client);
     set_running(self, FALSE);
 
-    if (self->self_test == 1) {
-        /* The clone finished; verify the image next. */
-        self->self_test = 2;
-        if (ok) {
-            log_append(self, _("self-test: verifying the image"));
-            gtk_editable_set_text(GTK_EDITABLE(self->source), self_test_image);
-            gtk_drop_down_set_selected(self->mode, 2);   /* Check image */
-            g_idle_add(self_test_next, self);
-        } else {
-            self_test_status = 1;
-            g_application_quit(G_APPLICATION(self->app));
-        }
-    } else if (self->self_test == 2) {
-        self->self_test = 3;
-        self_test_status = ok ? 0 : 1;
-        g_print("self-test %s\n", ok ? "OK" : "FAILED");
+    /* A quit requested while running waits for the cancellation to settle. */
+    if (self->quit_after_run) {
+        self->quit_after_run = FALSE;
         g_application_quit(G_APPLICATION(self->app));
+        return;
+    }
+
+    if (!ok && self->self_test != 0) {
+        self->self_test = 0;
+        self_test_status = 1;
+        g_application_quit(G_APPLICATION(self->app));
+        return;
+    }
+
+    switch (self->self_test) {
+    case 1:
+        /* The classic clone finished; verify the image next. */
+        self->self_test = 2;
+        log_append(self, _("self-test: verifying the image"));
+        gtk_editable_set_text(GTK_EDITABLE(self->source), self_test_image);
+        gtk_drop_down_set_selected(self->mode, 2);   /* Check image */
+        g_idle_add(self_test_next, self);
+        break;
+    case 2:
+        /* The classic round-trip works; do a whole-disk round-trip next. */
+        self->self_test = 3;
+        log_append(self, _("self-test: cloning a whole disk"));
+        g_remove(self_test_disk_img);
+        gtk_drop_down_set_selected(self->backend, 0);        /* auto */
+        gtk_editable_set_text(GTK_EDITABLE(self->source), self_test_disk_src);
+        gtk_editable_set_text(GTK_EDITABLE(self->target), self_test_disk_img);
+        gtk_drop_down_set_selected(self->mode, 5);           /* Disk clone */
+        g_idle_add(self_test_next, self);
+        break;
+    case 3:
+        /* The whole-disk clone finished; check the format 0003 image. */
+        self->self_test = 4;
+        log_append(self, _("self-test: checking the whole-disk image"));
+        gtk_editable_set_text(GTK_EDITABLE(self->source), self_test_disk_img);
+        gtk_drop_down_set_selected(self->mode, 7);           /* Check disk image */
+        g_idle_add(self_test_next, self);
+        break;
+    case 4:
+        self->self_test = 5;
+        self_test_status = 0;
+        g_print("self-test OK\n");
+        g_application_quit(G_APPLICATION(self->app));
+        break;
+    default:
+        break;
     }
 }
 
@@ -357,7 +607,9 @@ on_run_clicked(GtkButton *button, gpointer user_data)
 {
     PtcGtkApp *self = user_data;
     const char *source, *target, *logfile, *backend;
-    gboolean skip_check;
+    const char *gaps, *ptable;
+    guint64 device_size;
+    gboolean skip_check, disk;
     PtcMode mode;
     FILE *log;
 
@@ -370,18 +622,24 @@ on_run_clicked(GtkButton *button, gpointer user_data)
     target = gtk_editable_get_text(GTK_EDITABLE(self->target));
     logfile = gtk_editable_get_text(GTK_EDITABLE(self->logfile));
     mode = mode_from_index(gtk_drop_down_get_selected(self->mode));
-    backend = backend_from_index(self);
+    disk = mode_is_disk(mode);
+    backend = disk ? NULL : backend_from_index(self);
 
     if (source[0] == '\0') {
         show_error(self, _("Please choose a source device or image."));
         return;
     }
-    if (mode != PTC_MODE_CHKIMG && mode != PTC_MODE_DISK_CHKIMG && target[0] == '\0') {
+    if (mode_needs_target(mode) && target[0] == '\0') {
         show_error(self, _("Please choose a target."));
         return;
     }
     if (logfile[0] == '\0') {
         show_error(self, _("Please choose a log file."));
+        return;
+    }
+    if (!parse_size(gtk_editable_get_text(GTK_EDITABLE(self->device_size)),
+                    &device_size)) {
+        show_error(self, _("The device size must be a number of bytes."));
         return;
     }
 
@@ -394,7 +652,11 @@ on_run_clicked(GtkButton *button, gpointer user_data)
     }
     fclose(log);
 
+    gaps = gaps_values[gtk_drop_down_get_selected(self->opt_gaps)];
+    ptable = ptable_values[gtk_drop_down_get_selected(self->opt_ptable)];
+
     self->client = ptc_client_new();
+    self->cancellable = g_cancellable_new();
     skip_check = gtk_check_button_get_active(self->opt_check);
 
     g_object_set(self->client,
@@ -407,23 +669,62 @@ on_run_clicked(GtkButton *button, gpointer user_data)
                  "check",     !skip_check,    /* -C clears the size checks */
                  "force",     gtk_check_button_get_active(self->opt_force),
                  "overwrite", gtk_check_button_get_active(self->opt_overwrite),
+                 "debug",     (guint) gtk_spin_button_get_value_as_int(self->debug),
+                 "device-size", device_size,
+                 "sparse",          gtk_check_button_get_active(self->opt_sparse),
+                 "no-zero-skipped", gtk_check_button_get_active(self->opt_no_zero_skipped),
+                 "no-fs-volumes",   gtk_check_button_get_active(self->opt_no_fs_volumes),
+                 "grow",            gtk_check_button_get_active(self->opt_grow),
+                 "gaps",            gaps,
+                 "partition-table", ptable,
                  NULL);
 
     g_signal_connect(self->client, "progress", G_CALLBACK(on_progress), self);
+    g_signal_connect(self->client, "volume-started", G_CALLBACK(on_volume_started), self);
+    g_signal_connect(self->client, "volume-progress", G_CALLBACK(on_volume_progress), self);
+    g_signal_connect(self->client, "volume-finished", G_CALLBACK(on_volume_finished), self);
 
     log_append(self, _("=== %s ==="), mode_name(mode));
     log_append(self, _("source : %s"), source);
-    if (mode != PTC_MODE_CHKIMG && mode != PTC_MODE_DISK_CHKIMG)
+    if (mode_needs_target(mode))
         log_append(self, _("target : %s"), target);
-    log_append(self, _("backend: %s"),
-               backend != NULL ? backend : _("auto (detect)"));
+    if (disk) {
+        log_append(self, _("backend: %s"), _("(whole-disk image, none)"));
+        log_append(self, _("gaps   : %s"), gaps);
+        log_append(self, _("table  : %s"), ptable);
+    } else {
+        log_append(self, _("backend: %s"),
+                   backend != NULL ? backend : _("auto (detect)"));
+    }
 
     gtk_progress_bar_set_fraction(self->progress, 0.0);
     gtk_progress_bar_set_text(self->progress, _("starting"));
     gtk_label_set_text(self->status, _("Running..."));
-    set_running(self, TRUE);
 
-    ptc_client_run_async(self->client, NULL, on_run_done, self);
+    ui_last_volume = 0;
+    gtk_progress_bar_set_fraction(self->volume_progress, 0.0);
+    gtk_label_set_text(self->volume_status, _("Waiting for the first volume..."));
+    gtk_widget_set_visible(self->volume_row, disk);
+
+    set_running(self, TRUE);
+    self->cancelling = FALSE;
+    ptc_client_run_async(self->client, self->cancellable, on_run_done, self);
+}
+
+static void
+on_cancel_clicked(GtkButton *button, gpointer user_data)
+{
+    PtcGtkApp *self = user_data;
+
+    (void)button;
+
+    if (!self->running || self->cancellable == NULL)
+        return;
+
+    log_append(self, _("Cancelling..."));
+    gtk_label_set_text(self->status, _("Cancelling..."));
+    self->cancelling = TRUE;
+    g_cancellable_cancel(self->cancellable);
 }
 
 static void
@@ -434,6 +735,144 @@ on_clear_clicked(GtkButton *button, gpointer user_data)
 
     (void)button;
     gtk_text_buffer_set_text(buffer, "", -1);
+}
+
+/* ------------------------------------------------------------------ */
+/* Image inspection (PtcImage / PtcVolume)                             */
+/* ------------------------------------------------------------------ */
+
+static const char *
+volume_kind_name(PtcVolumeKind kind)
+{
+    switch (kind) {
+    case PTC_VOLUME_KIND_FILESYSTEM: return "filesystem";
+    case PTC_VOLUME_KIND_RAW_SPARSE: return "raw-sparse";
+    case PTC_VOLUME_KIND_RAW_FULL:   return "raw-full";
+    case PTC_VOLUME_KIND_ZERO:       return "zero";
+    default:                         return "none";
+    }
+}
+
+static char *
+image_description(PtcImage *image)
+{
+    GString *text = g_string_new(NULL);
+    char *size = g_format_size_full(ptc_image_get_disk_size(image),
+                                    G_FORMAT_SIZE_IEC_UNITS);
+
+    g_string_append_printf(text, "%s: %s\n", _("Format version"),
+                           ptc_image_get_version(image));
+    g_string_append_printf(text, "%s: %s\n", _("Size"), size);
+    g_string_append_printf(text, "%s: %u %s\n", _("Sector size"),
+                           ptc_image_get_sector_size(image), _("bytes"));
+    g_free(size);
+
+    if (ptc_image_is_disk(image)) {
+        const char *table = ptc_image_get_partition_table(image);
+        guint count = ptc_image_get_volume_count(image);
+        guint i;
+
+        g_string_append_printf(text, "%s: %s\n", _("Partition table"),
+                               table != NULL ? table : _("none"));
+        g_string_append_printf(text, "%s: %u\n", _("Volumes"), count);
+
+        if (count > 0)
+            g_string_append_c(text, '\n');
+
+        for (i = 0; i < count; i++) {
+            PtcVolume *volume = ptc_image_get_volume(image, i);
+            const char *fs, *label;
+            char *offset, *length;
+
+            if (volume == NULL)
+                continue;
+
+            offset = g_format_size_full(ptc_volume_get_disk_offset(volume),
+                                        G_FORMAT_SIZE_IEC_UNITS);
+            length = g_format_size_full(ptc_volume_get_disk_length(volume),
+                                        G_FORMAT_SIZE_IEC_UNITS);
+            fs = ptc_volume_get_filesystem(volume);
+            label = ptc_volume_get_label(volume);
+
+            g_string_append_printf(text,
+                _("Volume %u: %s (%s) at %s, length %s, %s%s\n"),
+                ptc_volume_get_index(volume),
+                volume_kind_name(ptc_volume_get_kind(volume)),
+                ptc_volume_is_sparse(volume) ? _("sparse") : _("full"),
+                offset, length,
+                fs != NULL ? fs : (label != NULL ? label : _("none")),
+                ptc_volume_is_bootable(volume) ? _(", bootable") : "");
+            g_free(offset);
+            g_free(length);
+        }
+    } else {
+        const char *fs = ptc_image_get_filesystem(image);
+
+        g_string_append_printf(text, "%s: %s\n", _("File system"),
+                               fs != NULL ? fs : _("raw"));
+    }
+
+    return g_string_free(text, FALSE);
+}
+
+static void
+show_text_dialog(PtcGtkApp *self, const char *title, const char *text)
+{
+    GtkWidget *window = gtk_window_new();
+    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    GtkWidget *scroll = gtk_scrolled_window_new();
+    GtkWidget *view = gtk_text_view_new();
+    GtkWidget *close = gtk_button_new_with_label(_("Close"));
+    GtkTextBuffer *buffer;
+
+    gtk_window_set_title(GTK_WINDOW(window), title);
+    gtk_window_set_default_size(GTK_WINDOW(window), 720, 480);
+    gtk_window_set_transient_for(GTK_WINDOW(window), self->window);
+    gtk_window_set_modal(GTK_WINDOW(window), TRUE);
+
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(view), FALSE);
+    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(view), FALSE);
+    gtk_text_view_set_monospace(GTK_TEXT_VIEW(view), TRUE);
+    buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(view));
+    gtk_text_buffer_set_text(buffer, text, -1);
+
+    gtk_widget_set_vexpand(scroll, TRUE);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), view);
+    gtk_box_append(GTK_BOX(box), scroll);
+
+    gtk_widget_set_halign(close, GTK_ALIGN_END);
+    gtk_widget_set_margin_end(close, 4);
+    gtk_box_append(GTK_BOX(box), close);
+    gtk_widget_set_margin_start(box, 10);
+    gtk_widget_set_margin_end(box, 10);
+    gtk_widget_set_margin_top(box, 10);
+    gtk_widget_set_margin_bottom(box, 10);
+
+    gtk_window_set_child(GTK_WINDOW(window), box);
+    g_signal_connect_swapped(close, "clicked", G_CALLBACK(gtk_window_destroy), window);
+    gtk_window_present(GTK_WINDOW(window));
+}
+
+static void
+show_image_info(PtcGtkApp *self, const char *path)
+{
+    GError *error = NULL;
+    PtcImage *image = ptc_image_new_from_file(path, &error);
+    char *text;
+
+    if (image == NULL) {
+        show_error(self, error != NULL ? error->message : _("Cannot read the image."));
+        g_clear_error(&error);
+        return;
+    }
+
+    text = image_description(image);
+    log_append(self, _("=== image: %s ==="), path);
+    log_append(self, "%s", text);
+    show_text_dialog(self, path, text);
+
+    g_free(text);
+    g_object_unref(image);
 }
 
 /* ------------------------------------------------------------------ */
@@ -454,6 +893,51 @@ on_clear_action(GSimpleAction *action, GVariant *parameter, gpointer user_data)
     (void)action;
     (void)parameter;
     on_clear_clicked(NULL, user_data);
+}
+
+static void
+on_inspect_chosen(GObject *source, GAsyncResult *result, gpointer user_data)
+{
+    PtcGtkApp *self = user_data;
+    GError *error = NULL;
+    GFile *file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(source), result,
+                                              &error);
+
+    if (file != NULL) {
+        char *path = g_file_get_path(file);
+
+        if (path != NULL) {
+            show_image_info(self, path);
+            g_free(path);
+        }
+        g_object_unref(file);
+    } else if (error != NULL && !dialog_was_dismissed(error)) {
+        log_append(self, "[!] %s", error->message);
+    }
+    g_clear_error(&error);
+}
+
+static void
+on_inspect_action(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    PtcGtkApp *self = user_data;
+    const char *path = gtk_editable_get_text(GTK_EDITABLE(self->source));
+
+    (void)action;
+    (void)parameter;
+
+    if (path[0] != '\0') {
+        show_image_info(self, path);
+        return;
+    }
+
+    {
+        GtkFileDialog *dialog = gtk_file_dialog_new();
+
+        gtk_file_dialog_set_title(dialog, _("Select an image to inspect"));
+        gtk_file_dialog_open(dialog, self->window, NULL, on_inspect_chosen, self);
+        g_object_unref(dialog);
+    }
 }
 
 static void
@@ -493,8 +977,17 @@ on_exit_confirmed(GObject *source, GAsyncResult *result, gpointer user_data)
                                                 result, &error);
 
     g_clear_error(&error);
-    if (choice == 1)
+    if (choice != 1)
+        return;
+
+    if (self->running && self->cancellable != NULL) {
+        /* Stop the operation cleanly, then quit once it has settled. */
+        self->quit_after_run = TRUE;
+        self->cancelling = TRUE;
+        g_cancellable_cancel(self->cancellable);
+    } else {
         g_application_quit(G_APPLICATION(self->app));
+    }
 }
 
 static void
@@ -513,7 +1006,7 @@ on_exit_action(GSimpleAction *action, GVariant *parameter, gpointer user_data)
 
     alert = gtk_alert_dialog_new("%s", _("An operation is still running."));
     gtk_alert_dialog_set_detail(alert,
-        _("Quitting now will abort the operation."));
+        _("Quitting now will cancel the operation and leave the target incomplete."));
     gtk_alert_dialog_set_buttons(alert,
         (const char *[]) { _("Cancel"), _("Quit"), NULL });
     gtk_alert_dialog_set_cancel_button(alert, 0);
@@ -537,10 +1030,11 @@ on_close_request(GtkWindow *window, gpointer user_data)
 }
 
 static const GActionEntry app_actions[] = {
-    { "run",   on_run_action,   NULL, NULL, NULL },
-    { "clear", on_clear_action, NULL, NULL, NULL },
-    { "about", on_about_action, NULL, NULL, NULL },
-    { "exit",  on_exit_action,  NULL, NULL, NULL },
+    { "run",     on_run_action,     NULL, NULL, NULL },
+    { "clear",   on_clear_action,   NULL, NULL, NULL },
+    { "inspect", on_inspect_action, NULL, NULL, NULL },
+    { "about",   on_about_action,   NULL, NULL, NULL },
+    { "exit",    on_exit_action,    NULL, NULL, NULL },
 };
 
 /* ------------------------------------------------------------------ */
@@ -663,6 +1157,35 @@ on_browse_log(GtkButton *button, gpointer user_data)
 /* Self test (headless, used by --self-test and CI)                    */
 /* ------------------------------------------------------------------ */
 
+/* A 2 MiB disk image source: mostly zero with one pseudo-random region, so a
+ * sparse clone has something to skip and something to keep. */
+static gboolean
+self_test_write_disk_source(void)
+{
+    const gsize size = 2 * 1024 * 1024;
+    const gsize chunk = 64 * 1024;
+    const gsize chunk_at = 1024 * 1024;
+    guint8 *data = g_malloc0(size);
+    GRand *rand = g_rand_new();
+    GError *error = NULL;
+    gboolean ok;
+    gsize i;
+
+    for (i = 0; i < chunk; i++)
+        data[chunk_at + i] = (guint8) g_rand_int_range(rand, 0, 256);
+    g_rand_free(rand);
+
+    ok = g_file_set_contents(self_test_disk_src, (const gchar *) data, size,
+                             &error);
+    if (!ok) {
+        g_printerr("self-test: cannot create %s: %s\n", self_test_disk_src,
+                   error->message);
+        g_clear_error(&error);
+    }
+    g_free(data);
+    return ok;
+}
+
 static void
 self_test_start(PtcGtkApp *self)
 {
@@ -671,6 +1194,7 @@ self_test_start(PtcGtkApp *self)
     guint i, raw_index = 0;
 
     g_remove(self_test_image);
+    g_remove(self_test_disk_img);
 
     if (!g_file_set_contents(self_test_source, data, 1024 * 1024, &error)) {
         g_printerr("self-test: cannot create %s: %s\n", self_test_source,
@@ -682,6 +1206,12 @@ self_test_start(PtcGtkApp *self)
         return;
     }
     g_free(data);
+
+    if (!self_test_write_disk_source()) {
+        self_test_status = 1;
+        g_application_quit(G_APPLICATION(self->app));
+        return;
+    }
 
     for (i = 0; self->backends[i] != NULL; i++) {
         if (g_strcmp0(self->backends[i], "raw") == 0) {
@@ -731,16 +1261,28 @@ backend_list_string(void)
     return g_string_free(string, FALSE);
 }
 
-/* Enable or disable the target widgets depending on the selected mode. */
+/* Enable or disable fields depending on the selected mode. */
 static void
 update_mode_sensitivity(PtcGtkApp *self)
 {
-    guint index = gtk_drop_down_get_selected(self->mode);
-    gboolean needs_target = (index != 2);   /* "Check image" needs no target */
+    PtcMode mode = mode_from_index(gtk_drop_down_get_selected(self->mode));
+    gboolean disk = mode_is_disk(mode);
+    gboolean needs_target = mode_needs_target(mode);
+    gboolean clone = (mode == PTC_MODE_DISK_CLONE);
+    gboolean restore = (mode == PTC_MODE_DISK_RESTORE);
 
     gtk_widget_set_sensitive(self->target_label, needs_target);
     gtk_widget_set_sensitive(GTK_WIDGET(self->target), needs_target);
     gtk_widget_set_sensitive(self->target_browse, needs_target);
+
+    /* The filesystem backend is irrelevant for a whole-disk image. */
+    gtk_widget_set_sensitive(GTK_WIDGET(self->backend), !disk);
+
+    gtk_widget_set_sensitive(self->disk_frame, disk);
+    gtk_widget_set_sensitive(GTK_WIDGET(self->opt_sparse), disk && clone);
+    gtk_widget_set_sensitive(GTK_WIDGET(self->opt_no_fs_volumes), disk && clone);
+    gtk_widget_set_sensitive(GTK_WIDGET(self->opt_grow), disk && restore);
+    gtk_widget_set_sensitive(GTK_WIDGET(self->opt_no_zero_skipped), disk && restore);
 }
 
 static void
@@ -752,7 +1294,70 @@ on_mode_changed(GObject *object, GParamSpec *pspec, gpointer user_data)
 }
 
 static GtkWidget *
-build_header_bar(PtcGtkApp *self)
+build_disk_options(PtcGtkApp *self)
+{
+    GtkWidget *frame = gtk_frame_new(_("Whole-disk image options (format 0003)"));
+    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    GtkWidget *grid = gtk_grid_new();
+    GtkWidget *row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+
+    gtk_widget_set_margin_start(box, 10);
+    gtk_widget_set_margin_end(box, 10);
+    gtk_widget_set_margin_top(box, 8);
+    gtk_widget_set_margin_bottom(box, 8);
+
+    gtk_grid_set_row_spacing(GTK_GRID(grid), 6);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), 8);
+
+    self->opt_gaps = GTK_DROP_DOWN(gtk_drop_down_new_from_strings(gaps_values));
+    gtk_drop_down_set_selected(self->opt_gaps, 1);   /* metadata */
+    gtk_widget_set_tooltip_text(GTK_WIDGET(self->opt_gaps),
+        _("How the gaps between partitions (boot loaders, padding, backup GPT) "
+          "are stored."));
+    gtk_grid_attach(GTK_GRID(grid), grid_label(_("Gaps")), 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(self->opt_gaps), 1, 0, 1, 1);
+
+    self->opt_ptable = GTK_DROP_DOWN(gtk_drop_down_new_from_strings(ptable_values));
+    gtk_grid_attach(GTK_GRID(grid), grid_label(_("Partition table")), 0, 1, 1, 1);
+    gtk_widget_set_tooltip_text(GTK_WIDGET(self->opt_ptable),
+        _("How the partition table is written on restore: verbatim, or rebuilt "
+          "for a target of a different size."));
+    gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(self->opt_ptable), 1, 1, 1, 1);
+    gtk_box_append(GTK_BOX(box), grid);
+
+    self->opt_sparse = GTK_CHECK_BUTTON(
+        gtk_check_button_new_with_label(_("Store raw volumes sparsely")));
+    gtk_widget_set_tooltip_text(GTK_WIDGET(self->opt_sparse),
+        _("Use a zero-detecting bitmap for raw volumes (gaps and unsupported "
+          "partitions)."));
+    self->opt_no_fs_volumes = GTK_CHECK_BUTTON(
+        gtk_check_button_new_with_label(_("Store every partition as raw")));
+    gtk_widget_set_tooltip_text(GTK_WIDGET(self->opt_no_fs_volumes),
+        _("Do not use the per-filesystem backend, so every partition is a raw "
+          "volume."));
+    self->opt_no_zero_skipped = GTK_CHECK_BUTTON(
+        gtk_check_button_new_with_label(_("Do not zero skipped blocks")));
+    gtk_widget_set_tooltip_text(GTK_WIDGET(self->opt_no_zero_skipped),
+        _("On restore, leave blocks absent from the image untouched instead of "
+          "writing zeros."));
+    self->opt_grow = GTK_CHECK_BUTTON(
+        gtk_check_button_new_with_label(_("Grow the last partition")));
+    gtk_widget_set_tooltip_text(GTK_WIDGET(self->opt_grow),
+        _("On a larger target, extend the last partition entry (the filesystem "
+          "itself is not resized)."));
+
+    gtk_box_append(GTK_BOX(row), GTK_WIDGET(self->opt_sparse));
+    gtk_box_append(GTK_BOX(row), GTK_WIDGET(self->opt_no_fs_volumes));
+    gtk_box_append(GTK_BOX(row), GTK_WIDGET(self->opt_no_zero_skipped));
+    gtk_box_append(GTK_BOX(row), GTK_WIDGET(self->opt_grow));
+    gtk_box_append(GTK_BOX(box), row);
+
+    gtk_frame_set_child(GTK_FRAME(frame), box);
+    return frame;
+}
+
+static GtkWidget *
+build_header_bar(void)
 {
     GtkWidget *header = gtk_header_bar_new();
     GtkWidget *menu_button = gtk_menu_button_new();
@@ -762,6 +1367,7 @@ build_header_bar(PtcGtkApp *self)
     gtk_header_bar_set_show_title_buttons(GTK_HEADER_BAR(header), TRUE);
 
     g_menu_append(menu, _("_Run"), "app.run");
+    g_menu_append(menu, _("_Inspect image..."), "app.inspect");
     g_menu_append(menu, _("_Clear log"), "app.clear");
     g_menu_append(section, _("_About"), "app.about");
     g_menu_append(section, _("_Quit"), "app.exit");
@@ -787,15 +1393,16 @@ build_window(PtcGtkApp *self)
     GtkWidget *grid = gtk_grid_new();
     GtkWidget *options = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
     GtkWidget *actions = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-    GtkWidget *browse, *clear, *scroll;
+    GtkWidget *browse, *clear;
+    GtkWidget *scroll;
     char *info, *backend_list;
     guint n_backends = 0, i;
     const char **backend_strings;
     int row = 0;
 
     gtk_window_set_title(GTK_WINDOW(window), _("partclone"));
-    gtk_window_set_default_size(GTK_WINDOW(window), 820, 680);
-    gtk_window_set_titlebar(GTK_WINDOW(window), build_header_bar(self));
+    gtk_window_set_default_size(GTK_WINDOW(window), 860, 760);
+    gtk_window_set_titlebar(GTK_WINDOW(window), build_header_bar());
     gtk_widget_set_margin_start(root, 12);
     gtk_widget_set_margin_end(root, 12);
     gtk_widget_set_margin_top(root, 12);
@@ -825,7 +1432,7 @@ build_window(PtcGtkApp *self)
     self->mode = GTK_DROP_DOWN(gtk_drop_down_new_from_strings(mode_labels()));
     gtk_widget_set_hexpand(GTK_WIDGET(self->mode), TRUE);
     gtk_widget_set_tooltip_text(GTK_WIDGET(self->mode),
-        _("Operation to perform. The available target fields change with the "
+        _("Operation to perform. The available fields change with the "
           "selected mode."));
     gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(self->mode), 1, row, 2, 1);
     row++;
@@ -842,7 +1449,8 @@ build_window(PtcGtkApp *self)
     self->backend = GTK_DROP_DOWN(gtk_drop_down_new_from_strings(backend_strings));
     gtk_widget_set_hexpand(GTK_WIDGET(self->backend), TRUE);
     gtk_widget_set_tooltip_text(GTK_WIDGET(self->backend),
-        _("Filesystem backend. Use \"auto (detect)\" to let partclone pick one."));
+        _("Filesystem backend. Use \"auto (detect)\" to let partclone pick one. "
+          "Not used for whole-disk images."));
     gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(self->backend), 1, row, 2, 1);
     g_free(backend_strings);
     row++;
@@ -886,6 +1494,17 @@ build_window(PtcGtkApp *self)
     gtk_grid_attach(GTK_GRID(grid), browse, 2, row, 1, 1);
     row++;
 
+    /* Device size. */
+    gtk_grid_attach(GTK_GRID(grid), grid_label(_("Device size")), 0, row, 1, 1);
+    self->device_size = GTK_ENTRY(gtk_entry_new());
+    gtk_entry_set_placeholder_text(self->device_size, _("0 = auto (bytes)"));
+    gtk_widget_set_hexpand(GTK_WIDGET(self->device_size), TRUE);
+    gtk_widget_set_tooltip_text(GTK_WIDGET(self->device_size),
+        _("Override the device size in bytes when it cannot be detected "
+          "(clone only)."));
+    gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(self->device_size), 1, row, 2, 1);
+    row++;
+
     /* Options. */
     self->opt_check = GTK_CHECK_BUTTON(
         gtk_check_button_new_with_label(_("Skip target size check (-C)")));
@@ -913,7 +1532,23 @@ build_window(PtcGtkApp *self)
     gtk_box_append(GTK_BOX(options), GTK_WIDGET(self->opt_force));
     gtk_box_append(GTK_BOX(options), GTK_WIDGET(self->opt_quiet));
     gtk_box_append(GTK_BOX(options), GTK_WIDGET(self->opt_overwrite));
+
+    {
+        GtkWidget *debug_label = gtk_label_new(_("Debug level"));
+        GtkWidget *debug = gtk_spin_button_new_with_range(0, 2, 1);
+
+        gtk_widget_set_tooltip_text(debug,
+            _("Engine verbosity: 0 quiet, 1 or 2 increasingly detailed."));
+        gtk_spin_button_set_value(GTK_SPIN_BUTTON(debug), 0);
+        self->debug = GTK_SPIN_BUTTON(debug);
+        gtk_box_append(GTK_BOX(options), debug_label);
+        gtk_box_append(GTK_BOX(options), debug);
+    }
     gtk_box_append(GTK_BOX(root), options);
+
+    /* Whole-disk options. */
+    self->disk_frame = build_disk_options(self);
+    gtk_box_append(GTK_BOX(root), self->disk_frame);
 
     /* Actions. */
     self->run = GTK_BUTTON(gtk_button_new_with_label(_("Run")));
@@ -921,10 +1556,16 @@ build_window(PtcGtkApp *self)
     gtk_widget_set_tooltip_text(GTK_WIDGET(self->run),
         _("Start the operation (F5)."));
     g_signal_connect(self->run, "clicked", G_CALLBACK(on_run_clicked), self);
+    self->cancel = GTK_BUTTON(gtk_button_new_with_label(_("Cancel")));
+    gtk_widget_set_tooltip_text(GTK_WIDGET(self->cancel),
+        _("Stop the running operation at the next block boundary."));
+    gtk_widget_set_sensitive(GTK_WIDGET(self->cancel), FALSE);
+    g_signal_connect(self->cancel, "clicked", G_CALLBACK(on_cancel_clicked), self);
     clear = gtk_button_new_with_label(_("Clear log"));
     gtk_widget_set_tooltip_text(clear, _("Clear the log view (Ctrl+L)."));
     g_signal_connect(clear, "clicked", G_CALLBACK(on_clear_clicked), self);
     gtk_box_append(GTK_BOX(actions), GTK_WIDGET(self->run));
+    gtk_box_append(GTK_BOX(actions), GTK_WIDGET(self->cancel));
     gtk_box_append(GTK_BOX(actions), clear);
     gtk_box_append(GTK_BOX(root), actions);
 
@@ -933,6 +1574,19 @@ build_window(PtcGtkApp *self)
     gtk_progress_bar_set_show_text(self->progress, TRUE);
     gtk_progress_bar_set_text(self->progress, _("idle"));
     gtk_box_append(GTK_BOX(root), GTK_WIDGET(self->progress));
+
+    /* Per-volume progress, only shown for whole-disk operations. */
+    self->volume_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    self->volume_status = GTK_LABEL(gtk_label_new(_("Waiting for the first volume...")));
+    gtk_label_set_xalign(self->volume_status, 0.0);
+    gtk_widget_set_size_request(GTK_WIDGET(self->volume_status), 240, -1);
+    self->volume_progress = GTK_PROGRESS_BAR(gtk_progress_bar_new());
+    gtk_progress_bar_set_show_text(self->volume_progress, TRUE);
+    gtk_widget_set_hexpand(GTK_WIDGET(self->volume_progress), TRUE);
+    gtk_box_append(GTK_BOX(self->volume_row), GTK_WIDGET(self->volume_status));
+    gtk_box_append(GTK_BOX(self->volume_row), GTK_WIDGET(self->volume_progress));
+    gtk_widget_set_visible(self->volume_row, FALSE);
+    gtk_box_append(GTK_BOX(root), self->volume_row);
 
     self->status = GTK_LABEL(gtk_label_new(_("Ready")));
     gtk_label_set_xalign(self->status, 0.0);
@@ -1012,7 +1666,7 @@ main(int argc, char **argv)
 {
     const GOptionEntry option_entries[] = {
         { "self-test", 0, 0, G_OPTION_ARG_NONE, &self_test_opt,
-          _("Clone a temporary file, verify it, then quit (headless test)"),
+          _("Clone, check, then do a whole-disk round-trip and quit (headless test)"),
           NULL },
         { "source", 0, 0, G_OPTION_ARG_FILENAME, &opt_source,
           _("Source device or image"), _("PATH") },
@@ -1021,7 +1675,8 @@ main(int argc, char **argv)
         { "backend", 0, 0, G_OPTION_ARG_STRING, &opt_backend,
           _("Backend name (default: autodetect)"), _("NAME") },
         { "mode", 0, 0, G_OPTION_ARG_STRING, &opt_mode,
-          _("Operation: clone, restore, check, dd or domain"), _("MODE") },
+          _("Operation: clone, restore, check, dd, domain, disk-clone, "
+            "disk-restore or disk-check"), _("MODE") },
         { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &opt_remaining,
           NULL, _("SOURCE") },
         { NULL }
@@ -1041,6 +1696,7 @@ main(int argc, char **argv)
     gtk_application_set_accels_for_action(gtk_app, "app.exit", accel_quit);
     gtk_application_set_accels_for_action(gtk_app, "app.run", accel_run);
     gtk_application_set_accels_for_action(gtk_app, "app.clear", accel_clear);
+    gtk_application_set_accels_for_action(gtk_app, "app.inspect", accel_inspect);
     gtk_application_set_accels_for_action(gtk_app, "app.about", accel_about);
 
     g_application_add_main_option_entries(G_APPLICATION(gtk_app),
@@ -1052,6 +1708,7 @@ main(int argc, char **argv)
     if (self_test_opt)
         status = self_test_status;
 
+    g_clear_object(&app.cancellable);
     g_clear_object(&app.client);
     g_object_unref(gtk_app);
 

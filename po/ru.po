@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Partclone 0.3.3\n"
 "Report-Msgid-Bugs-To: thomas@clonezilla.org\n"
-"POT-Creation-Date: 2026-10-18 19:02+0800\n"
+"POT-Creation-Date: 2026-10-18 20:09+0800\n"
 "PO-Revision-Date: 2023-05-15 18:47+0300\n"
 "Last-Translator: Stanislav Bolshakov <bsv999@mail.ru>\n"
 "Language-Team: Russian\n"
@@ -310,7 +310,8 @@ msgstr "Для этой операции не выбран бэкенд файл
 msgid ""
 "You are not logged as root. You may have \"access denied\" errors when "
 "working.\n"
-msgstr "Вы не вошли как root. Во время работы возможны ошибки \"доступ запрещён\".\n"
+msgstr ""
+"Вы не вошли как root. Во время работы возможны ошибки \"доступ запрещён\".\n"
 
 #: lib/engine.c:211 lib/engine.c:218
 msgid "Error exit\n"
@@ -519,7 +520,7 @@ msgstr "Таблица разделов: %s, записей: %u\n"
 msgid "Partition table: %s\n"
 msgstr "Таблица разделов: %s\n"
 
-#: lib/diskimg.c:450
+#: lib/diskimg.c:450 src/ptc-gtk4.c:771 src/ptc-gtk4.c:798
 msgid "none"
 msgstr "нет"
 
@@ -528,161 +529,371 @@ msgstr "нет"
 msgid "Volumes:         %u\n"
 msgstr "Тома:            %u\n"
 
-#: src/ptc-gtk4.c:181
+#: src/ptc-gtk4.c:251
 msgid "Clone"
 msgstr "Клонировать"
 
-#: src/ptc-gtk4.c:182
+#: src/ptc-gtk4.c:252
 msgid "Restore"
 msgstr "Восстановить"
 
-#: src/ptc-gtk4.c:183
+#: src/ptc-gtk4.c:253
 msgid "Check image"
 msgstr "Проверить образ"
 
-#: src/ptc-gtk4.c:184
+#: src/ptc-gtk4.c:254
 msgid "Device to device (dd)"
 msgstr "Устройство в устройство (dd)"
 
-#: src/ptc-gtk4.c:185
+#: src/ptc-gtk4.c:255
 msgid "Domain log"
 msgstr "Журнал домена"
 
-#: src/ptc-gtk4.c:277 src/ptc-gtk4.c:423
+#: src/ptc-gtk4.c:256
+msgid "Disk clone (whole disk)"
+msgstr "Клонирование диска (весь диск)"
+
+#: src/ptc-gtk4.c:257
+msgid "Disk restore (whole disk)"
+msgstr "Восстановление диска (весь диск)"
+
+#: src/ptc-gtk4.c:258
+msgid "Check disk image"
+msgstr "Проверить образ диска"
+
+#: src/ptc-gtk4.c:363 src/ptc-gtk4.c:807
+msgid "raw"
+msgstr "необработанный"
+
+#: src/ptc-gtk4.c:366
+#, c-format
+msgid "Volume %u/%u: %s (%s)"
+msgstr "Том %u/%u: %s (%s)"
+
+#: src/ptc-gtk4.c:368
+#, c-format
+msgid "Volume %u/%u: %s"
+msgstr "Том %u/%u: %s"
+
+#: src/ptc-gtk4.c:403 src/ptc-gtk4.c:429 src/ptc-gtk4.c:699
 msgid "Running..."
 msgstr "Выполняется..."
 
-#: src/ptc-gtk4.c:316
+#: src/ptc-gtk4.c:426
+#, c-format
+msgid "Volume %u/%u done."
+msgstr "Том %u/%u готов."
+
+#: src/ptc-gtk4.c:526
 msgid "Finished"
 msgstr "Завершено"
 
-#: src/ptc-gtk4.c:317
+#: src/ptc-gtk4.c:527
 msgid "--- finished ---"
 msgstr "--- завершено ---"
 
-#: src/ptc-gtk4.c:319
+#: src/ptc-gtk4.c:529
+msgid "Cancelled"
+msgstr "Отменено"
+
+#: src/ptc-gtk4.c:530
+msgid "--- cancelled ---"
+msgstr "--- отменено ---"
+
+#: src/ptc-gtk4.c:532
 msgid "Failed"
 msgstr "Сбой"
 
-#: src/ptc-gtk4.c:320
+#: src/ptc-gtk4.c:533
 #, c-format
 msgid "--- error: %s ---"
 msgstr "--- ошибка: %s ---"
 
-#: src/ptc-gtk4.c:321
+#: src/ptc-gtk4.c:534
 msgid "unknown error"
 msgstr "неизвестная ошибка"
 
-#: src/ptc-gtk4.c:332
+#: src/ptc-gtk4.c:560
 msgid "self-test: verifying the image"
 msgstr "самопроверка: проверка образа"
 
-#: src/ptc-gtk4.c:376
+#: src/ptc-gtk4.c:568
+msgid "self-test: cloning a whole disk"
+msgstr "самотест: клонирование всего диска"
+
+#: src/ptc-gtk4.c:579
+msgid "self-test: checking the whole-disk image"
+msgstr "самотест: проверка образа всего диска"
+
+#: src/ptc-gtk4.c:626
 msgid "Please choose a source device or image."
 msgstr "Выберите исходное устройство или образ."
 
-#: src/ptc-gtk4.c:380
+#: src/ptc-gtk4.c:630
 msgid "Please choose a target."
 msgstr "Выберите приёмник."
 
-#: src/ptc-gtk4.c:384
+#: src/ptc-gtk4.c:634
 msgid "Please choose a log file."
 msgstr "Выберите файл журнала."
 
-#: src/ptc-gtk4.c:392
+#: src/ptc-gtk4.c:639
+msgid "The device size must be a number of bytes."
+msgstr "Размер устройства должен быть числом байтов."
+
+#: src/ptc-gtk4.c:647
 msgid "Cannot open the log file for writing."
 msgstr "Не удалось открыть файл журнала для записи."
 
-#: src/ptc-gtk4.c:414
+#: src/ptc-gtk4.c:684
 #, c-format
 msgid "=== %s ==="
 msgstr "=== %s ==="
 
-#: src/ptc-gtk4.c:415
+#: src/ptc-gtk4.c:685
 #, c-format
 msgid "source : %s"
 msgstr "источник : %s"
 
-#: src/ptc-gtk4.c:417
+#: src/ptc-gtk4.c:687
 #, c-format
 msgid "target : %s"
 msgstr "приёмник : %s"
 
-#: src/ptc-gtk4.c:418
+#: src/ptc-gtk4.c:689 src/ptc-gtk4.c:693
 #, c-format
 msgid "backend: %s"
 msgstr "бэкенд: %s"
 
-#: src/ptc-gtk4.c:419 src/ptc-gtk4.c:837
+#: src/ptc-gtk4.c:689
+msgid "(whole-disk image, none)"
+msgstr "(образ всего диска, нет)"
+
+#: src/ptc-gtk4.c:690
+#, c-format
+msgid "gaps   : %s"
+msgstr "промежутки: %s"
+
+#: src/ptc-gtk4.c:691
+#, c-format
+msgid "table  : %s"
+msgstr "таблица: %s"
+
+#: src/ptc-gtk4.c:694 src/ptc-gtk4.c:1438
 msgid "auto (detect)"
 msgstr "авто (определение)"
 
-#: src/ptc-gtk4.c:422
+#: src/ptc-gtk4.c:698
 msgid "starting"
 msgstr "запуск"
 
-#: src/ptc-gtk4.c:476
+#: src/ptc-gtk4.c:703 src/ptc-gtk4.c:1574
+msgid "Waiting for the first volume..."
+msgstr "Ожидание первого тома..."
+
+#: src/ptc-gtk4.c:720 src/ptc-gtk4.c:721
+msgid "Cancelling..."
+msgstr "Отмена..."
+
+#: src/ptc-gtk4.c:758
+msgid "Format version"
+msgstr "Версия формата"
+
+#: src/ptc-gtk4.c:760
+msgid "Size"
+msgstr "Размер"
+
+#: src/ptc-gtk4.c:761
+msgid "Sector size"
+msgstr "Размер сектора"
+
+#: src/ptc-gtk4.c:762
+msgid "bytes"
+msgstr "байт"
+
+#: src/ptc-gtk4.c:770 src/ptc-gtk4.c:1315
+msgid "Partition table"
+msgstr "Таблица разделов"
+
+#: src/ptc-gtk4.c:772
+msgid "Volumes"
+msgstr "Тома"
+
+#: src/ptc-gtk4.c:793
+#, c-format
+msgid "Volume %u: %s (%s) at %s, length %s, %s%s\n"
+msgstr "Том %u: %s (%s) со смещения %s, длина %s, %s%s\n"
+
+#: src/ptc-gtk4.c:796
+msgid "sparse"
+msgstr "разрежённый"
+
+#: src/ptc-gtk4.c:796
+msgid "full"
+msgstr "полный"
+
+#: src/ptc-gtk4.c:799
+msgid ", bootable"
+msgstr ", загрузочный"
+
+#: src/ptc-gtk4.c:806
+msgid "File system"
+msgstr "Файловая система"
+
+#: src/ptc-gtk4.c:820
+msgid "Close"
+msgstr "Закрыть"
+
+#: src/ptc-gtk4.c:859
+msgid "Cannot read the image."
+msgstr "Не удалось прочитать образ."
+
+#: src/ptc-gtk4.c:865
+#, c-format
+msgid "=== image: %s ==="
+msgstr "=== образ: %s ==="
+
+#: src/ptc-gtk4.c:932
+msgid "Select an image to inspect"
+msgstr "Выберите образ для просмотра"
+
+#: src/ptc-gtk4.c:955
 msgid "GTK4 front end for the libpartclone partition cloning library."
 msgstr "Интерфейс GTK4 для библиотеки клонирования разделов libpartclone."
 
-#: src/ptc-gtk4.c:514
+#: src/ptc-gtk4.c:1001
 msgid "An operation is still running."
 msgstr "Операция всё ещё выполняется."
 
-#: src/ptc-gtk4.c:516
-msgid "Quitting now will abort the operation."
-msgstr "Выход сейчас прервёт операцию."
+#: src/ptc-gtk4.c:1003
+msgid "Quitting now will cancel the operation and leave the target incomplete."
+msgstr "Выход сейчас отменит операцию и оставит приёмник незавершённым."
 
-#: src/ptc-gtk4.c:518
+#: src/ptc-gtk4.c:1005 src/ptc-gtk4.c:1553
 msgid "Cancel"
 msgstr "Отмена"
 
-#: src/ptc-gtk4.c:518
+#: src/ptc-gtk4.c:1005
 msgid "Quit"
 msgstr "Выйти"
 
-#: src/ptc-gtk4.c:587
+#: src/ptc-gtk4.c:1075
 msgid "Select source device or image"
 msgstr "Выбор исходного устройства или образа"
 
-#: src/ptc-gtk4.c:622
+#: src/ptc-gtk4.c:1110
 msgid "Select target device or image"
 msgstr "Выбор приёмника или образа"
 
-#: src/ptc-gtk4.c:657
+#: src/ptc-gtk4.c:1145
 msgid "Select log file"
 msgstr "Выбор файла журнала"
 
-#: src/ptc-gtk4.c:700
+#: src/ptc-gtk4.c:1224
 #, c-format
 msgid "self-test: cloning %s"
 msgstr "самопроверка: клонирование %s"
 
-#: src/ptc-gtk4.c:764
+#: src/ptc-gtk4.c:1293
+msgid "Whole-disk image options (format 0003)"
+msgstr "Параметры образа всего диска (формат 0003)"
+
+#: src/ptc-gtk4.c:1309
+msgid ""
+"How the gaps between partitions (boot loaders, padding, backup GPT) are "
+"stored."
+msgstr ""
+"Как хранятся промежутки между разделами (загрузчики, заполнение, резервная "
+"GPT)."
+
+#: src/ptc-gtk4.c:1311
+msgid "Gaps"
+msgstr "Промежутки"
+
+#: src/ptc-gtk4.c:1317
+msgid ""
+"How the partition table is written on restore: verbatim, or rebuilt for a "
+"target of a different size."
+msgstr ""
+"Как записывается таблица разделов при восстановлении: как есть или "
+"перестраивается для приёмника другого размера."
+
+#: src/ptc-gtk4.c:1323
+msgid "Store raw volumes sparsely"
+msgstr "Хранить необработанные тома разрежённо"
+
+#: src/ptc-gtk4.c:1325
+msgid ""
+"Use a zero-detecting bitmap for raw volumes (gaps and unsupported "
+"partitions)."
+msgstr ""
+"Использовать битовую карту обнаружения нулей для необработанных томов "
+"(промежутки и неподдерживаемые разделы)."
+
+#: src/ptc-gtk4.c:1328
+msgid "Store every partition as raw"
+msgstr "Хранить каждый раздел как необработанный"
+
+#: src/ptc-gtk4.c:1330
+msgid ""
+"Do not use the per-filesystem backend, so every partition is a raw volume."
+msgstr ""
+"Не использовать бэкенд для отдельных файловых систем, чтобы каждый раздел "
+"был необработанным томом."
+
+#: src/ptc-gtk4.c:1333
+msgid "Do not zero skipped blocks"
+msgstr "Не обнулять пропущенные блоки"
+
+#: src/ptc-gtk4.c:1335
+msgid ""
+"On restore, leave blocks absent from the image untouched instead of writing "
+"zeros."
+msgstr ""
+"При восстановлении оставлять отсутствующие в образе блоки нетронутыми вместо "
+"записи нулей."
+
+#: src/ptc-gtk4.c:1338
+msgid "Grow the last partition"
+msgstr "Расширить последний раздел"
+
+#: src/ptc-gtk4.c:1340
+msgid ""
+"On a larger target, extend the last partition entry (the filesystem itself "
+"is not resized)."
+msgstr ""
+"На приёмнике большего размера расширить последнюю запись раздела (сама "
+"файловая система не изменяется)."
+
+#: src/ptc-gtk4.c:1363
 msgid "_Run"
 msgstr "_Запуск"
 
-#: src/ptc-gtk4.c:765
+#: src/ptc-gtk4.c:1364
+msgid "_Inspect image..."
+msgstr "_Просмотреть образ..."
+
+#: src/ptc-gtk4.c:1365
 msgid "_Clear log"
 msgstr "_Очистить журнал"
 
-#: src/ptc-gtk4.c:766
+#: src/ptc-gtk4.c:1366
 msgid "_About"
 msgstr "_О программе"
 
-#: src/ptc-gtk4.c:767
+#: src/ptc-gtk4.c:1367
 msgid "_Quit"
 msgstr "_Выход"
 
-#: src/ptc-gtk4.c:775
+#: src/ptc-gtk4.c:1375
 msgid "Main menu"
 msgstr "Главное меню"
 
-#: src/ptc-gtk4.c:796
+#: src/ptc-gtk4.c:1397
 msgid "partclone"
 msgstr "partclone"
 
-#: src/ptc-gtk4.c:807
+#: src/ptc-gtk4.c:1408
 #, c-format
 msgid ""
 "libpartclone %s\n"
@@ -691,159 +902,199 @@ msgstr ""
 "libpartclone %s\n"
 "бэкенды: %s"
 
-#: src/ptc-gtk4.c:824
+#: src/ptc-gtk4.c:1425
 msgid "Mode"
 msgstr "Режим"
 
-#: src/ptc-gtk4.c:828
+#: src/ptc-gtk4.c:1429
 msgid ""
-"Operation to perform. The available target fields change with the selected "
-"mode."
-msgstr "Выполняемая операция. Доступные поля приёмника зависят от выбранного режима."
+"Operation to perform. The available fields change with the selected mode."
+msgstr "Выполняемая операция. Доступные поля зависят от выбранного режима."
 
-#: src/ptc-gtk4.c:841
+#: src/ptc-gtk4.c:1442
 msgid "Backend"
 msgstr "Бэкенд"
 
-#: src/ptc-gtk4.c:845
-msgid "Filesystem backend. Use \"auto (detect)\" to let partclone pick one."
-msgstr "Бэкенд файловой системы. Используйте \"авто (определение)\", чтобы partclone выбрал его сам."
+#: src/ptc-gtk4.c:1446
+msgid ""
+"Filesystem backend. Use \"auto (detect)\" to let partclone pick one. Not "
+"used for whole-disk images."
+msgstr ""
+"Бэкенд файловой системы. Используйте \"авто (определение)\", чтобы partclone "
+"выбрал его сам. Не используется для образов всего диска."
 
-#: src/ptc-gtk4.c:851
+#: src/ptc-gtk4.c:1453
 msgid "Source"
 msgstr "Источник"
 
-#: src/ptc-gtk4.c:855
+#: src/ptc-gtk4.c:1457
 msgid "Device or image the data is read from."
 msgstr "Устройство или образ, из которого читаются данные."
 
-#: src/ptc-gtk4.c:857 src/ptc-gtk4.c:870 src/ptc-gtk4.c:884
+#: src/ptc-gtk4.c:1459 src/ptc-gtk4.c:1472 src/ptc-gtk4.c:1486
 msgid "Browse..."
 msgstr "Обзор..."
 
-#: src/ptc-gtk4.c:863
+#: src/ptc-gtk4.c:1465
 msgid "Target"
 msgstr "Приёмник"
 
-#: src/ptc-gtk4.c:868
+#: src/ptc-gtk4.c:1470
 msgid "Device or image the data is written to."
 msgstr "Устройство или образ, в который записываются данные."
 
-#: src/ptc-gtk4.c:877
+#: src/ptc-gtk4.c:1479
 msgid "Log file"
 msgstr "Файл журнала"
 
-#: src/ptc-gtk4.c:882
+#: src/ptc-gtk4.c:1484
 msgid "The engine writes its detailed report to this file."
 msgstr "Движок записывает в этот файл свой подробный отчёт."
 
-#: src/ptc-gtk4.c:891
+#: src/ptc-gtk4.c:1492
+msgid "Device size"
+msgstr "Размер устройства"
+
+#: src/ptc-gtk4.c:1494
+msgid "0 = auto (bytes)"
+msgstr "0 = авто (байт)"
+
+#: src/ptc-gtk4.c:1497
+msgid ""
+"Override the device size in bytes when it cannot be detected (clone only)."
+msgstr ""
+"Переопределить размер устройства в байтах, когда его невозможно определить "
+"(только при клонировании)."
+
+#: src/ptc-gtk4.c:1504
 msgid "Skip target size check (-C)"
 msgstr "Пропустить проверку размера приёмника (-C)"
 
-#: src/ptc-gtk4.c:894
+#: src/ptc-gtk4.c:1507
 msgid "Do not check that the target is large enough before writing."
 msgstr "Не проверять, достаточно ли велик приёмник, перед записью."
 
-#: src/ptc-gtk4.c:896
+#: src/ptc-gtk4.c:1509
 msgid "Force (-F)"
 msgstr "Принудительно (-F)"
 
-#: src/ptc-gtk4.c:899
+#: src/ptc-gtk4.c:1512
 msgid ""
 "Keep the process alive on recoverable errors and report them in the log "
 "instead of aborting."
-msgstr "Продолжать работу при устранимых ошибках и сообщать о них в журнале вместо аварийного завершения."
+msgstr ""
+"Продолжать работу при устранимых ошибках и сообщать о них в журнале вместо "
+"аварийного завершения."
 
-#: src/ptc-gtk4.c:902
+#: src/ptc-gtk4.c:1515
 msgid "Quiet engine output"
 msgstr "Тихий вывод движка"
 
-#: src/ptc-gtk4.c:905
+#: src/ptc-gtk4.c:1518
 msgid "Suppress the progress messages the engine would print on stdout."
 msgstr "Подавлять сообщения о ходе работы, которые движок выводил бы в stdout."
 
-#: src/ptc-gtk4.c:907
+#: src/ptc-gtk4.c:1520
 msgid "Overwrite target (-O)"
 msgstr "Перезаписать приёмник (-O)"
 
-#: src/ptc-gtk4.c:909
+#: src/ptc-gtk4.c:1522
 msgid ""
 "Replace the target if it already exists (required to update an existing "
 "image)."
-msgstr "Заменить приёмник, если он уже существует (требуется для обновления существующего образа)."
+msgstr ""
+"Заменить приёмник, если он уже существует (требуется для обновления "
+"существующего образа)."
 
-#: src/ptc-gtk4.c:919
+#: src/ptc-gtk4.c:1531
+msgid "Debug level"
+msgstr "Уровень отладки"
+
+#: src/ptc-gtk4.c:1535
+msgid "Engine verbosity: 0 quiet, 1 or 2 increasingly detailed."
+msgstr "Подробность движка: 0 — тихо, 1 или 2 — всё подробнее."
+
+#: src/ptc-gtk4.c:1548
 msgid "Run"
 msgstr "Запустить"
 
-#: src/ptc-gtk4.c:922
+#: src/ptc-gtk4.c:1551
 msgid "Start the operation (F5)."
 msgstr "Начать операцию (F5)."
 
-#: src/ptc-gtk4.c:924
+#: src/ptc-gtk4.c:1555
+msgid "Stop the running operation at the next block boundary."
+msgstr "Остановить выполняемую операцию на следующей границе блока."
+
+#: src/ptc-gtk4.c:1558
 msgid "Clear log"
 msgstr "Очистить журнал"
 
-#: src/ptc-gtk4.c:925
+#: src/ptc-gtk4.c:1559
 msgid "Clear the log view (Ctrl+L)."
 msgstr "Очистить окно журнала (Ctrl+L)."
 
-#: src/ptc-gtk4.c:934
+#: src/ptc-gtk4.c:1569
 msgid "idle"
 msgstr "простой"
 
-#: src/ptc-gtk4.c:937
+#: src/ptc-gtk4.c:1585
 msgid "Ready"
 msgstr "Готово"
 
-#: src/ptc-gtk4.c:977
+#: src/ptc-gtk4.c:1625
 #, c-format
 msgid "libpartclone %s ready."
 msgstr "libpartclone %s готов."
 
-#: src/ptc-gtk4.c:993
+#: src/ptc-gtk4.c:1641
 #, c-format
 msgid "[!] Unknown backend: %s"
 msgstr "[!] Неизвестный бэкенд: %s"
 
-#: src/ptc-gtk4.c:1001
+#: src/ptc-gtk4.c:1649
 #, c-format
 msgid "[!] Unknown mode: %s"
 msgstr "[!] Неизвестный режим: %s"
 
-#: src/ptc-gtk4.c:1015
-msgid "Clone a temporary file, verify it, then quit (headless test)"
-msgstr "Клонировать временный файл, проверить его и выйти (тест без интерфейса)"
+#: src/ptc-gtk4.c:1663
+msgid "Clone, check, then do a whole-disk round-trip and quit (headless test)"
+msgstr ""
+"Клонировать, проверить, затем выполнить полный цикл для всего диска и выйти "
+"(автономный тест)"
 
-#: src/ptc-gtk4.c:1018
+#: src/ptc-gtk4.c:1666
 msgid "Source device or image"
 msgstr "Исходное устройство или образ"
 
-#: src/ptc-gtk4.c:1018 src/ptc-gtk4.c:1020
+#: src/ptc-gtk4.c:1666 src/ptc-gtk4.c:1668
 msgid "PATH"
 msgstr "ПУТЬ"
 
-#: src/ptc-gtk4.c:1020
+#: src/ptc-gtk4.c:1668
 msgid "Target device or image"
 msgstr "Приёмник или образ"
 
-#: src/ptc-gtk4.c:1022
+#: src/ptc-gtk4.c:1670
 msgid "Backend name (default: autodetect)"
 msgstr "Имя бэкенда (по умолчанию: автоопределение)"
 
-#: src/ptc-gtk4.c:1022
+#: src/ptc-gtk4.c:1670
 msgid "NAME"
 msgstr "ИМЯ"
 
-#: src/ptc-gtk4.c:1024
-msgid "Operation: clone, restore, check, dd or domain"
-msgstr "Операция: clone, restore, check, dd или domain"
+#: src/ptc-gtk4.c:1672
+msgid ""
+"Operation: clone, restore, check, dd, domain, disk-clone, disk-restore or "
+"disk-check"
+msgstr ""
+"Операция: clone, restore, check, dd, domain, disk-clone, disk-restore или "
+"disk-check"
 
-#: src/ptc-gtk4.c:1024
+#: src/ptc-gtk4.c:1673
 msgid "MODE"
 msgstr "РЕЖИМ"
 
-#: src/ptc-gtk4.c:1026
+#: src/ptc-gtk4.c:1675
 msgid "SOURCE"
 msgstr "ИСТОЧНИК"
