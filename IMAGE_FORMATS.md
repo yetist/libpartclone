@@ -618,7 +618,10 @@ phase 4:
     `::volume-progress` and `::volume-finished`, in addition to the existing
     overall `::progress`.
   - `ptc_image_is_disk()` distinguishes a 0003 container from a plain 0002 image.
-  - A `GCancellable` aborts between volumes and between block strips.
+  - A `GCancellable` aborts the operation: between blocks for the plain
+    clone/restore modes, and between volumes and block strips for the
+    whole-disk ones.  The target is left incomplete and the call fails with
+    %G_IO_ERROR_CANCELLED.
 
 ## Integrity, validation and security
 

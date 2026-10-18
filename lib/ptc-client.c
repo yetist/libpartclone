@@ -719,9 +719,9 @@ static void
 ptc_client_engine_progress_cb(unsigned long long copied, unsigned long long total,
                               gpointer user_data)
 {
-    PtcClient *self = PTC_CLIENT(user_data);
+    PtcRunContext *ctx = user_data;
 
-    g_signal_emit(self, signals[SIGNAL_PROGRESS], 0,
+    g_signal_emit(ctx->self, signals[SIGNAL_PROGRESS], 0,
                   (guint64)copied, (guint64)total);
 }
 
@@ -794,6 +794,20 @@ ptc_client_parse_ptable(const char *ptable)
     if (g_strcmp0(ptable, "regenerate") == 0)
         return PTC_PT_REGENERATE;
     return PTC_PT_AUTO;
+}
+
+/**
+ * ptc_client_set_run_error - turn an engine return code into a #GError.
+ */
+static void
+ptc_client_set_run_error(int ret, GCancellable *cancellable, GError **error)
+{
+    if (ret == -2 || (cancellable != NULL && g_cancellable_is_cancelled(cancellable)))
+        g_set_error_literal(error, G_IO_ERROR, G_IO_ERROR_CANCELLED,
+                            "operation was cancelled");
+    else
+        g_set_error(error, PTC_CLIENT_ERROR, PTC_CLIENT_ERROR_FAILED,
+                    "Operation failed (code %d)", ret);
 }
 
 static int
@@ -871,15 +885,8 @@ ptc_client_run_internal(PtcClient *self, GCancellable *cancellable, GError **err
         };
 
         ret = ptc_disk_engine_run(&disk_progress);
-        if (ret != 0) {
-            if (ret == -2 ||
-                (cancellable != NULL && g_cancellable_is_cancelled(cancellable)))
-                g_set_error_literal(error, G_IO_ERROR, G_IO_ERROR_CANCELLED,
-                                    "operation was cancelled");
-            else
-                g_set_error(error, PTC_CLIENT_ERROR, PTC_CLIENT_ERROR_FAILED,
-                            "Operation failed (code %d)", ret);
-        }
+        if (ret != 0)
+            ptc_client_set_run_error(ret, cancellable, error);
         return ret;
     }
 
@@ -901,10 +908,14 @@ ptc_client_run_internal(PtcClient *self, GCancellable *cancellable, GError **err
         }
     }
 
-    ret = ptc_engine_run(backend, ptc_client_engine_progress_cb, self);
+    {
+        PtcRunContext ctx = { self, cancellable };
+
+        ret = ptc_engine_run(backend, ptc_client_engine_progress_cb,
+                             ptc_client_cancelled_cb, &ctx);
+    }
     if (ret != 0)
-        g_set_error(error, PTC_CLIENT_ERROR, PTC_CLIENT_ERROR_FAILED,
-                    "Operation failed (code %d)", ret);
+        ptc_client_set_run_error(ret, cancellable, error);
 
     return ret;
 }

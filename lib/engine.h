@@ -35,6 +35,19 @@ typedef void (*ptc_progress_func)(unsigned long long copied,
                                   gpointer user_data);
 
 /**
+ * ptc_cancel_func:
+ * @user_data: (closure): user data.
+ *
+ * Cancellation callback polled by the engine between block strips.  When it
+ * returns %TRUE the operation is aborted as soon as possible and the engine
+ * returns a negative value (the target is left incomplete).  It may be called
+ * from the thread that runs the engine; it must be cheap and must not block.
+ *
+ * Returns: %TRUE when the caller wants to abort the operation.
+ */
+typedef gboolean (*ptc_cancel_func)(gpointer user_data);
+
+/**
  * ptc_volume_info:
  * @index: 1-based volume number, in stream order.
  * @count: total number of volumes in the image.
@@ -93,30 +106,37 @@ typedef struct {
  * ptc_engine_run:
  * @backend: (nullable): filesystem backend to use for clone/dd/domain modes.
  * @progress: (nullable): progress callback.
- * @user_data: (closure): data passed to @progress.
+ * @cancelled: (nullable): cancellation callback.
+ * @user_data: (closure): data passed to @progress and @cancelled.
  *
  * Runs the clone/restore engine using the global #cmd_opt (see ptc_parse_options()
  * or set the fields directly).  #fs_opt is initialised from #cmd_opt.
  *
- * Returns: 0 on success, non-zero on failure.
+ * When @cancelled returns %TRUE the operation is aborted at the next block
+ * boundary and the target (image or device) is left incomplete.
+ *
+ * Returns: 0 on success, -1 on failure, -2 when cancelled.
  */
 int ptc_engine_run(const ptc_fs_backend *backend,
                    ptc_progress_func progress,
+                   ptc_cancel_func cancelled,
                    gpointer user_data);
 
 /**
  * ptc_engine_run_named:
  * @backend_name: (nullable): backend name, or %NULL.
  * @progress: (nullable): progress callback.
- * @user_data: (closure): data passed to @progress.
+ * @cancelled: (nullable): cancellation callback.
+ * @user_data: (closure): data passed to @progress and @cancelled.
  *
  * Convenience wrapper around ptc_engine_run() that looks @backend_name up in the
  * backend registry.
  *
- * Returns: 0 on success, non-zero on failure.
+ * Returns: 0 on success, -1 on failure, -2 when cancelled.
  */
 int ptc_engine_run_named(const char *backend_name,
                          ptc_progress_func progress,
+                         ptc_cancel_func cancelled,
                          gpointer user_data);
 
 /**

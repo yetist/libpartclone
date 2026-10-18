@@ -17,7 +17,8 @@ set -e
 # device.
 #
 # Phase 4: --grow (partition entry only), the partclone.info view of the volumes
-# and the libpartclone GObject API (PtcImage / PtcClient disk modes).
+# and the libpartclone GObject API (PtcImage / PtcClient disk modes, with
+# GCancellable cancellation of both the plain and the whole-disk operations).
 
 ptlfs="../src/partclone.disk"
 bs=4096
@@ -438,7 +439,40 @@ EOF
         ./ptc-image-probe clone $p4_src $p4_goimg $logfile >/dev/null 2>&1
         _check_return_code
         ./ptc-image-probe info $p4_goimg 2>&1 | grep -q "^is-disk=yes"
-        rm -f $$_p4go.txt $p4_goimg
+
+        echo -e "[goapi] GCancellable aborts a whole-disk clone\n"
+        p4_cancel="$$_p4cancel.ptc"
+        rm -f $p4_cancel
+        if ./ptc-image-probe clone $p4_src $p4_cancel $logfile cancel > $$_p4go.txt 2>&1; then
+            grep -q "^cancelled=yes" $$_p4go.txt || { echo -e "\n[goapi] disk clone cancellation not reported\n"; cat $$_p4go.txt; exit 1; }
+        else
+            echo -e "\n[goapi] disk clone was not cancelled\n"; cat $$_p4go.txt; exit 1
+        fi
+
+        echo -e "[goapi] GCancellable aborts a classic clone and restore\n"
+        p4_fs="$$_p4fs.raw"
+        p4_fsimg="$$_p4fs.ptc"
+        p4_fsout="$$_p4fs.out"
+        truncate -s $((8*1024*1024)) $p4_fs
+        dd if=/dev/urandom of=$p4_fs bs=4096 count=16 seek=1 conv=notrunc status=none
+        # the normal path still works ...
+        rm -f $p4_fsimg
+        ./ptc-image-probe fs-clone $p4_fs $p4_fsimg $logfile >/dev/null 2>&1
+        _check_return_code
+        # ... a cancelled clone is aborted ...
+        if ./ptc-image-probe fs-clone $p4_fs $p4_cancel $logfile cancel > $$_p4go.txt 2>&1; then
+            grep -q "^cancelled=yes" $$_p4go.txt || { echo -e "\n[goapi] fs clone cancellation not reported\n"; cat $$_p4go.txt; exit 1; }
+        else
+            echo -e "\n[goapi] fs clone was not cancelled\n"; cat $$_p4go.txt; exit 1
+        fi
+        # ... and so is a cancelled restore.
+        truncate -s $((8*1024*1024)) $p4_fsout
+        if ./ptc-image-probe fs-restore $p4_fsimg $p4_fsout $logfile cancel > $$_p4go.txt 2>&1; then
+            grep -q "^cancelled=yes" $$_p4go.txt || { echo -e "\n[goapi] fs restore cancellation not reported\n"; cat $$_p4go.txt; exit 1; }
+        else
+            echo -e "\n[goapi] fs restore was not cancelled\n"; cat $$_p4go.txt; exit 1
+        fi
+        rm -f $$_p4go.txt $p4_goimg $p4_cancel $p4_fs $p4_fsimg $p4_fsout
     else
         echo -e "[goapi] ptc-image-probe not built; skipping GObject API test\n"
     fi

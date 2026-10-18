@@ -69,12 +69,34 @@ fs_cmd_opt fs_opt;
 static ptc_progress_func engine_progress_cb;
 static gpointer engine_progress_data;
 
+/// optional cancellation callback used by the GObject API
+static ptc_cancel_func engine_cancel_cb;
+static gpointer engine_cancel_data;
+static gboolean engine_cancelled;
+
+/**
+ * engine_poll_cancel - has the caller requested cancellation?
+ *
+ * Cheap to call between block strips; once set the flag stays set.
+ */
+static gboolean engine_poll_cancel(void)
+{
+	if (!engine_cancelled && engine_cancel_cb != NULL &&
+	    engine_cancel_cb(engine_cancel_data))
+		engine_cancelled = TRUE;
+	return engine_cancelled;
+}
+
 /**
  * ptc_engine_run - for clone or restore data using an already parsed cmd_opt.
  */
-int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gpointer user_data) {
+int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress,
+		   ptc_cancel_func cancelled, gpointer user_data) {
 	engine_progress_cb = progress;
 	engine_progress_data = user_data;
+	engine_cancel_cb = cancelled;
+	engine_cancel_data = user_data;
+	engine_cancelled = FALSE;
 
 #ifdef MEMTRACE
 	setenv("MALLOC_TRACE", "partclone_mtrace.log", 1);
@@ -510,6 +532,9 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gp
 		unsigned int cs_added = 0, write_offset = 0;
 		off_t offset;
 
+			if (engine_poll_cancel())
+				break;
+
 			/// skip unused blocks
 			for (blocks_skip = 0;
 			     block_id + blocks_skip < blocks_total &&
@@ -616,20 +641,22 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gp
 
 		} while (1);
 
-		if (opt.blockfile == 1) {
-			torrent_final(&bt.torrent);
-		} else {
-			if (blocks_in_cs > 0) {
+		if (!engine_cancelled) {
+			if (opt.blockfile == 1) {
+				torrent_final(&bt.torrent);
+			} else {
+				if (blocks_in_cs > 0) {
 
-				// Write the checksum for the latest blocks
-				log_mesg(1, 0, 0, debug, "Write the checksum for the latest blocks. size = %i\n", cs_size);
-				finalize_checksum(checksum);
-				char* checksum_str = format_checksum(checksum, cs_size);
-				log_mesg(3, 0, 0, debug, "checksum_code = %s \n", checksum_str);
-				free(checksum_str);
-				w_size = write_all(&dfw, (char*)checksum, cs_size, &opt);
-				if (w_size != cs_size)
-					log_mesg(0, 1, 1, debug, "image write ERROR:%s\n", strerror(errno));
+					// Write the checksum for the latest blocks
+					log_mesg(1, 0, 0, debug, "Write the checksum for the latest blocks. size = %i\n", cs_size);
+					finalize_checksum(checksum);
+					char* checksum_str = format_checksum(checksum, cs_size);
+					log_mesg(3, 0, 0, debug, "checksum_code = %s \n", checksum_str);
+					free(checksum_str);
+					w_size = write_all(&dfw, (char*)checksum, cs_size, &opt);
+					if (w_size != cs_size)
+						log_mesg(0, 1, 1, debug, "image write ERROR:%s\n", strerror(errno));
+				}
 			}
 		}
 
@@ -646,6 +673,9 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gp
 		off_t partial_offset = INT32_MAX;
 
 		while (total_offset) {
+
+			if (engine_poll_cancel())
+				break;
 
 			if (partial_offset > total_offset)
 				partial_offset = total_offset;
@@ -741,6 +771,8 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gp
 			unsigned int blocks_read = copied + buffer_capacity < blocks_used ?
 				buffer_capacity : blocks_used - copied;
 			if (!blocks_read)
+			    break;
+			if (engine_poll_cancel())
 			    break;
 			if (blocks_read < 0)
 			    log_mesg(0, 1, 1, debug, "blocks_read ERROR: impossible size of blocks_read\n");
@@ -910,12 +942,15 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gp
 		} while(1);
 
 		// finish SHA1 for torrent info
-		if (opt.blockfile == 1) {
+		if (opt.blockfile == 1 && !engine_cancelled) {
 			torrent_final(&bt.torrent);
 		}
 		free(read_buffer);
 		free(write_buffer);
 		if (empty_buffer) {
+		    if (engine_cancelled) {
+			free(empty_buffer);
+		    } else {
 		    if (block_id < blocks_total && skip_blocks(&dfw, empty_buffer, block_size, blocks_total - block_id, &opt, &block_id) < 0) {
 			log_mesg(0, 0, 1, debug, "target seek ERROR:%s\n", strerror(errno));
 		    }
@@ -923,9 +958,10 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gp
 			log_mesg(0, 0, 1, debug, "target seek ERROR:%s\n", strerror(errno));
 		    }
 		    free(empty_buffer);
+		    }
 		}
 
-		if (!opt.chkimg) {
+		if (!opt.chkimg && !engine_cancelled) {
 			/// restore_raw_file option
 			if (opt.restore_raw_file && !pc_test_bit(blocks_total - 1, bitmap, fs_info.totalblock)) {
 			    if (ftruncate(dfw, (off_t)fs_info.device_size) == -1){
@@ -984,6 +1020,9 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gp
 			/// scan bitmap
 			unsigned long long blocks_skip, blocks_read;
 			off_t offset;
+
+			if (engine_poll_cancel())
+				break;
 
 			/// skip unused blocks
 			for (blocks_skip = 0;
@@ -1052,6 +1091,9 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gp
 
 		free(buffer);
 		if (empty_buffer) {
+		    if (engine_cancelled) {
+			free(empty_buffer);
+		    } else {
 			if (block_id < blocks_total && skip_blocks(&dfw, empty_buffer, block_size, blocks_total - block_id, &opt, &block_id) < 0) {
 				log_mesg(0, 0, 1, debug, "write empty ERROR:%s\n", strerror(errno));
 			}
@@ -1059,10 +1101,11 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gp
 				log_mesg(0, 0, 1, debug, "write empty ERROR:%s\n", strerror(errno));
 			}
 			free(empty_buffer);
+		    }
 		}
 
 		/// restore_raw_file option
-		if (opt.restore_raw_file && !pc_test_bit(blocks_total - 1, bitmap, fs_info.totalblock)) {
+		if (!engine_cancelled && opt.restore_raw_file && !pc_test_bit(blocks_total - 1, bitmap, fs_info.totalblock)) {
 		    if (ftruncate(dfw, (off_t)fs_info.device_size) == -1){
 			log_mesg(0, 0, 1, debug, "ftruncate ERROR:%s\n", strerror(errno));
 		    }
@@ -1085,6 +1128,8 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gp
 		// start logging the used/unused areas
 		cmp = pc_test_bit(0, bitmap, fs_info.totalblock);
 		for (block_id = 0; block_id <= fs_info.totalblock; block_id++) {
+			if (engine_poll_cancel())
+				break;
 			if (block_id < fs_info.totalblock) {
 				nx_current = pc_test_bit(block_id, bitmap, fs_info.totalblock);
 				if (nx_current)
@@ -1138,6 +1183,9 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gp
 		do {
 			/// scan bitmap
 			unsigned long long blocks_read;
+
+			if (engine_poll_cancel())
+				break;
 
 			/// read chunk from source
 			for (blocks_read = 0;
@@ -1213,14 +1261,14 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gp
 		} while (1);
 
 		// finish SHA1 for torrent info
-		if (opt.blockfile == 1) {
+		if (opt.blockfile == 1 && !engine_cancelled) {
 			torrent_final(&bt.torrent);
 		}
 
 		free(buffer);
 
 		/// restore_raw_file option
-		if (opt.restore_raw_file && !pc_test_bit(blocks_total - 1, bitmap, fs_info.totalblock)) {
+		if (!engine_cancelled && opt.restore_raw_file && !pc_test_bit(blocks_total - 1, bitmap, fs_info.totalblock)) {
 		    if (ftruncate(dfw, (off_t)fs_info.device_size) == -1){
 			log_mesg(0, 0, 1, debug, "ftruncate ERROR:%s\n", strerror(errno));
 		    }
@@ -1237,11 +1285,12 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gp
 	    log_mesg(0, 1, 1, debug, "%s, %i, thread join error\n", __func__, __LINE__);
 	update_pui(&prog, copied, block_id, done);
 	json_status_finish(&prog, copied, block_id);
-	if (!opt.chkimg)
+	if (!opt.chkimg && !engine_cancelled)
 		sync_data(dfw, &opt);
-	print_finish_info(opt);
+	if (!engine_cancelled)
+		print_finish_info(opt);
 
-	if (!opt.chkimg) {
+	if (!opt.chkimg && !engine_cancelled) {
 		/// Filesystem-specific post-clone fixups (e.g. HFS+ alternate volume
 		/// header must be copied to the end of a larger target device).
 		/// Only meaningful when writing to a block device (dd / restore / ddd);
@@ -1266,7 +1315,9 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gp
 	/// free bitmp
 	free(bitmap);
 	close_pui(pui);
-	if (!opt.chkimg)
+	if (engine_cancelled)
+		log_mesg(0, 0, 1, debug, "Operation cancelled.\n");
+	else if (!opt.chkimg)
 		fprintf(stderr, "Cloned successfully.\n");
 	else
 		printf("Checked successfully.\n");
@@ -1279,7 +1330,7 @@ int ptc_engine_run(const ptc_fs_backend *backend, ptc_progress_func progress, gp
 	muntrace();
 #endif
 	release_checksum();
-	return 0;      /// finish
+	return engine_cancelled ? -2 : 0;      /// finish
 }
 
 void *thread_update_pui(void *arg) {
@@ -1296,7 +1347,7 @@ void *thread_update_pui(void *arg) {
 }
 
 int ptc_engine_run_named(const char *backend_name, ptc_progress_func progress,
-                         gpointer user_data) {
+                         ptc_cancel_func cancelled, gpointer user_data) {
 	const ptc_fs_backend *backend = NULL;
 
 	if (backend_name != NULL) {
@@ -1305,5 +1356,5 @@ int ptc_engine_run_named(const char *backend_name, ptc_progress_func progress,
 			log_mesg(0, 1, 1, opt.debug,
 			         "Unknown filesystem backend: %s\n", backend_name);
 	}
-	return ptc_engine_run(backend, progress, user_data);
+	return ptc_engine_run(backend, progress, cancelled, user_data);
 }

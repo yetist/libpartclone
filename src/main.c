@@ -146,5 +146,5 @@ main(int argc, char **argv)
         }
     }
 
-    return ptc_engine_run(backend, NULL, NULL);
+    return ptc_engine_run(backend, NULL, NULL, NULL);
 }

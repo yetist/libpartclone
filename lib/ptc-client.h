@@ -182,6 +182,10 @@ const char *ptc_client_get_partition_table(PtcClient *self);
  * process can only run one operation at a time; calls are serialised with an
  * internal lock.
  *
+ * Cancelling @cancellable aborts the operation at the next block boundary
+ * (every mode, plain or whole-disk).  The call then fails with
+ * %G_IO_ERROR_CANCELLED and the target (image or device) is left incomplete.
+ *
  * Returns: %TRUE on success, %FALSE on error with @error set.
  */
 gboolean ptc_client_run(PtcClient *self,
@@ -196,6 +200,10 @@ gboolean ptc_client_run(PtcClient *self,
  * @user_data: (closure): user data for @callback.
  *
  * Runs the operation in a worker thread.
+ *
+ * Cancelling @cancellable (from any thread) aborts the operation as described
+ * for ptc_client_run() and makes ptc_client_run_finish() fail with
+ * %G_IO_ERROR_CANCELLED.
  */
 void ptc_client_run_async(PtcClient *self,
                           GCancellable *cancellable,

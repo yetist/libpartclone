@@ -7,12 +7,23 @@
  *   ptc-image-probe info IMAGE
  *       Print the metadata of an image (PtcImage) and its volumes.
  *
- *   ptc-image-probe clone SOURCE TARGET LOGFILE
+ *   ptc-image-probe clone SOURCE TARGET LOGFILE [cancel]
  *       Whole-disk clone through PtcClient (PTC_MODE_DISK_CLONE) and report the
  *       ::volume-started / ::volume-finished signals.
  *
- *   ptc-image-probe restore SOURCE TARGET LOGFILE
+ *   ptc-image-probe restore SOURCE TARGET LOGFILE [cancel]
  *       Whole-disk restore through PtcClient (PTC_MODE_DISK_RESTORE).
+ *
+ *   ptc-image-probe fs-clone SOURCE TARGET LOGFILE [cancel]
+ *       Plain (single filesystem/raw) clone through PtcClient (PTC_MODE_CLONE,
+ *       raw backend) - used to check GCancellable support.
+ *
+ *   ptc-image-probe fs-restore SOURCE TARGET LOGFILE [cancel]
+ *       Plain restore through PtcClient (PTC_MODE_RESTORE).
+ *
+ * When the trailing argument is "cancel" the GCancellable is cancelled before
+ * the run starts; the probe then only succeeds if the operation was aborted
+ * with G_IO_ERROR_CANCELLED.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -95,9 +106,11 @@ do_info(const char *path)
 }
 
 static int
-do_run(PtcMode mode, const char *source, const char *target, const char *logfile)
+do_run(PtcMode mode, const char *backend, const char *source, const char *target,
+       const char *logfile, gboolean cancel)
 {
     GError *error = NULL;
+    GCancellable *cancellable = NULL;
     PtcClient *client;
     gboolean ok;
     int ret;
@@ -105,6 +118,7 @@ do_run(PtcMode mode, const char *source, const char *target, const char *logfile
     client = ptc_client_new();
     g_object_set(client,
                  "mode", mode,
+                 "backend", backend,   /* NULL means auto detect / none */
                  "source", source,
                  "target", target,
                  "logfile", logfile,
@@ -116,13 +130,26 @@ do_run(PtcMode mode, const char *source, const char *target, const char *logfile
     g_signal_connect(client, "volume-started", G_CALLBACK(on_volume_started), NULL);
     g_signal_connect(client, "volume-finished", G_CALLBACK(on_volume_finished), NULL);
 
-    ok = ptc_client_run(client, NULL, &error);
-    if (!ok) {
-        g_printerr("error: %s\n", error->message);
-        g_error_free(error);
+    if (cancel) {
+        /* Cancel before the engine starts so that the very first poll inside
+         * the copy loop aborts the operation; this keeps the test deterministic. */
+        cancellable = g_cancellable_new();
+        g_cancellable_cancel(cancellable);
     }
 
-    ret = ok ? 0 : 1;
+    ok = ptc_client_run(client, cancellable, &error);
+    if (ok) {
+        g_print("cancelled=no\n");
+        ret = cancel ? 1 : 0;   /* we asked to cancel but it completed */
+    } else if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+        g_print("cancelled=yes\n");
+        ret = cancel ? 0 : 1;   /* cancelled without being asked: unexpected */
+    } else {
+        g_printerr("error: %s\n", error->message);
+        ret = 1;
+    }
+    g_clear_error(&error);
+    g_clear_object(&cancellable);
     g_object_unref(client);
     return ret;
 }
@@ -130,18 +157,31 @@ do_run(PtcMode mode, const char *source, const char *target, const char *logfile
 int
 main(int argc, char **argv)
 {
+    gboolean cancel;
+
     if (argc >= 3 && g_strcmp0(argv[1], "info") == 0)
         return do_info(argv[2]);
 
-    if (argc >= 5 && g_strcmp0(argv[1], "clone") == 0)
-        return do_run(PTC_MODE_DISK_CLONE, argv[2], argv[3], argv[4]);
+    if (argc < 5)
+        goto usage;
 
-    if (argc >= 5 && g_strcmp0(argv[1], "restore") == 0)
-        return do_run(PTC_MODE_DISK_RESTORE, argv[2], argv[3], argv[4]);
+    cancel = (argc >= 6 && g_strcmp0(argv[5], "cancel") == 0);
 
+    if (g_strcmp0(argv[1], "clone") == 0)
+        return do_run(PTC_MODE_DISK_CLONE, NULL, argv[2], argv[3], argv[4], cancel);
+    if (g_strcmp0(argv[1], "restore") == 0)
+        return do_run(PTC_MODE_DISK_RESTORE, NULL, argv[2], argv[3], argv[4], cancel);
+    if (g_strcmp0(argv[1], "fs-clone") == 0)
+        return do_run(PTC_MODE_CLONE, "raw", argv[2], argv[3], argv[4], cancel);
+    if (g_strcmp0(argv[1], "fs-restore") == 0)
+        return do_run(PTC_MODE_RESTORE, NULL, argv[2], argv[3], argv[4], cancel);
+
+usage:
     g_printerr("usage: %s info IMAGE\n"
-               "       %s clone SOURCE TARGET LOGFILE\n"
-               "       %s restore SOURCE TARGET LOGFILE\n",
-               argv[0], argv[0], argv[0]);
+               "       %s clone SOURCE TARGET LOGFILE [cancel]\n"
+               "       %s restore SOURCE TARGET LOGFILE [cancel]\n"
+               "       %s fs-clone SOURCE TARGET LOGFILE [cancel]\n"
+               "       %s fs-restore SOURCE TARGET LOGFILE [cancel]\n",
+               argv[0], argv[0], argv[0], argv[0], argv[0]);
     return 2;
 }
