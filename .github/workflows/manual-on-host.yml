@@ -15,7 +15,7 @@ jobs:
           sudo apt-get update
           sudo apt-get build-dep -y partclone
           sudo apt-get install -y build-essential meson ninja-build gettext pkg-config
-          sudo apt-get install -y f2fs-tools hfsprogs exfatprogs gddrescue libfuse3-dev fuse3 jfsutils reiser4progs hfsprogs hfsplus reiserfsprogs libxxhash-dev libisal-dev jfsutils libjfs-dev libufs2 ufsutils vmfs-tools libvmfs liburcu-dev btrfs-progs valgrind libgtk-4-dev xvfb
+          sudo apt-get install -y f2fs-tools hfsprogs exfatprogs gddrescue libfuse3-dev fuse3 jfsutils reiser4progs hfsprogs hfsplus reiserfsprogs libxxhash-dev libisal-dev jfsutils libjfs-dev libufs2 ufsutils vmfs-tools libvmfs liburcu-dev btrfs-progs valgrind libglib2.0-dev libgtk-4-dev xvfb
     - name: meson setup
       run: meson setup build -Dfs-test=true -Dfeature-test=true -Dextfs=enabled -Dntfs=enabled -Dfat=enabled -Dexfat=enabled -Dhfsp=enabled -Dapfs=enabled -Dbtrfs=enabled -Dminix=enabled -Df2fs=enabled -Dreiser4=enabled -Dxfs=enabled -Dnilfs2=enabled -Dfuse=enabled -Djfs=enabled -Dufs=enabled -Dvmfs=enabled
       # GTK4 (and the ptc-gtk4 self-test) is auto-detected when libgtk-4-dev is

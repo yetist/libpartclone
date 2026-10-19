@@ -6,7 +6,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 # 1. Install dependencies for minimal build
 apt-get update
-apt-get install -y build-essential meson ninja-build gettext pkg-config e2fslibs-dev uuid-dev libblkid-dev libxxhash-dev libssl-dev zlib1g-dev libzstd-dev e2fsprogs scdoc
+apt-get install -y build-essential meson ninja-build gettext pkg-config e2fslibs-dev uuid-dev libblkid-dev libglib2.0-dev libxxhash-dev libssl-dev zlib1g-dev libzstd-dev e2fsprogs scdoc
 
 # 2. Compile partclone (minimal ext4 build to save CI time on emulated architectures)
 cd /workspace

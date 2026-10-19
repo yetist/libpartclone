@@ -22,7 +22,7 @@ jobs:
           sudo apt-get build-dep partclone
           sudo apt-get install build-essential meson ninja-build gettext pkg-config
           sudo apt-get install ntfs-3g f2fs-tools hfsprogs exfatprogs gddrescue reiser4progs libxxhash-dev libisal-dev liburcu-dev btrfs-progs
-          sudo apt-get install libgtk-4-dev xvfb
+          sudo apt-get install libglib2.0-dev libgtk-4-dev xvfb
     - name: meson setup
       run: meson setup build -Dfs-test=true -Dfeature-test=true -Dgtk4=enabled -Dextfs=enabled -Dntfs=enabled -Dfat=enabled -Dexfat=enabled -Dhfsp=enabled -Dapfs=enabled -Dbtrfs=enabled -Dminix=enabled -Df2fs=enabled -Dreiser4=enabled -Dxfs=enabled -Dxxhash=true -Disal=true
     - name: meson compile
@@ -53,7 +53,7 @@ jobs:
           sudo apt-get build-dep partclone
           sudo apt-get install build-essential meson ninja-build gettext pkg-config
           sudo apt-get install ntfs-3g f2fs-tools hfsprogs exfatprogs gddrescue reiser4progs libisal-dev liburcu-dev btrfs-progs
-          sudo apt-get install libgtk-4-dev xvfb
+          sudo apt-get install libglib2.0-dev libgtk-4-dev xvfb
     - name: meson setup
       run: meson setup build -Dfs-test=true -Dfeature-test=true -Dgtk4=enabled -Dextfs=enabled -Dntfs=enabled -Dfat=enabled -Dexfat=enabled -Dhfsp=enabled -Dapfs=enabled -Dbtrfs=enabled -Dminix=enabled -Df2fs=enabled -Dreiser4=enabled -Dxfs=enabled -Dxxhash=false -Disal=true
     - name: meson compile

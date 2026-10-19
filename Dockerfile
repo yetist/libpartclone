@@ -24,7 +24,7 @@ RUN apt-get update && \
     f2fs-tools hfsplus exfatprogs gddrescue libfuse-dev jfsutils \
     hfsprogs reiserfsprogs btrfs-progs libxxhash-dev libfuse3-dev\
     libisal-dev zlib1g-dev libzstd-dev libjfs-dev libufs2 ufsutils \
-    vmfs-tools libvmfs libbsd0 libbsd-dev liburcu-dev && \
+    vmfs-tools libvmfs libbsd0 libbsd-dev liburcu-dev libglib2.0-dev uuid-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

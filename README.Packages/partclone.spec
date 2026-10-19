@@ -8,7 +8,7 @@ Summary:      File System Clone Utilities for xfs, ntfs, fat, exfat, and some ot
 Source:       https://sourceforge.net/projects/%{name}/files/stable/%{version}/%{name}-%{version}.tar.gz
 Patch:        %{name}-el6-ext2fslib.patch
 Prefix:       /usr
-BuildRequires: e2fsprogs-devel, xfsprogs-devel, ntfs-3g-devel, meson, ninja-build
+BuildRequires: e2fsprogs-devel, xfsprogs-devel, ntfs-3g-devel, glib2-devel, meson, ninja-build
 #BuildRequires: e2fsprogs-devel, libprogsreiserfs-devel-static, reiser4progs, xfsprogs-devel, ntfs-3g-devel, ncurses-static
 
 %description
