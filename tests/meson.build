@@ -7,6 +7,14 @@
 bash = find_program('bash')
 test_workdir = meson.current_build_dir()
 
+# The scripts historically looked for the tools in ../src (an in-tree
+# autotools build).  With Meson they live in <build>/src, so tell them where
+# the binaries are and whether libfdisk (needed to regenerate GPTs for a
+# differently-sized target) was found.
+test_env = environment()
+test_env.set('PTC_BIN_DIR', meson.project_build_root() / 'src')
+test_env.set('PTC_HAVE_LIBFDISK', fdisk_dep.found() ? '1' : '0')
+
 # A tiny front end used by disk.test to exercise the public GObject API.
 ptc_image_probe = executable('ptc-image-probe',
   'ptc-image-probe.c',
@@ -89,6 +97,7 @@ foreach name, script : tests
   test(name, bash,
     args : files(script),
     workdir : test_workdir,
+    env : test_env,
     timeout : 600,
   )
 endforeach

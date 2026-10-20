@@ -22,9 +22,12 @@ set -e
 # The CLI's SIGINT/SIGTERM handling is checked as well (partclone.dd in
 # dd.test, partclone.disk below).
 
-ptlfs="../src/partclone.disk"
+ptlfs="$ptldir/partclone.disk"
 bs=4096
 count=$((4*1024))   # 16 MiB
+# GPT tables can only be regenerated (to move the backup GPT to the end of a
+# differently-sized target) when libfdisk is available.
+have_libfdisk=${PTC_HAVE_LIBFDISK:-1}
 
 echo -e "partclone.disk (format 0003) test"
 echo -e "================================\n"
@@ -141,9 +144,13 @@ EOF
         exit 1
     fi
     # ... and the backup GPT must be at the end of the (larger) target.
-    if [ "$(dd if=$big bs=512 skip=$(((sectors+16*1024)-1)) count=1 status=none | head -c 8)" != "EFI PART" ]; then
-        echo -e "\ngpt-grow: no backup GPT at the end of the larger target\n"
-        exit 1
+    if [ "$have_libfdisk" = 1 ]; then
+        if [ "$(dd if=$big bs=512 skip=$(((sectors+16*1024)-1)) count=1 status=none | head -c 8)" != "EFI PART" ]; then
+            echo -e "\ngpt-grow: no backup GPT at the end of the larger target\n"
+            exit 1
+        fi
+    else
+        echo -e "[gpt-grow] no libfdisk: backup GPT check skipped\n"
     fi
     rm -f $gimg $big
 
@@ -320,7 +327,8 @@ EOF
             truncate -s $((144*1024*512)) "$fs_big"
             $ptlfs -r -s "$fs_img" -O "$fs_big" -L $logfile -F
             _check_return_code
-            if [ "$(dd if=$fs_big bs=512 skip=$((144*1024-1)) count=1 status=none | head -c 8)" != "EFI PART" ]; then
+            if [ "$have_libfdisk" = 1 ] &&
+               [ "$(dd if=$fs_big bs=512 skip=$((144*1024-1)) count=1 status=none | head -c 8)" != "EFI PART" ]; then
                 echo -e "\n[fsvol] no backup GPT at the end of the larger target\n"
                 exit 1
             fi
@@ -364,34 +372,38 @@ EOF
     $ptlfs -c -s $p4_src -O $p4_img -L $logfile -F
     _check_return_code
 
-    echo -e "[grow-gpt] restore onto a larger target with --grow\n"
-    truncate -s $(((p4_secs+16*1024)*512)) $p4_out
-    $ptlfs -r --grow -s $p4_img -O $p4_out -L $logfile -F
-    _check_return_code
+    if [ "$have_libfdisk" = 1 ]; then
+        echo -e "[grow-gpt] restore onto a larger target with --grow\n"
+        truncate -s $(((p4_secs+16*1024)*512)) $p4_out
+        $ptlfs -r --grow -s $p4_img -O $p4_out -L $logfile -F
+        _check_return_code
 
-    p4_src_p2=$(_p4_size $p4_src 8192)
-    p4_out_p2=$(_p4_size $p4_out 8192)
-    p4_last=$((p4_secs+16*1024))
-    # The last partition must now end at the target's last usable LBA ...
-    if [ -z "$p4_out_p2" ] || [ "$p4_out_p2" -le "$p4_src_p2" ]; then
-        echo -e "\n[grow-gpt] last partition did not grow ($p4_src_p2 -> $p4_out_p2)\n"
-        exit 1
-    fi
-    p4_last_lba=$(sfdisk -d $p4_out 2>/dev/null | sed -n 's/^last-lba: *//p')
-    if [ "$((8192 + p4_out_p2 - 1))" != "$p4_last_lba" ]; then
-        echo -e "\n[grow-gpt] last partition does not reach the last usable LBA\n"
-        exit 1
-    fi
-    # ... its data is intact ...
-    if ! cmp -s <(dd if=$p4_src bs=512 skip=2048 count=4096 status=none) \
-                <(dd if=$p4_out bs=512 skip=2048 count=4096 status=none); then
-        echo -e "\n[grow-gpt] partition 1 data differs\n"
-        exit 1
-    fi
-    # ... and the backup GPT sits at the end of the larger target.
-    if [ "$(dd if=$p4_out bs=512 skip=$((p4_last-1)) count=1 status=none | head -c 8)" != "EFI PART" ]; then
-        echo -e "\n[grow-gpt] no backup GPT at the end of the larger target\n"
-        exit 1
+        p4_src_p2=$(_p4_size $p4_src 8192)
+        p4_out_p2=$(_p4_size $p4_out 8192)
+        p4_last=$((p4_secs+16*1024))
+        # The last partition must now end at the target's last usable LBA ...
+        if [ -z "$p4_out_p2" ] || [ "$p4_out_p2" -le "$p4_src_p2" ]; then
+            echo -e "\n[grow-gpt] last partition did not grow ($p4_src_p2 -> $p4_out_p2)\n"
+            exit 1
+        fi
+        p4_last_lba=$(sfdisk -d $p4_out 2>/dev/null | sed -n 's/^last-lba: *//p')
+        if [ "$((8192 + p4_out_p2 - 1))" != "$p4_last_lba" ]; then
+            echo -e "\n[grow-gpt] last partition does not reach the last usable LBA\n"
+            exit 1
+        fi
+        # ... its data is intact ...
+        if ! cmp -s <(dd if=$p4_src bs=512 skip=2048 count=4096 status=none) \
+                    <(dd if=$p4_out bs=512 skip=2048 count=4096 status=none); then
+            echo -e "\n[grow-gpt] partition 1 data differs\n"
+            exit 1
+        fi
+        # ... and the backup GPT sits at the end of the larger target.
+        if [ "$(dd if=$p4_out bs=512 skip=$((p4_last-1)) count=1 status=none | head -c 8)" != "EFI PART" ]; then
+            echo -e "\n[grow-gpt] no backup GPT at the end of the larger target\n"
+            exit 1
+        fi
+    else
+        echo -e "[grow-gpt] no libfdisk: GPT growth skipped\n"
     fi
 
     echo -e "[grow-mbr] the last primary/extended entry grows\n"

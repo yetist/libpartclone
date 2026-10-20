@@ -44,7 +44,7 @@ function print_fail() {
 
 # --- Configuration ---
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PTLDIR="$SCRIPT_DIR/../src"
+PTLDIR="${PTC_BIN_DIR:-$SCRIPT_DIR/../src}"
 PTLBTRFS="$PTLDIR/partclone.btrfs"
 
 IMG_SIZE=$((256 * 1024 * 1024))   # 256 MiB

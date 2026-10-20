@@ -9,7 +9,7 @@ dd_bs=4096
 normal_size=$((256*1*256))
 floppy_size=1024
 current_dir=`pwd`
-ptldir="../src"
+ptldir="${PTC_BIN_DIR:-../src}"
 
 ptlinfo=$ptldir/partclone.info
 ptlchkimg=$ptldir/partclone.chkimg
