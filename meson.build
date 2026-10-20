@@ -211,6 +211,34 @@ foreach name, reqs : fs_reqs
   fs_deps  += { name : deps }
 endforeach
 
+# reiser4 is loaded as a shared plugin, so its external libraries must be
+# position independent.  Debian and Ubuntu ship a static, non-PIC libreiser4.a
+# (from reiser4progs) and the linker rejects it when building a shared object:
+#   relocation R_X86_64_PC32 against symbol `plugins' can not be used when
+#   making a shared object; recompile with -fPIC
+# Probe for that up front instead of leaving a cryptic link error behind.
+if fs_build.get('reiser4', false)
+  reiser4_pic = cc.links(
+    'int main(void) { return 0; }',
+    args : [
+      '-shared', '-fPIC',
+      '-Wl,--start-group', '-Wl,--whole-archive',
+      '-lreiser4', '-laal',
+      '-Wl,--no-whole-archive', '-Wl,--end-group',
+    ],
+    name : 'libreiser4 can be linked into a shared object',
+  )
+  if not reiser4_pic
+    if opt_all or get_option('reiser4').enabled()
+      error('the reiser4 backend needs a position-independent libreiser4 ' +
+            '(shared, or a static archive built with -fPIC); the library ' +
+            'found is a non-PIC static archive')
+    endif
+    warning('disabling the reiser4 backend: libreiser4 is a non-PIC static archive')
+    fs_build += { 'reiser4' : false }
+  endif
+endif
+
 # ntfs: prefer ntfs-3g, fall back to ntfsprogs.
 ntfs_opt  = get_option('ntfs')
 want_ntfs = opt_all or ntfs_opt.enabled()

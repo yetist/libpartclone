@@ -93,7 +93,10 @@ command to run afterwards.
 
 This project needs a C compiler, pkg-config, Meson ≥ 0.61, GLib/GObject/GIO ≥ 2.44,
 libuuid, OpenSSL, zlib and zstd. Each backend needs its library (see above);
-`scdoc` and `gettext` are optional.
+`scdoc` and `gettext` are optional. The reiser4 backend is loaded as a shared
+plugin, so it needs a position-independent `libreiser4`; Debian and Ubuntu ship
+a non-PIC static archive, and the backend is then disabled automatically
+(`-Dreiser4=enabled` fails with an explanatory error).
 
 ```sh
 meson setup build --prefix=/usr -Dall=true
@@ -105,7 +108,7 @@ Useful options (`meson configure build` lists them all):
 
 | Option | Default | Meaning |
 |---|---|---|
-| `-Dall=true` | `false` | Enable every backend whose libraries are found. |
+| `-Dall=true` | `false` | Require every backend (fails if a dependency is missing). |
 | `-D<fs>=enabled\|auto` | `disabled` | Enable one backend. |
 | `-Dgtk4=enabled` | `auto` | Build `ptc-gtk4` (GTK ≥ 4.10). |
 | `-Dncursesw=enabled` | `disabled` | Build the ncursesw UI. |
