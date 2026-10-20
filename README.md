@@ -1,12 +1,17 @@
-# Partclone
+# libpartclone
 
-Partclone backs up and restores **used blocks** of a partition instead of
-copying it byte for byte, reusing each filesystem's own library (e.g. libext2fs
-for ext2/3/4). It also handles **whole disks**: partition table, gaps and every
-partition in one streamable image.
+A library for efficient, filesystem-aware partition backup, restoration and
+cloning, based on [Partclone](https://github.com/Thomas-Tsai/partclone).
 
+It backs up and restores **used blocks** of a partition instead of copying it
+byte for byte, reusing each filesystem's own library (e.g. libext2fs for
+ext2/3/4), and it handles **whole disks**: partition table, gaps and every
+partition in one streamable image. The library ships with the `partclone.*`
+command line tools and an optional GTK4 front end.
+
+* Source: <https://github.com/yetist/libpartclone>
+* Upstream: <https://github.com/Thomas-Tsai/partclone>
 * Website: <http://partclone.org>
-* Source: <https://github.com/Thomas-Tsai/partclone>
 * Image formats: [IMAGE_FORMATS.md](IMAGE_FORMATS.md)
 
 ## Features
@@ -19,8 +24,8 @@ partition in one streamable image.
 * Terminal, ncurses or JSON progress; checksums (CRC32, xxHash64/128);
   compression through an external command (`-x`); pipes; direct I/O; rescue.
 * `SIGINT`/`SIGTERM` stop at a block boundary with exit status `254`.
-* `libpartclone`: GObject/GIO API (`PtcClient`, `PtcImage`, `PtcVolume`),
-  async operations and `GCancellable`.
+* GObject/GIO API (`PtcClient`, `PtcImage`, `PtcVolume`), async operations and
+  `GCancellable`.
 * Optional GTK4 front end, ncursesw UI, FUSE image mount and bash completion.
 * Translations: `de`, `fr_FR`, `ka`, `pt_BR`, `ru`, `vi`, `zh_CN`, `zh_TW`.
 
@@ -86,7 +91,7 @@ command to run afterwards.
 
 ## Building
 
-Needs a C compiler, pkg-config, Meson ≥ 0.61, GLib/GObject/GIO ≥ 2.44,
+This project needs a C compiler, pkg-config, Meson ≥ 0.61, GLib/GObject/GIO ≥ 2.44,
 libuuid, OpenSSL, zlib and zstd. Each backend needs its library (see above);
 `scdoc` and `gettext` are optional.
 
@@ -158,4 +163,5 @@ man partclone; man partclone.disk            # scdoc pages in docs/
 
 ## License
 
-GNU General Public License v2 or later. See [COPYING](COPYING).
+This project is licensed under the GNU General Public License v2 or later.
+See [COPYING](COPYING).
